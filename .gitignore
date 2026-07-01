@@ -1,0 +1,38 @@
+__pycache__/
+*.py[cod]
+
+# Local Challenge data and generated outputs.
+smoke_*data/
+smoke_input/
+smoke_cache/
+smoke_output*/
+val_data/
+test_remaining150_data/
+
+# Local H100 extraction/training artifacts and helper scripts.
+h100_*/
+h100*.py
+medex-*.yaml
+inspect_medex_data.py
+prepare_val_data.py
+smoke_lstm_chain.py
+
+# Trained models and intermediate feature caches.
+model/
+models/
+outputs/
+holdout_outputs/
+training_data/
+holdout_data/
+*.npz
+*.pt
+*.pth
+*.ckpt
+*.joblib
+*.sav
+
+# Logs and local OS/editor metadata.
+*.log
+.DS_Store
+.vscode/
+.idea/

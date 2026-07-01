@@ -1,7 +1,9 @@
 edfio==0.4.10
 joblib==1.4.2
-numpy==2.0.2
-pandas==2.2.2
-scikit-learn==1.6.0
-scipy==1.13.1
-tqdm==4.67.1
+numpy==1.26.4
+pandas==2.2.3
+scikit-learn==1.7.2
+scipy==1.15.3
+tqdm==4.66.2
+torch==2.5.1
+neurokit2==0.2.7
