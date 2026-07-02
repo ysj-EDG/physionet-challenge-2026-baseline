@@ -45,3 +45,7 @@ holdout_data/
 .DS_Store
 .vscode/
 .idea/
+
+# Local generated split metadata and Docker experiments.
+splits/
+Dockerfile*.local
