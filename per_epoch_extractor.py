@@ -210,8 +210,11 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
         # ---- Per-epoch OneHot ----
         X_onehot = self._extract_per_epoch_onehot(algo_data)
 
-        if X_eeg is None or X_emg is None or X_resp is None or X_onehot is None:
+        if X_eeg is None or X_emg is None or X_resp is None:
             return None, None, x_static, y, None
+        if X_onehot is None:
+            n_base_epochs = min(X_eeg.shape[0], X_emg.shape[0], X_resp.shape[0])
+            X_onehot = np.zeros((n_base_epochs, 13), dtype=np.float32)
 
         # Align to common N_epochs
         n_epochs = min(X_eeg.shape[0], X_emg.shape[0], X_resp.shape[0], X_onehot.shape[0])

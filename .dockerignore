@@ -10,6 +10,9 @@ smoke_output*/
 val_data/
 test_remaining150_data/
 h100_*/
+h100_npz/
+h100_cached_output_kaggle/
+lstm_cache_kaggle/
 h100*.py
 medex-*.yaml
 inspect_medex_data.py
@@ -23,11 +26,17 @@ holdout_outputs/
 training_data/
 holdout_data/
 *.npz
+**/*.npz
 *.pt
+**/*.pt
 *.pth
+**/*.pth
 *.ckpt
+**/*.ckpt
 *.joblib
+**/*.joblib
 *.sav
+**/*.sav
 *.log
 .DS_Store
 .vscode/
