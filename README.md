@@ -4,27 +4,6 @@
 
 ---
 
-## 仓库结构
-
-```
-.
-├── *.py                         # LSTM 主路线代码，保留在根目录以兼容官方入口
-├── channel_table.csv            # PSG 通道别名与标准名映射
-├── requirements.txt             # 可提交运行依赖
-├── Dockerfile                   # 官方构建文件
-├── docs/
-│   ├── notes/                   # 方法记录、实验思路和阶段性笔记
-│   └── papers/                  # 文献阅读笔记
-├── reports/
-│   ├── weekly/                  # 周报与阶段进展
-│   ├── milestones/              # 关键节点材料与 H100 结果归档
-│   └── images/                  # 汇报图片
-└── README.md                    # LSTM 实验总路线说明
-```
-
-
----
-
 ## 目录
 
 1. [项目概述](#1-项目概述)
@@ -96,8 +75,6 @@ PhysioNet Challenge 2026 训练集，包含多家医院 (Site) 的 PSG 记录。
 | `val_records.json` | Val | 早停、学习率调度和超参选择 |
 | `test_records.json` | Test | 主测试集推理与指标输出 |
 | `external_records.json` | External | 额外外部记录推理与泛化检查 |
-
-`train_lstm.py` 默认读取 `train/val/test` 三个集合完成训练与测试评估；`team_code.py --mode all` 和 `infer_lstm.py --split external` 支持对 `external` 集合进行独立推理。划分 JSON 属于本地运行元数据，当前不纳入 Git 提交。
 
 ### 2.3 通道预处理
 
@@ -647,24 +624,31 @@ python infer_lstm.py --data_folder /path/to/training_set --model lstm_model/lstm
 
 ```
 .
-├── team_code.py                    # 官方入口桥接：训练、推理和批量输出
-├── train_lstm.py                   # LSTM 训练流程，读取 train/val/test 划分
-├── infer_lstm.py                   # LSTM 批量推理与指标输出，支持 test/external
-├── per_epoch_extractor.py          # Per-30s epoch 时序特征主提取器
-├── feature_extractor_*.py          # 人口学、算法标注、EEG/ECG/EMG/Resp/OneHot 子特征
-├── eeg_sleep_features.py           # EEG 频谱与睡眠特征工具
-├── helper_code.py                  # PhysioNet 官方数据读取与输出辅助函数
-├── evaluate_model.py               # 官方评估脚本
-├── run_model.py                    # 官方批量运行脚本
-├── train_model.py                  # 官方训练包装入口
-├── channel_table.csv               # 通道标准化映射表
-├── requirements.txt                # Python 依赖
+├── team_code.py                    # 官方提交入口；桥接训练、模型加载、单记录推理和批量推理
+├── train_lstm.py                   # LSTM 训练入口；构建 Dataset/DataLoader、训练、验证、测试评估和保存模型
+├── infer_lstm.py                   # LSTM 推理入口；读取缓存特征，输出预测 CSV 和评估指标
+├── per_epoch_extractor.py          # LSTM per-epoch 特征主提取器；融合 EEG/ECG/EMG/Resp/事件和静态特征
+├── feature_extractor_demographic.py        # 人口学静态特征：年龄、性别、种族、BMI
+├── feature_extractor_algorithmic.py        # CAISR 算法标注静态特征：睡眠结构、觉醒、呼吸和肢体事件
+├── feature_extractor_eeg_coherence.py      # EEG per-epoch 频谱与相干特征
+├── feature_extractor_ecg_neurokit.py       # ECG/HRV 特征；当前融合 5 分钟滑窗 11 维表示
+├── feature_extractor_emg.py                # EMG per-epoch burst、tonic 和统计特征
+├── feature_extractor_resp.py               # 呼吸 per-epoch 特征：气流、胸腹带和相关性指标
+├── feature_extractor_event_onehot.py       # CAISR 事件 per-epoch one-hot/占比特征
+├── eeg_sleep_features.py           # EEG 睡眠频谱、分段统计和辅助算法函数
+├── helper_code.py                  # PhysioNet 官方数据读取、记录遍历和输出写入辅助函数
+├── evaluate_model.py               # 官方评估脚本；计算挑战指标和输出评估结果
+├── run_model.py                    # 官方批量运行脚本；对数据目录逐记录调用模型
+├── train_model.py                  # 官方训练包装入口；保持挑战模板兼容
+├── create_labels.py                # 本地标签生成/检查辅助脚本；当前不属于主训练入口
+├── channel_table.csv               # PSG 通道别名与标准名映射
+├── requirements.txt                # Python 运行依赖
 ├── Dockerfile                      # 官方 CUDA/PyTorch 构建文件
 ├── docs/                           # 方法记录、笔记和文献阅读
 ├── reports/                        # 周报、里程碑材料、图片和 H100 结果归档
 ├── splits/                         # 本地划分 JSON，不提交
 ├── lstm_cache_kaggle/              # 本地 .npz 特征缓存，不提交
-├── reports/milestones/output/     # H100 运行结果归档：模型、test/external 预测和指标
+├── reports/milestones/output/      # H100 运行结果归档：模型、test/external 预测和指标
 └── README.md                       # 本文件
 ```
 
