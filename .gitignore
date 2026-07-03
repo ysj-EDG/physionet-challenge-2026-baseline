@@ -1,32 +1,14 @@
 __pycache__/
 *.py[cod]
 
-# Local Challenge data and generated outputs.
-smoke_*data/
-smoke_input/
-smoke_cache/
-smoke_output*/
-val_data/
-test_remaining150_data/
-
-# Local H100 extraction/training artifacts and helper scripts.
-h100_*/
-h100_npz/
+# Local H100 extraction/training artifacts and generated data.
 h100_cached_output_kaggle/
 lstm_cache_kaggle/
-h100*.py
+splits/
 medex-*.yaml
-inspect_medex_data.py
-prepare_val_data.py
-smoke_lstm_chain.py
+requirements.local.no_torch.txt
 
-# Trained models and intermediate feature caches.
-model/
-models/
-outputs/
-holdout_outputs/
-training_data/
-holdout_data/
+# Large generated arrays and model artifacts.
 *.npz
 **/*.npz
 *.pt
@@ -40,12 +22,13 @@ holdout_data/
 *.sav
 **/*.sav
 
+# Keep selected milestone outputs in Git, including the small H100 model artifact.
+!reports/milestones/output/
+!reports/milestones/output/**
+
 # Logs and local OS/editor metadata.
 *.log
 .DS_Store
-.vscode/
-.idea/
 
-# Local generated split metadata and Docker experiments.
-splits/
+# Local Docker experiments.
 Dockerfile*.local

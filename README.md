@@ -4,6 +4,27 @@
 
 ---
 
+## 仓库结构
+
+```
+.
+├── *.py                         # LSTM 主路线代码，保留在根目录以兼容官方入口
+├── channel_table.csv            # PSG 通道别名与标准名映射
+├── requirements.txt             # 可提交运行依赖
+├── Dockerfile                   # 官方构建文件
+├── docs/
+│   ├── notes/                   # 方法记录、实验思路和阶段性笔记
+│   └── papers/                  # 文献阅读笔记
+├── reports/
+│   ├── weekly/                  # 周报与阶段进展
+│   ├── milestones/              # 关键节点材料与 H100 结果归档
+│   └── images/                  # 汇报图片
+└── README.md                    # LSTM 实验总路线说明
+```
+
+
+---
+
 ## 目录
 
 1. [项目概述](#1-项目概述)
@@ -67,15 +88,16 @@ PhysioNet Challenge 2026 训练集，包含多家医院 (Site) 的 PSG 记录。
 
 ### 2.2 数据集划分
 
-`split_dataset.py` 按 **7:1:2** 分层划分（按 `Cognitive_Impairment` 标签分层，seed=42）：
+当前 LSTM 路线使用本地预生成的四个划分文件，统一放在 `{data_folder}/splits/` 或仓库本地 `splits/` 目录中：
 
-| 集合 | 比例 | 用途 |
+| 文件 | 集合 | 用途 |
 |------|------|------|
-| Train | 70% | 模型训练 |
-| Val | 10% | 早停 / 超参选择 |
-| Test | 20% | 最终评估 |
+| `train_records.json` | Train | 模型训练 |
+| `val_records.json` | Val | 早停、学习率调度和超参选择 |
+| `test_records.json` | Test | 主测试集推理与指标输出 |
+| `external_records.json` | External | 额外外部记录推理与泛化检查 |
 
-输出 `{data_folder}/splits/{train,val,test}_records.json`。
+`train_lstm.py` 默认读取 `train/val/test` 三个集合完成训练与测试评估；`team_code.py --mode all` 和 `infer_lstm.py --split external` 支持对 `external` 集合进行独立推理。划分 JSON 属于本地运行元数据，当前不纳入 Git 提交。
 
 ### 2.3 通道预处理
 
@@ -624,59 +646,26 @@ python infer_lstm.py --data_folder /path/to/training_set --model lstm_model/lstm
 ## 8. 文件结构
 
 ```
-challenge2026/
-│
-├── 数据与划分
-│   ├── split_dataset.py              # 7:1:2 分层划分
-│   ├── channel_table.csv             # 通道别名映射表
-│   └── requirements.txt              # Python 依赖
-│
-├── 特征提取器
-│   ├── feature_extractor.py                    # XGBoost 用聚合提取器 (备用)
-│   ├── per_epoch_extractor.py                 # LSTM PerEpochExtractor 主入口
-│   ├── feature_extractor_demographic.py        # DemographicMixin (10 维)
-│   ├── feature_extractor_algorithmic.py        # AlgorithmicMixin (186 维)
-│   ├── feature_extractor_eeg_coherence.py      # EEGCoherenceMixin (414 维/epoch)
-│   ├── feature_extractor_ecg_neurokit.py       # ECG HRV (11 维/5min-window)
-│   ├── feature_extractor_emg.py                # EMG burst/tonic (24 维/epoch)
-│   ├── feature_extractor_resp.py               # 呼吸 (14 维/epoch)
-│   ├── feature_extractor_event_onehot.py       # OneHot (13 维/epoch)
-│   └── feature_extractor_physiological.py      # 生理信号精细特征 (153 维, 备用)
-│
-├── 模型训练与推理
-│   ├── train_lstm.py                 # LSTM 训练 + 特征缓存
-│   ├── infer_lstm.py                 # LSTM 测试集推理 + 指标输出
-│   └── train_xgboost.py              # XGBoost 训练 (备用)
-│
-├── 模型文件
-│   └── lstm_model/
-│       └── lstm_model.pt             # 训练好的 LSTM 模型 (~1.9MB)
-│
-├── 特征缓存
-│   └── lstm_cache/
-│       ├── train/                    # 训练集时序缓存 (.npz)
-│       ├── val/                      # 验证集时序缓存
-│       └── test/                     # 测试集时序缓存
-│
-├── 输出
-│   └── lstm_results/
-│       ├── lstm_test_predictions.csv
-│       └── lstm_test_metrics.txt
-│
-├── 参考代码与算法
-│   └── ref/
-│       ├── python-example-2026/      # 官方示例 (team_code, helper_code, evaluate_model)
-│       ├── eeg_sleep_features.py     # EEG 频谱/相干核心算法
-│       ├── result.txt                # 历史 Site-CV 实验结果
-│       └── output_*/                  # EEG 可视化输出
-│
-├── 文档
-│   ├── README.md                     # 本文件 (技术总文档)
-│   ├── FEATURES.md                   # LSTM 特征速查
-│   ├── algorithmic_features_methodology.md   # CAISR 算法特征公式
-│   └── physiological_features_methodology.md # 生理信号特征公式
-│
-└── __pycache__/
+.
+├── team_code.py                    # 官方入口桥接：训练、推理和批量输出
+├── train_lstm.py                   # LSTM 训练流程，读取 train/val/test 划分
+├── infer_lstm.py                   # LSTM 批量推理与指标输出，支持 test/external
+├── per_epoch_extractor.py          # Per-30s epoch 时序特征主提取器
+├── feature_extractor_*.py          # 人口学、算法标注、EEG/ECG/EMG/Resp/OneHot 子特征
+├── eeg_sleep_features.py           # EEG 频谱与睡眠特征工具
+├── helper_code.py                  # PhysioNet 官方数据读取与输出辅助函数
+├── evaluate_model.py               # 官方评估脚本
+├── run_model.py                    # 官方批量运行脚本
+├── train_model.py                  # 官方训练包装入口
+├── channel_table.csv               # 通道标准化映射表
+├── requirements.txt                # Python 依赖
+├── Dockerfile                      # 官方 CUDA/PyTorch 构建文件
+├── docs/                           # 方法记录、笔记和文献阅读
+├── reports/                        # 周报、里程碑材料、图片和 H100 结果归档
+├── splits/                         # 本地划分 JSON，不提交
+├── lstm_cache_kaggle/              # 本地 .npz 特征缓存，不提交
+├── reports/milestones/output/     # H100 运行结果归档：模型、test/external 预测和指标
+└── README.md                       # 本文件
 ```
 
 ---
