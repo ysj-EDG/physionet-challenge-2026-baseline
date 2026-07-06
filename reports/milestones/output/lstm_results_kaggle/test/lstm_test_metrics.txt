@@ -1,0 +1,115 @@
+============================================================
+LSTM Model — Test Set Metrics
+============================================================
+
+Model:            /mnt/data5t-in-container/workspace/.medex_run_38b2260bf7a34312b5c8afb578e9c668/challenge2026/lstm_h100_output/lstm_model_kaggle/lstm_model.pt
+Data folder:      /mnt/data5t-in-container/workspace/.medex_run_38b2260bf7a34312b5c8afb578e9c668/challenge2026
+Device:           cuda
+Preload time:     2.7s
+Inference time:   0.2s
+Total wall time:  2.9s
+Batch size:       256
+Calibration:      {'method': 'platt_logistic', 'coef': 0.2122735020949044, 'intercept': -0.6190709240836028}
+Binary threshold: 0.078162
+
+--- Basic Info ---
+  n_total                        = 158
+  n_positive                     = 11
+  n_negative                     = 147
+  pos_ratio                      = 0.069620
+
+--- Probability Distribution ---
+  prob_mean                      = 0.077554
+  prob_std                       = 0.041684
+  prob_median                    = 0.066381
+  prob_min                       = 0.036802
+  prob_max                       = 0.341332
+  binary_threshold               = 0.078162
+
+--- Raw Probability Distribution ---
+  raw_prob_mean                  = 0.004645
+  raw_prob_std                   = 0.037042
+  raw_prob_min                   = 0.000004
+  raw_prob_max                   = 0.455021
+
+--- Core Metrics ---
+  AUROC                          = 0.770563
+  AUPRC                          = 0.239689
+  Accuracy                       = 0.727848
+  F1                             = 0.295082
+  Precision                      = 0.180000
+  Recall                         = 0.818182
+  Specificity                    = 0.721088
+
+--- Confusion Matrix ---
+  TP                             = 9
+  TN                             = 106
+  FP                             = 41
+  FN                             = 2
+
+--- TPR at Capacity ---
+  TPR@1%                         = 0.000000
+  capacity@1%                    = 1
+  TPR@5%                         = 0.285714
+  capacity@5%                    = 7
+  TPR@10%                        = 0.200000
+  capacity@10%                   = 15
+  TPR@20%                        = 0.225806
+  capacity@20%                   = 31
+  TPR@30%                        = 0.170213
+  capacity@30%                   = 47
+  TPR@50%                        = 0.113924
+  capacity@50%                   = 79
+
+--- Class-conditional Probabilities ---
+  pos_class_prob_mean            = 0.114735
+  neg_class_prob_mean            = 0.074772
+
+--- Optimal Threshold (Youden) ---
+  best_threshold_youden          = 0.079217
+  best_tpr_youden                = 0.818182
+  best_fpr_youden                = 0.265306
+
+--- All Metrics (key=value) ---
+  n_total = 158
+  n_positive = 11
+  n_negative = 147
+  pos_ratio = 0.06962025316455696
+  prob_mean = 0.07755417684101877
+  prob_std = 0.04168408217660217
+  prob_median = 0.06638119438143497
+  prob_min = 0.03680161626907042
+  prob_max = 0.3413315333183765
+  binary_threshold = 0.07816152146748512
+  AUROC = 0.7705627705627706
+  AUPRC = 0.2396885734201529
+  Accuracy = 0.7278481012658228
+  F1 = 0.29508196721311475
+  Precision = 0.18
+  Recall = 0.8181818181818182
+  Specificity = 0.7210884353741497
+  TP = 9
+  TN = 106
+  FP = 41
+  FN = 2
+  TPR@1% = 0.0
+  capacity@1% = 1
+  TPR@5% = 0.2857142857142857
+  capacity@5% = 7
+  TPR@10% = 0.2
+  capacity@10% = 15
+  TPR@20% = 0.22580645161290322
+  capacity@20% = 31
+  TPR@30% = 0.1702127659574468
+  capacity@30% = 47
+  TPR@50% = 0.11392405063291139
+  capacity@50% = 79
+  pos_class_prob_mean = 0.11473500488241752
+  neg_class_prob_mean = 0.07477193800798894
+  best_threshold_youden = 0.07921711730999735
+  best_tpr_youden = 0.8181818181818182
+  best_fpr_youden = 0.2653061224489796
+  raw_prob_mean = 0.004644936683527089
+  raw_prob_std = 0.03704215329963601
+  raw_prob_min = 3.865612553097977e-06
+  raw_prob_max = 0.45502072915556196
