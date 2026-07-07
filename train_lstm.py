@@ -33,7 +33,7 @@ CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "lstm_cache
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 _REF_DIR = os.path.join(_SCRIPT_DIR, "ref", "python-example-2026")
 sys.path.insert(0, _REF_DIR)
-from helper_code import HEADERS
+from helper_code import DEMOGRAPHICS_FILE, HEADERS, find_patients
 
 # ---------------------------------------------------------------------------
 # PyTorch
@@ -52,10 +52,11 @@ HIDDEN_DIM = 128
 NUM_LAYERS = 2
 DROPOUT = 0.3
 FC_HIDDEN = 64
-BATCH_SIZE = 8
+BATCH_SIZE = int(os.environ.get("LSTM_BATCH_SIZE", 8))
 LR = 1e-3
-EPOCHS = 80
-PATIENCE = 15
+EPOCHS = int(os.environ.get("LSTM_EPOCHS", 80))
+PATIENCE = int(os.environ.get("LSTM_PATIENCE", 15))
+RANDOM_SEED = 2026
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -252,6 +253,8 @@ def evaluate(model, loader):
         auroc = roc_auc_score(y, p)
     except ValueError:
         auroc = 0.5
+    if not np.isfinite(auroc):
+        auroc = 0.5
     n = len(y)
     cap = max(1, int(0.05 * n))
     idx = np.argsort(p)[::-1]
@@ -276,17 +279,47 @@ def main():
     logger.info("Initializing PerEpochExtractor...")
     extractor = PerEpochExtractor()
 
-    # Load splits
-    def load_records(split):
+    # Load records. Official evaluation only provides the Challenge data folder;
+    # local split JSON files are optional convenience files, not requirements.
+    def load_split_records(split):
         path = os.path.join(SPLITS_DIR, f"{split}_records.json")
-        records = json.load(open(path))
+        if not os.path.exists(path):
+            return None
+        with open(path) as f:
+            records = json.load(f)
         logger.info("Loaded %s split: %d records from %s", split, len(records), path)
         return records
 
-    train_recs = load_records("train")
-    val_recs = load_records("val")
-    test_recs = load_records("test")
-    logger.info("Total: Train=%d, Val=%d, Test=%d", len(train_recs), len(val_recs), len(test_recs))
+    def load_all_records():
+        patient_data_file = os.path.join(DATA_FOLDER, DEMOGRAPHICS_FILE)
+        records = find_patients(patient_data_file)
+        if len(records) == 0:
+            raise RuntimeError(f"No records found in {patient_data_file}")
+        logger.info("Loaded %d records from %s", len(records), patient_data_file)
+        return records
+
+    def make_train_val_split(records):
+        records = list(records)
+        rng = np.random.default_rng(RANDOM_SEED)
+        order = rng.permutation(len(records))
+        if len(records) <= 1:
+            return records, records
+        val_size = max(1, int(round(0.2 * len(records))))
+        val_size = min(val_size, len(records) - 1)
+        val_idx = set(order[:val_size].tolist())
+        train_recs = [rec for i, rec in enumerate(records) if i not in val_idx]
+        val_recs = [rec for i, rec in enumerate(records) if i in val_idx]
+        return train_recs, val_recs
+
+    train_recs = load_split_records("train")
+    val_recs = load_split_records("val")
+    test_recs = load_split_records("test")
+    if train_recs is None or val_recs is None:
+        all_recs = load_all_records()
+        train_recs, val_recs = make_train_val_split(all_recs)
+    if test_recs is None:
+        test_recs = val_recs
+    logger.info("Total: Train=%d, Val=%d, Test/Eval=%d", len(train_recs), len(val_recs), len(test_recs))
 
     # Datasets
     logger.info("Building datasets (cache dir: %s)...", CACHE_DIR)
@@ -335,7 +368,7 @@ def main():
         optimizer, mode='max', factor=0.5, patience=8,
     )
 
-    best_auroc = 0
+    best_auroc = float("-inf")
     best_state = None
     patience_counter = 0
 
@@ -360,6 +393,9 @@ def main():
                 break
 
     # Load best & evaluate test
+    if best_state is None:
+        best_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
+        best_auroc = 0.5
     model.load_state_dict(best_state)
     test_auroc, test_tpr5 = evaluate(model, test_loader)
     logger.info("Test: AUROC=%.4f, TPR@5%%=%.4f", test_auroc, test_tpr5)

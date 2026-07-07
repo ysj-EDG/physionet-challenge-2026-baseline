@@ -162,6 +162,12 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
         site_id = record.get(HEADERS['site_id'], record.get('SiteID'))
         session_id = record.get(HEADERS['session_id'], record.get('SessionID'))
         rec_key = f"{patient_id}_ses-{session_id}"
+        file_stems = [
+            rec_key,
+            f"{patient_id}-ses{session_id}",
+            f"{patient_id}_ses{session_id}",
+            f"{patient_id}-ses-{session_id}",
+        ]
 
         logger.debug("Extracting per-epoch features for %s (site=%s)", rec_key, site_id)
 
@@ -174,9 +180,12 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
         except Exception:
             y = -1
 
-        algo_file = os.path.join(data_folder, ALGORITHMIC_ANNOTATIONS_SUBFOLDER,
-                                 site_id, f"{rec_key}_caisr_annotations.edf")
-        if os.path.exists(algo_file):
+        algo_file = next((
+            os.path.join(data_folder, ALGORITHMIC_ANNOTATIONS_SUBFOLDER, site_id, f"{stem}_caisr_annotations.edf")
+            for stem in file_stems
+            if os.path.exists(os.path.join(data_folder, ALGORITHMIC_ANNOTATIONS_SUBFOLDER, site_id, f"{stem}_caisr_annotations.edf"))
+        ), None)
+        if algo_file is not None:
             algo_data, _ = load_signal_data(algo_file)
             logger.debug("  algo annotations loaded: %d channels", len(algo_data))
         else:
@@ -187,10 +196,13 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
         x_static = np.concatenate([demo_feat, algo_feat])
 
         # ---- Physiological data ----
-        phys_file = os.path.join(data_folder, PHYSIOLOGICAL_DATA_SUBFOLDER,
-                                 site_id, f"{rec_key}.edf")
-        if not os.path.exists(phys_file):
-            logger.warning("Physiological data not found: %s", phys_file)
+        phys_file = next((
+            os.path.join(data_folder, PHYSIOLOGICAL_DATA_SUBFOLDER, site_id, f"{stem}.edf")
+            for stem in file_stems
+            if os.path.exists(os.path.join(data_folder, PHYSIOLOGICAL_DATA_SUBFOLDER, site_id, f"{stem}.edf"))
+        ), None)
+        if phys_file is None:
+            logger.warning("Physiological data not found for stems %s under %s", file_stems, data_folder)
             return None, None, x_static, y, None
         phys_data, phys_fs = load_signal_data(phys_file)
         logger.debug("  phys channels loaded: %d (%s)", len(phys_data), list(phys_data.keys())[:8])
