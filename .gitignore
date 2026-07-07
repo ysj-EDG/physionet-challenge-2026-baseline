@@ -22,9 +22,9 @@ requirements.local.no_torch.txt
 *.sav
 **/*.sav
 
-# Keep selected milestone outputs in Git, including the small H100 model artifact.
-!reports/milestones/output/
-!reports/milestones/output/**
+# Local reports and documents are not part of the official submission.
+reports/
+docs/
 
 # Logs and local OS/editor metadata.
 *.log
