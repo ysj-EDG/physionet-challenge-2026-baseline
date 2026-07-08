@@ -73,87 +73,100 @@ def extract_5min_hrv(ecg_1d, sampling_rate, apply_artifact_correction=True):
     -------
     (features_11, qc_dict) or (None, None)
     """
-    ecg_1d = np.asarray(ecg_1d, dtype=float).reshape(-1)
-    if len(ecg_1d) < int(sampling_rate * 30):
-        return None, None
-
-    # ECG 清洗
-    ecg_clean = nk.ecg_clean(ecg_1d, sampling_rate=sampling_rate, method="neurokit")
-
-    # R 峰检测
-    _, peak_info = nk.ecg_peaks(
-        ecg_clean, sampling_rate=sampling_rate, method="neurokit",
-        correct_artifacts=False, show=False,
-    )
-    rpeaks_raw = peak_info["ECG_R_Peaks"]
-    rpeaks_raw = np.unique(np.asarray(rpeaks_raw, dtype=int))
-    rpeaks_raw.sort()
-
-    if len(rpeaks_raw) < 30:
-        return None, None
-
-    # ---- Kubios 风格间期校正 ----
-    rpeaks_used = rpeaks_raw.copy()
-    if apply_artifact_correction:
-        try:
-            _, rpeaks_used = nk.signal_fixpeaks(
-                rpeaks_raw, sampling_rate=sampling_rate,
-                method="Kubios", iterative=True, show=False,
-            )
-            rpeaks_used = np.unique(np.asarray(rpeaks_used, dtype=int))
-            rpeaks_used.sort()
-        except Exception:
-            rpeaks_used = rpeaks_raw.copy()
-
-    if len(rpeaks_used) < 30:
-        return None, None
-
-    # ---- 三域 HRV ----
     try:
-        hrv_time = nk.hrv_time(rpeaks_used, sampling_rate=sampling_rate, show=False)
-    except (IndexError, Exception):
-        return None, None
-    hrv_freq = nk.hrv_frequency(
-        rpeaks_used, sampling_rate=sampling_rate,
-        psd_method="welch", interpolation_rate=4,
-        normalize=False, show=False, silent=True,
-    )
-    try:
-        hrv_nonlinear = nk.hrv_nonlinear(rpeaks_used, sampling_rate=sampling_rate, show=False)
-    except Exception:
-        hrv_nonlinear = pd.DataFrame([{}])
+        ecg_1d = np.asarray(ecg_1d, dtype=float).reshape(-1)
+        if len(ecg_1d) < int(sampling_rate * 30):
+            return None, None
+        ecg_1d = np.nan_to_num(ecg_1d, nan=0.0, posinf=0.0, neginf=0.0)
+        if not np.any(np.isfinite(ecg_1d)) or np.nanstd(ecg_1d) < EPS:
+            return None, None
 
-    # 符号动力学
-    try:
-        hrv_symbolic = nk.hrv_symbolic(
-            rpeaks_used, sampling_rate=sampling_rate,
-            quantization_level_equal_prob=(4,),
-            quantization_level_max_min=(),
-            sigma_rate=(),
+        # ECG 清洗
+        ecg_clean = nk.ecg_clean(ecg_1d, sampling_rate=sampling_rate, method="neurokit")
+        ecg_clean = np.asarray(ecg_clean, dtype=float).reshape(-1)
+        if len(ecg_clean) == 0 or np.nanstd(ecg_clean) < EPS:
+            return None, None
+
+        # R 峰检测. NeuroKit may raise IndexError on flat/noisy windows with no QRS candidates.
+        _, peak_info = nk.ecg_peaks(
+            ecg_clean, sampling_rate=sampling_rate, method="neurokit",
+            correct_artifacts=False, show=False,
         )
-    except Exception:
-        hrv_symbolic = pd.DataFrame([{}])
+        rpeaks_raw = peak_info.get("ECG_R_Peaks", [])
+        rpeaks_raw = np.unique(np.asarray(rpeaks_raw, dtype=int))
+        rpeaks_raw.sort()
 
-    # ---- 频域派生 ----
-    lf = _value(hrv_freq, "HRV_LF")
-    hf = _value(hrv_freq, "HRV_HF")
+        if len(rpeaks_raw) < 30:
+            return None, None
 
-    features = np.array([
-        _value(hrv_time, "HRV_MedianNN"),
-        _value(hrv_time, "HRV_MCVNN"),
-        _value(hrv_time, "HRV_CVNN"),
-        _value(hrv_time, "HRV_CVSD"),
-        _value(hrv_time, "HRV_pNN20"),
-        np.log(lf + EPS) if np.isfinite(lf) else np.nan,
-        np.log(hf + EPS) if np.isfinite(hf) else np.nan,
-        hf / (lf + hf + EPS) if np.isfinite(lf) and np.isfinite(hf) else np.nan,
-        _value(hrv_nonlinear, "HRV_SD1SD2"),
-        _value(hrv_symbolic, "HRV_Symbolic_EqualProb4_0V"),
-        _value(hrv_symbolic, "HRV_Symbolic_EqualProb4_2UV"),
-    ], dtype=np.float32)
+        # ---- Kubios 风格间期校正 ----
+        rpeaks_used = rpeaks_raw.copy()
+        if apply_artifact_correction:
+            try:
+                _, rpeaks_used = nk.signal_fixpeaks(
+                    rpeaks_raw, sampling_rate=sampling_rate,
+                    method="Kubios", iterative=True, show=False,
+                )
+                rpeaks_used = np.unique(np.asarray(rpeaks_used, dtype=int))
+                rpeaks_used.sort()
+            except Exception:
+                rpeaks_used = rpeaks_raw.copy()
 
-    features = np.nan_to_num(features, nan=0.0, posinf=0.0, neginf=0.0)
-    return features, None
+        if len(rpeaks_used) < 30:
+            return None, None
+
+        # ---- 三域 HRV ----
+        try:
+            hrv_time = nk.hrv_time(rpeaks_used, sampling_rate=sampling_rate, show=False)
+        except Exception:
+            return None, None
+        try:
+            hrv_freq = nk.hrv_frequency(
+                rpeaks_used, sampling_rate=sampling_rate,
+                psd_method="welch", interpolation_rate=4,
+                normalize=False, show=False, silent=True,
+            )
+        except Exception:
+            hrv_freq = pd.DataFrame([{}])
+        try:
+            hrv_nonlinear = nk.hrv_nonlinear(rpeaks_used, sampling_rate=sampling_rate, show=False)
+        except Exception:
+            hrv_nonlinear = pd.DataFrame([{}])
+
+        # 符号动力学
+        try:
+            hrv_symbolic = nk.hrv_symbolic(
+                rpeaks_used, sampling_rate=sampling_rate,
+                quantization_level_equal_prob=(4,),
+                quantization_level_max_min=(),
+                sigma_rate=(),
+            )
+        except Exception:
+            hrv_symbolic = pd.DataFrame([{}])
+
+        # ---- 频域派生 ----
+        lf = _value(hrv_freq, "HRV_LF")
+        hf = _value(hrv_freq, "HRV_HF")
+
+        features = np.array([
+            _value(hrv_time, "HRV_MedianNN"),
+            _value(hrv_time, "HRV_MCVNN"),
+            _value(hrv_time, "HRV_CVNN"),
+            _value(hrv_time, "HRV_CVSD"),
+            _value(hrv_time, "HRV_pNN20"),
+            np.log(lf + EPS) if np.isfinite(lf) else np.nan,
+            np.log(hf + EPS) if np.isfinite(hf) else np.nan,
+            hf / (lf + hf + EPS) if np.isfinite(lf) and np.isfinite(hf) else np.nan,
+            _value(hrv_nonlinear, "HRV_SD1SD2"),
+            _value(hrv_symbolic, "HRV_Symbolic_EqualProb4_0V"),
+            _value(hrv_symbolic, "HRV_Symbolic_EqualProb4_2UV"),
+        ], dtype=np.float32)
+
+        features = np.nan_to_num(features, nan=0.0, posinf=0.0, neginf=0.0)
+        return features, None
+    except Exception as exc:
+        logger.debug("Skipping ECG HRV window after extraction failure: %s", exc)
+        return None, None
 
 
 # ============================================================================
