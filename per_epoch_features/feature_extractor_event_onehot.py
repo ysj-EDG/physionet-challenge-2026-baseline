@@ -29,6 +29,39 @@ def _event_fraction_in_epoch(event_starts_sec, event_ends_sec,
     return min(1.0, overlap / EPOCH_SEC)
 
 
+def _event_fractions_by_epoch(event_starts_sec, event_ends_sec, n_epochs):
+    """Compute event coverage for every epoch from sorted disjoint intervals.
+
+    The cumulative covered duration at every epoch boundary is evaluated with
+    ``searchsorted``.  This avoids scanning every event again for every epoch.
+    """
+    if n_epochs <= 0:
+        return np.zeros(0, dtype=np.float32)
+
+    starts = np.asarray(event_starts_sec, dtype=float).reshape(-1)
+    ends = np.asarray(event_ends_sec, dtype=float).reshape(-1)
+    if len(starts) == 0:
+        return np.zeros(n_epochs, dtype=np.float32)
+    if len(starts) != len(ends):
+        raise ValueError("event starts and ends must have the same length")
+
+    boundaries = np.arange(n_epochs + 1, dtype=float) * EPOCH_SEC
+    durations = ends - starts
+    cumulative = np.concatenate([[0.0], np.cumsum(durations)])
+
+    # Number of intervals that have started strictly before each boundary.
+    started = np.searchsorted(starts, boundaries, side="left")
+    covered = cumulative[started].copy()
+    has_started = started > 0
+    last_interval = started[has_started] - 1
+    covered[has_started] -= np.maximum(
+        ends[last_interval] - boundaries[has_started], 0.0,
+    )
+
+    fractions = np.diff(covered) / EPOCH_SEC
+    return np.clip(fractions, 0.0, 1.0).astype(np.float32)
+
+
 class EventOneHotMixin:
     """
     从 CAISR 标注提取 per-epoch one-hot 特征，跨 epoch 聚合为 mean+std。

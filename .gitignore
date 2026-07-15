@@ -2,6 +2,7 @@ __pycache__/
 *.py[cod]
 
 # Local H100 extraction/training artifacts and generated data.
+h100_cached_output_kaggle_quick/
 h100_cached_output_kaggle/
 lstm_cache_kaggle/
 splits/

@@ -38,17 +38,17 @@
          │     Demographic(10) + Algorithmic(186)
          │     → 拼接到 LSTM 输出后
          │
-         └── Per-30s 时序特征 (476 维/epoch)
-               Per-epoch: EEG(414) + EMG(24) + Resp(14) + OneHot(13)
-               + ECG HRV(11) (滑动5分钟窗口, stride=30s)
-               → LSTM 时序输入
+         └── Per-30s 时序主特征 (483 维/epoch)
+               Per-epoch: EEG(432, 含18维 BSR) + EMG(24) + Resp(14) + OneHot(13)
+               + ECG HRV(37) (滑动5分钟窗口, stride=30s, 对齐后拼接)
+               → LSTM 时序输入 520 维/epoch
 ```
 
 ### 模型
 
 | 模型 | 输入 | 参数量 | 保存路径 |
 |------|------|--------|----------|
-| **2-Layer LSTM** | 变长时序 (476/epoch) + 196 静态 | ~1.0M | `lstm_model/lstm_model.pt` |
+| **2-Layer LSTM** | 变长时序 (520/epoch) + 196 静态 | ~1.0M | `lstm_model/lstm_model.pt` |
 
 ---
 
@@ -106,9 +106,9 @@ PhysioNet Challenge 2026 训练集，包含多家医院 (Site) 的 PSG 记录。
 ```
 ┌──────────────────────────────────────────────────────┐
 │  时序输入 (per epoch, 变长)                           │
-│  = EEG(414) + EMG(24) + Resp(14) + OneHot(13)        │
-│    + ECG HRV(11, 滑动5分钟, stride=30s)                │
-│  = 476 dims/epoch                                     │
+│  = EEG(432, 含 BSR) + EMG(24) + Resp(14) + OneHot(13)  │
+│    + ECG HRV(37, 滑动5分钟, stride=30s, 对齐后拼接)      │
+│  = 520 dims/epoch                                     │
 ├──────────────────────────────────────────────────────┤
 │  静态拼接 (全夜, 固定)                                 │
 │  = Demographic(10) + Algorithmic(186)                 │
@@ -121,7 +121,7 @@ PhysioNet Challenge 2026 训练集，包含多家医院 (Site) 的 PSG 记录。
 
 ### 3.1 人口学特征 (10 维)
 
-**文件**：`feature_extractor_demographic.py`  
+**文件**：`per_epoch_features/feature_extractor_demographic.py`
 **类别**：`DemographicMixin`
 
 | 维度 | 特征 | 编码 |
@@ -133,8 +133,8 @@ PhysioNet Challenge 2026 训练集，包含多家医院 (Site) 的 PSG 记录。
 
 ### 3.2 算法标注特征 (186 维)
 
-**文件**：`feature_extractor_algorithmic.py`  
-**类别**：`AlgorithmicMixin`  
+**文件**：`per_epoch_features/feature_extractor_algorithmic.py`
+**类别**：`AlgorithmicMixin`
 **输入**：CAISR 算法标注 EDF（`stage_caisr`, `arousal_caisr`, `resp_caisr`, `limb_caisr`, 后验概率）
 
 CAISR 睡眠分期编码：`1=N3, 2=N2, 3=N1, 4=REM, 5=Wake`
@@ -255,11 +255,11 @@ central_dominance = CA / total
 
 ---
 
-### 3.3 EEG Per-Epoch 特征 (414 维/epoch)
+### 3.3 EEG Per-Epoch 特征 (432 维/epoch)
 
-**文件**：`feature_extractor_eeg_coherence.py`  
-**类别**：`EEGCoherenceMixin`  
-**依赖**：`ref/eeg_sleep_features.py` 提供 `eeg_segment_coherence()`
+**文件**：`per_epoch_features/feature_extractor_eeg_coherence.py`
+**类别**：`EEGCoherenceMixin`
+**依赖**：`per_epoch_features/eeg_sleep_features.py` 提供 `eeg_segment_coherence()`
 
 > XGBoost 使用跨 epoch 均值（全夜聚合），LSTM 直接使用 per-epoch 特征。
 
@@ -302,7 +302,7 @@ central_dominance = CA / total
 
 ### 3.4 EMG Per-Epoch 特征 (24 维/epoch)
 
-**文件**：`feature_extractor_emg.py`  
+**文件**：`per_epoch_features/feature_extractor_emg.py`
 **类别**：`EMGMixin`
 
 #### 全夜预处理
@@ -332,7 +332,7 @@ central_dominance = CA / total
 
 ### 3.5 呼吸 Per-Epoch 特征 (14 维/epoch)
 
-**文件**：`feature_extractor_resp.py`  
+**文件**：`per_epoch_features/feature_extractor_resp.py`
 **类别**：`RespMixin`
 
 #### 全夜预处理（每通道独立）
@@ -359,7 +359,7 @@ central_dominance = CA / total
 
 ### 3.6 事件 OneHot Per-Epoch 特征 (13 维/epoch)
 
-**文件**：`feature_extractor_event_onehot.py`  
+**文件**：`per_epoch_features/feature_extractor_event_onehot.py`
 **类别**：`EventOneHotMixin`
 
 每 30s epoch 提取 13 类标签：
@@ -373,10 +373,10 @@ central_dominance = CA / total
 
 ---
 
-### 3.7 ECG HRV 特征 (11 维/5min-window)
+### 3.7 ECG HRV 与昼夜节律特征 (37 维/5min-window)
 
-**文件**：`feature_extractor_ecg_neurokit.py`  
-**类别**：`ECGNeurokitMixin`  
+**文件**：`per_epoch_features/feature_extractor_ecg_neurokit.py`
+**类别**：`ECGNeurokitMixin`
 **依赖**：neurokit2
 
 #### 处理流程
@@ -389,10 +389,10 @@ ECG 原始信号 (200 Hz)
     → nk.signal_fixpeaks(method="Kubios", iterative=True)  # 间期校正
     → nk.hrv_time() + nk.hrv_frequency(psd_method="welch")
       + nk.hrv_nonlinear() + nk.hrv_symbolic()
-    → 每窗口 11 维
+    → 每窗口 36 维 ECG/HRV + 1 维 circadian_cos
 ```
 
-#### 11 核心特征
+#### 11 个 NeuroKit 核心特征
 
 | 特征 | 域 | 说明 |
 |------|-----|------|
@@ -416,15 +416,15 @@ ECG 原始信号 (200 Hz)
 
 ### 3.8 PerEpochExtractor — 统一入口
 
-**文件**：`per_epoch_extractor.py`  
+**文件**：`per_epoch_features/per_epoch_extractor.py`
 **类别**：`PerEpochExtractor` (继承 DemographicMixin + AlgorithmicMixin + EEGCoherenceMixin)
 
 ```python
 extractor = PerEpochExtractor()
 X_seq, X_ecg, x_static, y, mask = extractor.extract_all(record, data_folder)
 
-# X_seq:    (N_epochs, 465)   # per-epoch 时序
-# X_ecg:    (N_5min_wins, 11) # 滑动 ECG HRV
+# X_seq:    (N_epochs, 483)   # per-epoch 主时序
+# X_ecg:    (N_5min_wins, 37)  # 滑动 ECG/HRV + circadian_cos
 # x_static: (196,)            # 全夜静态
 # y:        int               # 标签 0/1
 # mask:     (N_epochs,) bool  # 有 ECG 对齐的 epoch
@@ -437,9 +437,9 @@ X_seq, X_ecg, x_static, y, mask = extractor.extract_all(record, data_folder)
 ### 2-Layer LSTM + Static Feature Concatenation
 
 ```
-                    X_seq (T×465) ──┐
-                    X_ecg (T×11) ───┤
-                                    ├── concat → (T×476)
+                    X_seq (T×483) ──┐
+                    X_ecg (T×37) ────┤
+                                     ├── concat → (T×520)
                                     │
     ┌───────────────────────────────┘
     │
@@ -627,15 +627,14 @@ python infer_lstm.py --data_folder /path/to/training_set --model lstm_model/lstm
 ├── team_code.py                    # 官方提交入口；桥接训练、模型加载、单记录推理和批量推理
 ├── train_lstm.py                   # LSTM 训练入口；构建 Dataset/DataLoader、训练、验证、测试评估和保存模型
 ├── infer_lstm.py                   # LSTM 推理入口；读取缓存特征，输出预测 CSV 和评估指标
-├── per_epoch_extractor.py          # LSTM per-epoch 特征主提取器；融合 EEG/ECG/EMG/Resp/事件和静态特征
-├── feature_extractor_demographic.py        # 人口学静态特征：年龄、性别、种族、BMI
-├── feature_extractor_algorithmic.py        # CAISR 算法标注静态特征：睡眠结构、觉醒、呼吸和肢体事件
-├── feature_extractor_eeg_coherence.py      # EEG per-epoch 频谱与相干特征
-├── feature_extractor_ecg_neurokit.py       # ECG/HRV 特征；当前融合 5 分钟滑窗 11 维表示
-├── feature_extractor_emg.py                # EMG per-epoch burst、tonic 和统计特征
-├── feature_extractor_resp.py               # 呼吸 per-epoch 特征：气流、胸腹带和相关性指标
-├── feature_extractor_event_onehot.py       # CAISR 事件 per-epoch one-hot/占比特征
-├── eeg_sleep_features.py           # EEG 睡眠频谱、分段统计和辅助算法函数
+├── per_epoch_features/                    # 可移植的加速特征提取包
+│   ├── per_epoch_extractor.py             # 483/37/196 特征统一入口
+│   ├── feature_extractor_algorithmic.py   # CAISR 静态与事件特征
+│   ├── feature_extractor_eeg_coherence.py # EEG 频谱、相干与 BSR
+│   ├── feature_extractor_ecg_neurokit.py  # 37 维滑窗 ECG/HRV + circadian_cos
+│   ├── feature_extractor_emg.py           # EMG per-epoch 特征
+│   ├── feature_extractor_resp.py          # 呼吸 per-epoch 特征
+│   └── eeg_sleep_features.py              # EEG 睡眠频谱和辅助算法
 ├── helper_code.py                  # PhysioNet 官方数据读取、记录遍历和输出写入辅助函数
 ├── evaluate_model.py               # 官方评估脚本；计算挑战指标和输出评估结果
 ├── run_model.py                    # 官方批量运行脚本；对数据目录逐记录调用模型
@@ -647,7 +646,7 @@ python infer_lstm.py --data_folder /path/to/training_set --model lstm_model/lstm
 ├── docs/                           # 方法记录、笔记和文献阅读
 ├── reports/                        # 周报、里程碑材料、图片和 H100 结果归档
 ├── splits/                         # 本地划分 JSON，不提交
-├── lstm_cache_kaggle/              # 本地 .npz 特征缓存，不提交
+├── lstm_cache/                     # 模型目录内的本地 .npz 特征缓存，不提交
 ├── reports/milestones/output/      # H100 运行结果归档：模型、test/external 预测和指标
 └── README.md                       # 本文件
 ```
@@ -718,12 +717,13 @@ joblib         # 模型序列化
 | algo_arousal | 觉醒事件 | — | 30 | AI + 时长 + 分期分布 + 耦合 |
 | algo_resp | 呼吸事件 | — | 42 | REI + 亚型 + AHI + 耦合 |
 | algo_limb | 肢体运动 | — | 30 | LMI + PLMI + 多重耦合 |
-| eeg | EEG 频谱+相干 | 414 | — | 6ch×9 PSD + 15pairs×24 coh |
+| eeg | EEG 频谱+相干+BSR | 432 | — | 54 PSD + 360 coherence + 18 BSR |
 | emg | EMG burst/tonic | 24 | — | chin(8) + lleg(8) + rleg(8) |
 | resp | 呼吸信号 | 14 | — | airflow(7) + thorax(2) + abd(2) + joint(3) |
 | onehot | 事件 OneHot | 13 | — | stage(5) + arousal + resp(5) + limb(2) |
-| ecg | ECG HRV | 11 | — | neurokit2 5-min window |
-| **时序合计** | | **476** | — | 465 + 11 (concat per step) |
+| **epoch 主时序合计** | | **483** | — | 432 + 24 + 14 + 13 |
+| ecg | 滑窗 ECG/HRV + circadian | 37 | — | 11 NeuroKit + 25 optional HRVAnalysis + 1 circadian_cos |
+| **LSTM 每步输入** | | **520** | — | 483 + 37 (ECG 对齐后拼接) |
 | **静态合计** | | — | **196** | demo(10) + algo(186) |
 
 ## 附录 B: CAISR 编码速查表

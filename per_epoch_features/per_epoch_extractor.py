@@ -3,8 +3,8 @@
 Per-30s-epoch 特征提取器 (为 LSTM 提供时序输入)。
 
 输出:
-  X_seq: (N_epochs, 465)  — EEG(414) + EMG(24) + Resp(14) + OneHot(13)
-  X_ecg: (N_5min_wins, 11) — 滑动5分钟ECG HRV, stride=30s
+  X_seq: (N_epochs, 483)  — EEG(432) + EMG(24) + Resp(14) + OneHot(13)
+  X_ecg: (N_5min_wins, 37) — 滑动5分钟ECG HRV + circadian_cos, stride=30s
   x_static: (196,)          — demographic(10) + algorithmic(186)
 
 时间对齐:
@@ -13,40 +13,38 @@ Per-30s-epoch 特征提取器 (为 LSTM 提供时序输入)。
 """
 
 import logging
-import sys, os
+import os
 import numpy as np
 
 logger = logging.getLogger("per_epoch_extractor")
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-_REF_DIR = os.path.join(_SCRIPT_DIR, "ref", "python-example-2026")
-if _REF_DIR not in sys.path:
-    sys.path.insert(0, _REF_DIR)
-
-from helper_code import (
+from .helper_code import (
     load_demographics, load_diagnoses, load_signal_data,
     DEMOGRAPHICS_FILE, PHYSIOLOGICAL_DATA_SUBFOLDER,
     ALGORITHMIC_ANNOTATIONS_SUBFOLDER, HEADERS,
 )
 
-from feature_extractor_demographic import DemographicMixin
-from feature_extractor_algorithmic import AlgorithmicMixin
-from feature_extractor_eeg_coherence import EEGCoherenceMixin
-from feature_extractor_ecg_neurokit import extract_5min_hrv
-from feature_extractor_emg import _preprocess_emg, _extract_emg_epoch, _fill_nan_linear
-from feature_extractor_resp import (
+from .feature_extractor_demographic import DemographicMixin
+from .feature_extractor_algorithmic import AlgorithmicMixin
+from .feature_extractor_eeg_coherence import EEGCoherenceMixin
+from .feature_extractor_ecg_neurokit import extract_5min_hrv
+from .feature_extractor_neurocardiokit import extract_nck_bsr_30s, nck_bsr_feature_names
+from .feature_extractor_hrv_circadian_cos import read_edf_start_time, extract_hrv_window_circadian_cos
+from .feature_extractor_emg import _preprocess_emg, _extract_emg_epoch, _fill_nan_linear
+from .feature_extractor_resp import (
     _preprocess_resp_channel, _extract_resp_epoch, _extract_thorax_abd_epoch,
     _safe_corr,
 )
-from feature_extractor_event_onehot import _event_fraction_in_epoch
+from .feature_extractor_event_onehot import _event_fractions_by_epoch
 
 EPOCH_SEC = 30
-EEG_PER_EPOCH_DIM = 54 + 360   # spectral + coherence
+EEG_PER_EPOCH_DIM = 54 + 360 + 18   # spectral + coherence + BSR
 EMG_PER_EPOCH_DIM = 8 * 3       # chin + lleg + rleg
 RESP_PER_EPOCH_DIM = 14
 ONEHOT_PER_EPOCH_DIM = 13
-SEQ_FEATURE_DIM = EEG_PER_EPOCH_DIM + EMG_PER_EPOCH_DIM + RESP_PER_EPOCH_DIM + ONEHOT_PER_EPOCH_DIM  # 465
-ECG_DIM = 11
+SEQ_FEATURE_DIM = EEG_PER_EPOCH_DIM + EMG_PER_EPOCH_DIM + RESP_PER_EPOCH_DIM + ONEHOT_PER_EPOCH_DIM  # 483
+ECG_DIM = 37
 STATIC_DIM = 10 + 186  # demographic + algorithmic
 
 
@@ -152,8 +150,8 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
         """
         Returns
         -------
-        X_seq : (N_epochs, 465) or None
-        X_ecg : (N_5min_wins, 11) or None
+        X_seq : (N_epochs, 483) or None
+        X_ecg : (N_5min_wins, 37) or None
         x_static : (196,) or None
         y : int
         mask : (N_epochs,) bool — True = 该 epoch 有完整 ECG 对齐
@@ -162,6 +160,7 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
         site_id = record.get(HEADERS['site_id'], record.get('SiteID'))
         session_id = record.get(HEADERS['session_id'], record.get('SessionID'))
         rec_key = f"{patient_id}_ses-{session_id}"
+        # The official data can use several BIDS filename spellings.
         file_stems = [
             rec_key,
             f"{patient_id}-ses{session_id}",
@@ -175,15 +174,17 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
         demo_file = os.path.join(data_folder, DEMOGRAPHICS_FILE)
         demo_data = load_demographics(demo_file, patient_id, session_id)
         demo_feat = self.extract_demographic_features(demo_data).astype(np.float32)
-        try:
-            y = load_diagnoses(demo_file, patient_id)
-        except Exception:
-            y = -1
 
         algo_file = next((
-            os.path.join(data_folder, ALGORITHMIC_ANNOTATIONS_SUBFOLDER, site_id, f"{stem}_caisr_annotations.edf")
+            os.path.join(
+                data_folder, ALGORITHMIC_ANNOTATIONS_SUBFOLDER, site_id,
+                f"{stem}_caisr_annotations.edf",
+            )
             for stem in file_stems
-            if os.path.exists(os.path.join(data_folder, ALGORITHMIC_ANNOTATIONS_SUBFOLDER, site_id, f"{stem}_caisr_annotations.edf"))
+            if os.path.exists(os.path.join(
+                data_folder, ALGORITHMIC_ANNOTATIONS_SUBFOLDER, site_id,
+                f"{stem}_caisr_annotations.edf",
+            ))
         ), None)
         if algo_file is not None:
             algo_data, _ = load_signal_data(algo_file)
@@ -195,15 +196,24 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
 
         x_static = np.concatenate([demo_feat, algo_feat])
 
+        # Labels are available during official training but absent from hidden holdout data.
+        try:
+            y = load_diagnoses(demo_file, patient_id)
+        except Exception:
+            y = -1
+
         # ---- Physiological data ----
         phys_file = next((
             os.path.join(data_folder, PHYSIOLOGICAL_DATA_SUBFOLDER, site_id, f"{stem}.edf")
             for stem in file_stems
-            if os.path.exists(os.path.join(data_folder, PHYSIOLOGICAL_DATA_SUBFOLDER, site_id, f"{stem}.edf"))
+            if os.path.exists(os.path.join(
+                data_folder, PHYSIOLOGICAL_DATA_SUBFOLDER, site_id, f"{stem}.edf",
+            ))
         ), None)
         if phys_file is None:
-            logger.warning("Physiological data not found for stems %s under %s", file_stems, data_folder)
+            logger.warning("Physiological data not found for stems %s", file_stems)
             return None, None, x_static, y, None
+        edf_start_time = read_edf_start_time(phys_file)
         phys_data, phys_fs = load_signal_data(phys_file)
         logger.debug("  phys channels loaded: %d (%s)", len(phys_data), list(phys_data.keys())[:8])
 
@@ -225,8 +235,12 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
         if X_eeg is None or X_emg is None or X_resp is None:
             return None, None, x_static, y, None
         if X_onehot is None:
-            n_base_epochs = min(X_eeg.shape[0], X_emg.shape[0], X_resp.shape[0])
-            X_onehot = np.zeros((n_base_epochs, 13), dtype=np.float32)
+            fallback_epochs = min(X_eeg.shape[0], X_emg.shape[0], X_resp.shape[0])
+            X_onehot = np.zeros((fallback_epochs, ONEHOT_PER_EPOCH_DIM), dtype=np.float32)
+            logger.debug(
+                "  X_onehot: missing algorithmic annotations/stage_caisr; using zeros %s",
+                X_onehot.shape,
+            )
 
         # Align to common N_epochs
         n_epochs = min(X_eeg.shape[0], X_emg.shape[0], X_resp.shape[0], X_onehot.shape[0])
@@ -238,7 +252,7 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
                      X_seq.shape, X_eeg.shape, X_emg.shape, X_resp.shape, X_onehot.shape)
 
         # ---- Sliding ECG (5-min windows, 30s stride) ----
-        X_ecg = self._extract_sliding_ecg(std_data, std_fs, n_epochs)
+        X_ecg = self._extract_sliding_ecg(std_data, std_fs, n_epochs, edf_start_time)
         if X_ecg is not None:
             logger.debug("  X_ecg: %s", X_ecg.shape)
         else:
@@ -345,25 +359,24 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
     # ========================================================================
 
     def _extract_per_epoch_eeg(self, std_data, std_fs):
-        """返回 (N_epochs, 414): 54 频谱 + 360 相干. 输入已标准化+200Hz."""
-        from eeg_sleep_features import eeg_segment_coherence, N_PAIRS, N_FFT_BINS
+        """返回 (N_epochs, 432): 54 频谱 + 360 相干 + 18 BSR. 输入已标准化+200Hz."""
+        from .eeg_sleep_features import eeg_segment_coherence, N_PAIRS, N_FFT_BINS
 
         EEG_CH = ['f3-m2', 'f4-m1', 'c3-m2', 'c4-m1', 'o1-m2', 'o2-m1']
-        available = [
-            np.asarray(std_data[ch], dtype=float)
-            for ch in EEG_CH
-            if ch in std_data and std_data[ch] is not None and len(std_data[ch]) > 1
-        ]
-        ref_len = min((len(sig) for sig in available), default=6000)
         eeg_signals = []
+        ref_len = None
         for ch in EEG_CH:
             if ch in std_data and std_data[ch] is not None and len(std_data[ch]) > 1:
-                sig = np.asarray(std_data[ch], dtype=float)[:ref_len]
-                if len(sig) < ref_len:
-                    sig = np.pad(sig, (0, ref_len - len(sig)))
-                eeg_signals.append(sig)
+                eeg_signals.append(np.asarray(std_data[ch], dtype=float))
+                ref_len = len(std_data[ch])
             else:
-                eeg_signals.append(np.zeros(ref_len, dtype=float))
+                eeg_signals.append(np.zeros(ref_len or 6000, dtype=float))
+
+        # Handle rare case where EEG channels have mismatched lengths.
+        lengths = set(len(s) for s in eeg_signals)
+        if len(lengths) > 1:
+            min_len = min(lengths)
+            eeg_signals = [s[:min_len] for s in eeg_signals]
 
         eeg_data = np.stack(eeg_signals, axis=0)
         epoch_features, _ = eeg_segment_coherence(eeg_data, 200.0)  # (N_ep, 1554)
@@ -371,20 +384,16 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
         if n_epochs == 0:
             return None
 
-        # Coherence: per-epoch 24 features × 15 pairs = 360
-        coh_all = []
-        for ep in range(n_epochs):
-            pair_feats = []
-            for pair_idx in range(N_PAIRS):
-                start = 54 + pair_idx * N_FFT_BINS
-                coh_spec = epoch_features[ep, start:start + N_FFT_BINS]
-                f24 = self._extract_coh_features_from_spectrum(coh_spec)
-                pair_feats.append(f24)
-            coh_all.append(np.concatenate(pair_feats))
+        # Coherence: vectorized 24 features x 15 pairs for every epoch.
+        coh_spectra = epoch_features[:, 54:].reshape(
+            n_epochs, N_PAIRS, N_FFT_BINS,
+        )
+        coh_all = self._extract_coh_features_batch(coh_spectra)
 
         spectral = epoch_features[:, :54]  # (N_ep, 54)
-        coherence = np.stack(coh_all, axis=0)  # (N_ep, 360)
-        result = np.concatenate([spectral, coherence], axis=1).astype(np.float32)
+        coherence = coh_all.reshape(n_epochs, -1)  # (N_ep, 360)
+        bsr_features = extract_nck_bsr_30s(eeg_data, n_epochs, fs=200.0)
+        result = np.concatenate([spectral, coherence, bsr_features], axis=1).astype(np.float32)
         return np.nan_to_num(result, nan=0.0)
 
     def _extract_per_epoch_emg(self, std_data, std_fs):
@@ -525,24 +534,25 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
         l_iso_s, l_iso_e = _segments(limb_signal == 1, limb_dt)
         l_plm_s, l_plm_e = _segments(limb_signal == 2, limb_dt)
 
-        rows = []
-        for ep in range(n_epochs):
-            t0, t1 = ep * EPOCH_SEC, (ep + 1) * EPOCH_SEC
-            row = []
-            for _, code in [("N1", 3), ("N2", 2), ("N3", 1), ("REM", 4), ("Wake", 5)]:
-                row.append(1.0 if stages[ep] == code else 0.0)
-            row.append(_event_fraction_in_epoch(a_s, a_e, t0, t1))
-            for rt in ["OA", "CA", "MA", "HY", "RERA"]:
-                row.append(_event_fraction_in_epoch(resp_ss[rt], resp_es[rt], t0, t1))
-            row.append(_event_fraction_in_epoch(l_iso_s, l_iso_e, t0, t1))
-            row.append(_event_fraction_in_epoch(l_plm_s, l_plm_e, t0, t1))
-            rows.append(row)
-        return np.asarray(rows, dtype=np.float32)
+        stage_codes = np.array([3, 2, 1, 4, 5], dtype=int)
+        columns = [(stages[:, None] == stage_codes).astype(np.float32)]
+        columns.append(_event_fractions_by_epoch(a_s, a_e, n_epochs)[:, None])
+        for rt in ["OA", "CA", "MA", "HY", "RERA"]:
+            columns.append(_event_fractions_by_epoch(
+                resp_ss[rt], resp_es[rt], n_epochs,
+            )[:, None])
+        columns.append(_event_fractions_by_epoch(
+            l_iso_s, l_iso_e, n_epochs,
+        )[:, None])
+        columns.append(_event_fractions_by_epoch(
+            l_plm_s, l_plm_e, n_epochs,
+        )[:, None])
+        return np.concatenate(columns, axis=1)
 
-    def _extract_sliding_ecg(self, std_data, std_fs, n_epochs):
+    def _extract_sliding_ecg(self, std_data, std_fs, n_epochs, edf_start_time=None):
         """
-        滑动 5 分钟 ECG HRV, stride=30s. 输入已标准化+200Hz.
-        返回 (N_wins, 11) 或 None.
+        滑动 5 分钟 ECG HRV + 窗口中点 circadian_cos, stride=30s. 输入已标准化+200Hz.
+        返回 (N_wins, 37) 或 None.
         """
         ecg_sig = std_data.get('ecg')
         if ecg_sig is None:
@@ -556,19 +566,26 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
         stride_samples = int(30 * FS)
         n_wins = max(1, (len(ecg_sig) - window_samples) // stride_samples + 1)
 
-        all_feats = []
+        hrv_feats = []
+        win_indices = []
         for i in range(n_wins):
             start = i * stride_samples
             seg = ecg_sig[start:start + window_samples]
             if len(seg) < int(FS * 60):
                 continue
-            f11, _ = extract_5min_hrv(seg, FS)
-            if f11 is not None:
-                all_feats.append(f11)
+            f36, _ = extract_5min_hrv(seg, FS)
+            if f36 is not None:
+                hrv_feats.append(f36)
+                win_indices.append(i)
 
-        if not all_feats:
+        if not hrv_feats:
             return None
-        result = np.stack(all_feats, axis=0).astype(np.float32)
+        hrv = np.stack(hrv_feats, axis=0).astype(np.float32)
+        circadian_all = extract_hrv_window_circadian_cos(
+            edf_start_time, n_wins, win_sec=300.0, stride_sec=30.0,
+        )
+        circadian = circadian_all[np.asarray(win_indices, dtype=int)]
+        result = np.concatenate([hrv, circadian], axis=1).astype(np.float32)
         return np.nan_to_num(result, nan=0.0, posinf=0.0, neginf=0.0)
 
 
@@ -577,10 +594,10 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
 # ============================================================================
 
 def per_epoch_feature_names():
-    """返回 per-epoch 465 维特征的名称列表."""
-    from feature_extractor_eeg_coherence import EEGCoherenceMixin, PAIR_NAMES
-    from feature_extractor_emg import EMG_FEATURE_NAMES
-    from feature_extractor_resp import MODEL_COLS as RESP_COLS
+    """返回 per-epoch 483 维特征的名称列表."""
+    from .feature_extractor_eeg_coherence import EEGCoherenceMixin, PAIR_NAMES
+    from .feature_extractor_emg import EMG_FEATURE_NAMES
+    from .feature_extractor_resp import MODEL_COLS as RESP_COLS
 
     names = []
 
@@ -602,6 +619,9 @@ def per_epoch_feature_names():
     for pn in PAIR_NAMES:
         for sn in pair_stat_names:
             names.append(f"coh_{pn}_{sn}")
+
+    # EEG BSR: 3 thresholds × 6 channels
+    names.extend(nck_bsr_feature_names())
 
     # EMG: 3ch × 8
     for ch in ['chin','lleg','rleg']:

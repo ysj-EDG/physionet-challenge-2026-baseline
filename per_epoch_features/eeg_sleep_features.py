@@ -10,6 +10,11 @@ Output: (N_segments, 9) feature matrix
 
 import numpy as np
 
+try:
+    from scipy.signal import lfilter as _scipy_lfilter
+except ImportError:  # Keep the reference implementation usable without SciPy.
+    _scipy_lfilter = None
+
 # ---------------------------------------------------------------------------
 # Pure-numpy signal utilities (avoid scipy version incompatibility)
 # ---------------------------------------------------------------------------
@@ -41,35 +46,80 @@ def _filtfilt(b, a, x):
     else:
         x_pad = x.copy()
 
-    # Forward filter
-    y_fwd = np.zeros_like(x_pad)
-    for i in range(len(x_pad)):
-        y_fwd[i] = b[0] * x_pad[i]
-        for j in range(1, len(b)):
-            if i - j >= 0:
-                y_fwd[i] += b[j] * x_pad[i - j]
-        for j in range(1, len(a)):
-            if i - j >= 0:
-                y_fwd[i] -= a[j] * y_fwd[i - j]
-        y_fwd[i] /= a[0]
+    if _scipy_lfilter is not None:
+        # scipy.signal.lfilter uses the same zero-initial-state recurrence as
+        # the loops below, but executes it in compiled code.  Keep the custom
+        # reflection padding so numerical behaviour remains unchanged.
+        y_fwd = _scipy_lfilter(b, a, x_pad)
+        y_out = _scipy_lfilter(b, a, y_fwd[::-1])[::-1]
+    else:
+        # Pure NumPy/Python fallback for environments without SciPy.
+        y_fwd = np.zeros_like(x_pad)
+        for i in range(len(x_pad)):
+            y_fwd[i] = b[0] * x_pad[i]
+            for j in range(1, len(b)):
+                if i - j >= 0:
+                    y_fwd[i] += b[j] * x_pad[i - j]
+            for j in range(1, len(a)):
+                if i - j >= 0:
+                    y_fwd[i] -= a[j] * y_fwd[i - j]
+            y_fwd[i] /= a[0]
 
-    # Reverse filter
-    y_rev = y_fwd[::-1]
-    y_out = np.zeros_like(y_rev)
-    for i in range(len(y_rev)):
-        y_out[i] = b[0] * y_rev[i]
-        for j in range(1, len(b)):
-            if i - j >= 0:
-                y_out[i] += b[j] * y_rev[i - j]
-        for j in range(1, len(a)):
-            if i - j >= 0:
-                y_out[i] -= a[j] * y_out[i - j]
-        y_out[i] /= a[0]
-    y_out = y_out[::-1]
+        y_rev = y_fwd[::-1]
+        y_out = np.zeros_like(y_rev)
+        for i in range(len(y_rev)):
+            y_out[i] = b[0] * y_rev[i]
+            for j in range(1, len(b)):
+                if i - j >= 0:
+                    y_out[i] += b[j] * y_rev[i - j]
+            for j in range(1, len(a)):
+                if i - j >= 0:
+                    y_out[i] -= a[j] * y_out[i - j]
+            y_out[i] /= a[0]
+        y_out = y_out[::-1]
 
     # Remove padding
     if n_pad > 0:
         y_out = y_out[n_pad:-n_pad]
+    return y_out
+
+
+def _detrend_last_axis(x):
+    """Linear detrend many signals at once along the last axis."""
+    x = np.asarray(x, dtype=np.float64)
+    original_shape = x.shape
+    n = original_shape[-1]
+    flat = x.reshape(-1, n)
+    t = np.arange(n, dtype=np.float64)
+    design = np.column_stack([np.ones(n), t])
+    coefficients = np.linalg.lstsq(design, flat.T, rcond=None)[0]
+    detrended = flat - (design @ coefficients).T
+    return detrended.reshape(original_shape)
+
+
+def _filtfilt_last_axis(b, a, x):
+    """Zero-phase filter many signals using the same padding as `_filtfilt`."""
+    x = np.asarray(x, dtype=np.float64)
+    n = x.shape[-1]
+    n_pad = min(3 * max(len(a), len(b)), n - 1)
+    if n_pad > 0:
+        x_pad = np.concatenate([
+            2 * x[..., :1] - x[..., n_pad:0:-1],
+            x,
+            2 * x[..., -1:] - x[..., -2:-n_pad - 2:-1],
+        ], axis=-1)
+    else:
+        x_pad = x.copy()
+
+    if _scipy_lfilter is None:
+        flat = x.reshape(-1, x.shape[-1])
+        filtered = np.stack([_filtfilt(b, a, row) for row in flat], axis=0)
+        return filtered.reshape(x.shape)
+
+    y_fwd = _scipy_lfilter(b, a, x_pad, axis=-1)
+    y_out = _scipy_lfilter(b, a, y_fwd[..., ::-1], axis=-1)[..., ::-1]
+    if n_pad > 0:
+        y_out = y_out[..., n_pad:-n_pad]
     return y_out
 
 
@@ -489,19 +539,14 @@ def eeg_epoch_coherence(eeg_30s, fs=100, thr=100.0, dthr=45.0):
     n_chan_orig = min(eeg_30s.shape[0], MAX_CHANNELS)
     n_chan_orig = max(n_chan_orig, 0)
 
-    # Pad to exactly 6 channels
-    if eeg_30s.shape[0] < MAX_CHANNELS:
-        pad = np.zeros((MAX_CHANNELS - eeg_30s.shape[0], eeg_30s.shape[1]))
-        eeg_30s = np.vstack([eeg_30s, pad])
-    else:
-        eeg_30s = eeg_30s[:MAX_CHANNELS]
+    eeg_30s = eeg_30s[:n_chan_orig]
 
     epoch_len = 200   # 2s sub-segments
     overlap = 100     # 1s step
     n_half = epoch_len // 2  # 100 bins (0–50 Hz)
     n_sub = (eeg_30s.shape[1] - epoch_len) // overlap + 1  # 29
 
-    # Per-channel: PSD, artifact flags, FFT of clean sub-segments
+    # Per-channel: PSD, artifact flags, FFT of clean sub-segments.
     PSD_all = np.zeros((MAX_CHANNELS, n_half))
     art_flags = np.ones((MAX_CHANNELS, n_sub), dtype=bool)  # True = artifact
     FXX_all = np.zeros((MAX_CHANNELS, n_sub, n_half), dtype=np.complex128)
@@ -509,19 +554,41 @@ def eeg_epoch_coherence(eeg_30s, fs=100, thr=100.0, dthr=45.0):
     w = np.hamming(epoch_len)
     U = float(w.T @ w)
 
-    for ch in range(n_chan_orig):
-        x = eeg_30s[ch].copy()
-        XX = eeg_epoch(x, epoch_len, overlap, do_detrend=True)
+    if n_chan_orig > 0 and n_sub > 0:
+        # (channel, sub-window, sample).  The view avoids copying the raw
+        # windows; subsequent detrending creates the working array.
+        XX = np.lib.stride_tricks.sliding_window_view(
+            eeg_30s, epoch_len, axis=-1,
+        )[..., ::overlap, :]
+        XX = np.asarray(XX, dtype=np.float64)
+        XX = XX - np.mean(XX, axis=-1, keepdims=True)
+        XX = _detrend_last_axis(XX)
+        XX = XX - np.mean(XX, axis=-1, keepdims=True)
 
-        for i in range(n_sub):
-            is_art, _, _ = eeg_is_artifact(XX[:, i], fs, thr, dthr)
-            art_flags[ch, i] = is_art
-            if not is_art:
-                seg_w = XX[:, i] * w
-                FXX_all[ch, i, :] = np.fft.fft(seg_w)[:n_half]
+        dn = max(1, int(round(fs / 50)))
+        maxdx = np.max(np.abs(XX[..., dn:] - XX[..., :-dn]), axis=-1)
+        smooth_b = np.ones(dn) / dn
+        smooth = _filtfilt_last_axis(smooth_b, np.array([1.0]), XX)
+        smooth = _detrend_last_axis(smooth)
+        maxminx = np.max(smooth, axis=-1) - np.min(smooth, axis=-1)
+        valid_art_flags = (
+            (maxdx > dthr) | (maxminx > thr) | (maxminx < 10)
+        )
+        art_flags[:n_chan_orig] = valid_art_flags
 
-        # PSD for this channel
-        PSD_all[ch], _, _, _, _ = eeg_bsi_psd(x, fs, epoch_len, overlap, thr, dthr)
+        spectra = np.fft.fft(XX * w, axis=-1)[..., :n_half]
+        spectra = np.where(~valid_art_flags[..., None], spectra, 0.0)
+        FXX_all[:n_chan_orig] = spectra
+
+        power = (spectra * spectra.conj()).real
+        clean_counts = np.count_nonzero(~valid_art_flags, axis=1)
+        power_sum = np.sum(power, axis=1)
+        np.divide(
+            power_sum * 2.0,
+            clean_counts[:, None] * U * fs,
+            out=PSD_all[:n_chan_orig],
+            where=clean_counts[:, None] > 0,
+        )
 
     # Sub-segments clean in ALL original channels
     if n_chan_orig > 0:
@@ -538,25 +605,16 @@ def eeg_epoch_coherence(eeg_30s, fs=100, thr=100.0, dthr=45.0):
     # --- Coherence per frequency bin per pair (100 × 15 = 1500) ---
     coherence_features = np.zeros(N_PAIRS * N_FFT_BINS)
 
-    pair_idx = 0
-    for ch1 in range(MAX_CHANNELS):
-        for ch2 in range(ch1 + 1, MAX_CHANNELS):
-            if ch1 >= n_chan_orig or ch2 >= n_chan_orig or not clean_mask.any():
-                pair_idx += 1
-                continue
-
-            Fxx = FXX_all[ch1, clean_mask, :]
-            Fyy = FXX_all[ch2, clean_mask, :]
-
-            Pxx = (Fxx * Fxx.conj()).mean(axis=0).real
-            Pyy = (Fyy * Fyy.conj()).mean(axis=0).real
-            Pxy = (Fxx * Fyy.conj()).mean(axis=0)
-            Cxy = np.abs(Pxy) ** 2 / np.maximum(Pxx * Pyy, 1e-30)
-
-            start = pair_idx * N_FFT_BINS
-            coherence_features[start:start + N_FFT_BINS] = Cxy
-
-            pair_idx += 1
+    if clean_mask.any() and n_chan_orig > 1:
+        pair_ch1, pair_ch2 = np.triu_indices(MAX_CHANNELS, k=1)
+        valid_pairs = (pair_ch1 < n_chan_orig) & (pair_ch2 < n_chan_orig)
+        Fxx = FXX_all[pair_ch1[valid_pairs]][:, clean_mask, :]
+        Fyy = FXX_all[pair_ch2[valid_pairs]][:, clean_mask, :]
+        Pxx = (Fxx * Fxx.conj()).mean(axis=1).real
+        Pyy = (Fyy * Fyy.conj()).mean(axis=1).real
+        Pxy = (Fxx * Fyy.conj()).mean(axis=1)
+        Cxy = np.abs(Pxy) ** 2 / np.maximum(Pxx * Pyy, 1e-30)
+        coherence_features.reshape(N_PAIRS, N_FFT_BINS)[valid_pairs] = Cxy
 
     return np.concatenate([psd_features.ravel(), coherence_features])
 

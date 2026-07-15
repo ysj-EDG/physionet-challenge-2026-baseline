@@ -45,3 +45,5 @@ holdout_data/
 # Local generated split metadata and Docker experiments.
 splits/
 Dockerfile*.local
+lstm_cache_kaggle_quick/
+h100_cached_output_kaggle_quick/

@@ -2,7 +2,7 @@
 """
 EEG 相干特征提取器。
 
-基于 ref/eeg_sleep_features.py 的 eeg_segment_coherence()，
+基于包内 eeg_sleep_features.py 的 eeg_segment_coherence()，
 从 15 对导联的幅度平方相干谱中提取 24 个标量特征，共 360 维。
 
 管道路径:
@@ -10,17 +10,9 @@ EEG 相干特征提取器。
     → 每导联对每 epoch 提取 24 特征 → 跨 epoch 取均值 → 360 维
 """
 
-import os
-import sys
 import numpy as np
 
-# 确保 ref 目录在 path 中
-_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-_REF_DIR = os.path.join(_SCRIPT_DIR, "ref")
-if _REF_DIR not in sys.path:
-    sys.path.insert(0, _REF_DIR)
-
-from eeg_sleep_features import eeg_segment_coherence, MAX_CHANNELS, N_PAIRS, N_FFT_BINS
+from .eeg_sleep_features import eeg_segment_coherence, MAX_CHANNELS, N_PAIRS, N_FFT_BINS
 
 # ============================================================================
 # 频带定义 (bin 索引, 100 bins / 0-50Hz / 0.5Hz 分辨率)
@@ -60,7 +52,7 @@ class EEGCoherenceMixin:
     """
     从 EEG 信号中提取导联间相干特征。
 
-    依赖 ref/eeg_sleep_features.py 提供 eeg_segment_coherence()。
+    依赖包内 eeg_sleep_features.py 提供 eeg_segment_coherence()。
     """
 
     @staticmethod
@@ -161,6 +153,85 @@ class EEGCoherenceMixin:
             centroid, entropy, bandwidth,
             f_low_sigma_mean, f_high_sigma_mean,
         ], dtype=np.float32)
+
+    @classmethod
+    def _extract_coh_features_batch(cls, coherence_spectra):
+        """Vectorized equivalent of ``_extract_coh_features_from_spectrum``."""
+        coh = np.asarray(coherence_spectra, dtype=float)
+        if coh.shape[-1] != N_FFT_BINS:
+            raise ValueError(
+                f"Expected {N_FFT_BINS} coherence bins, got {coh.shape[-1]}"
+            )
+
+        b = BAND_BINS
+
+        def band_values(name):
+            lo, hi = b[name]
+            return coh[..., lo:hi]
+
+        def band_mean(name):
+            return np.mean(band_values(name), axis=-1)
+
+        def band_auc(name):
+            return np.trapz(band_values(name), dx=0.5, axis=-1)
+
+        def band_iqr(name):
+            q75, q25 = np.quantile(
+                band_values(name), [0.75, 0.25], axis=-1,
+            )
+            return q75 - q25
+
+        band_names = ["delta", "theta", "alpha", "sigma", "beta"]
+        means = [band_mean(name) for name in band_names]
+        aucs = [band_auc(name) for name in band_names]
+        iqrs = [band_iqr(name) for name in band_names]
+
+        def safe_divide(num, den):
+            out = np.zeros_like(np.asarray(num, dtype=float))
+            return np.divide(num, den, out=out, where=np.asarray(den) > 0)
+
+        mean_delta, _, mean_alpha, mean_sigma, mean_beta = means
+        ratios = [
+            safe_divide(mean_sigma, mean_delta),
+            safe_divide(mean_alpha, mean_delta),
+            safe_divide(mean_beta, mean_delta),
+            safe_divide(mean_beta, band_mean("low")),
+        ]
+
+        full_lo, full_hi = b["full"]
+        freqs = np.arange(full_lo, full_hi, dtype=float) * 0.5
+        vals = coh[..., full_lo:full_hi]
+        total = np.sum(vals, axis=-1)
+        valid = total > 0
+
+        centroid = np.zeros_like(total, dtype=float)
+        np.divide(
+            np.sum(vals * freqs, axis=-1), total,
+            out=centroid, where=valid,
+        )
+
+        prob = np.zeros_like(vals, dtype=float)
+        np.divide(vals, total[..., None], out=prob, where=valid[..., None])
+        prob = np.maximum(prob, 1e-12)
+        entropy = np.zeros_like(total, dtype=float)
+        entropy[valid] = (
+            -np.sum(prob[valid] * np.log(prob[valid]), axis=-1)
+            / np.log(len(freqs))
+        )
+
+        bandwidth = np.zeros_like(total, dtype=float)
+        variance_num = np.sum(
+            vals * (freqs - centroid[..., None]) ** 2, axis=-1,
+        )
+        np.divide(variance_num, total, out=bandwidth, where=valid)
+        np.sqrt(bandwidth, out=bandwidth)
+
+        result = np.stack([
+            *means, *aucs, *iqrs, *ratios,
+            centroid, entropy, bandwidth,
+            band_mean("low_sigma"), band_mean("high_sigma"),
+        ], axis=-1)
+        return result.astype(np.float32)
 
     # ====================================================================
     # 公有方法

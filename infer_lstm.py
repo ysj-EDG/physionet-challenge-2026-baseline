@@ -23,15 +23,14 @@ warnings.filterwarnings("ignore")
 logger = logging.getLogger("infer_lstm")
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-_REF_DIR = os.path.join(_SCRIPT_DIR, "ref", "python-example-2026")
-sys.path.insert(0, _REF_DIR)
 
-DEFAULT_DATA_FOLDER = "/database2/physionet2026_kaggle/data"
-DEFAULT_MODEL_PATH = os.path.join(_SCRIPT_DIR, "lstm_model_kaggle", "lstm_model.pt")
-DEFAULT_OUTPUT_DIR = os.path.join(_SCRIPT_DIR, "lstm_results_kaggle")
+# These CLI defaults are portable; official evaluation calls team_code.py directly.
+DEFAULT_DATA_FOLDER = "."
+DEFAULT_MODEL_PATH = os.path.join(_SCRIPT_DIR, "lstm_model", "lstm_model.pt")
+DEFAULT_OUTPUT_DIR = os.path.join(_SCRIPT_DIR, "lstm_results")
 
-SEQ_DIM = 465
-ECG_DIM = 11
+SEQ_DIM = 483
+ECG_DIM = 37
 STATIC_DIM = 196
 INPUT_DIM = SEQ_DIM + ECG_DIM
 HIDDEN_DIM = 128
@@ -141,13 +140,26 @@ def preload_all(cache_dir, test_records):
 
 
 @torch.inference_mode()
+def sigmoid_np(x):
+    x = np.asarray(x, dtype=float)
+    return 1.0 / (1.0 + np.exp(-np.clip(x, -50.0, 50.0)))
+
+
+def apply_calibrator(logits, calibrator):
+    if not calibrator:
+        return sigmoid_np(logits)
+    coef = float(calibrator.get("coef", 1.0))
+    intercept = float(calibrator.get("intercept", 0.0))
+    return sigmoid_np(coef * np.asarray(logits, dtype=float) + intercept)
+
+
 def infer_batched(model, samples, batch_size=256):
     """
     对预加载的样本做批量推理。
     samples 已按长度降序排列，同一 batch 内长度相近 → padding 浪费最小。
     """
     model.eval()
-    all_y, all_prob, all_keys = [], [], []
+    all_y, all_logits, all_keys = [], [], []
     n = len(samples)
 
     for start in tqdm(range(0, n, batch_size), desc="Inference"):
@@ -173,13 +185,12 @@ def infer_batched(model, samples, batch_size=256):
 
         # 前向
         logits = model(X_seq_b, X_ecg_b, x_static_b, lengths_b)
-        prob = torch.sigmoid(logits)
 
         all_y.extend([s["y"] for s in batch])
-        all_prob.extend(prob.cpu().numpy().tolist())
+        all_logits.extend(logits.detach().cpu().numpy().tolist())
         all_keys.extend([s["rec_key"] for s in batch])
 
-    return np.array(all_y), np.array(all_prob), all_keys
+    return np.array(all_y), np.array(all_logits), all_keys
 
 
 # ============================================================================
@@ -192,7 +203,7 @@ from sklearn.metrics import (
     confusion_matrix, roc_curve,
 )
 
-def compute_all_metrics(y_true, y_prob):
+def compute_all_metrics(y_true, y_prob, threshold=0.5):
     # 确保 1D 数组
     y_true = np.asarray(y_true, dtype=int).ravel()
     y_prob = np.asarray(y_prob, dtype=float).ravel()
@@ -202,7 +213,8 @@ def compute_all_metrics(y_true, y_prob):
     n_pos = int(np.sum(y_true == 1))
     n_neg = int(np.sum(y_true == 0))
 
-    y_pred = (y_prob >= 0.5).astype(int)
+    threshold = float(threshold)
+    y_pred = (y_prob >= threshold).astype(int)
 
     m = OrderedDict()
     m["n_total"] = n
@@ -214,6 +226,7 @@ def compute_all_metrics(y_true, y_prob):
     m["prob_median"] = float(np.median(y_prob))
     m["prob_min"] = float(np.min(y_prob))
     m["prob_max"] = float(np.max(y_prob))
+    m["binary_threshold"] = threshold
 
     try:
         m["AUROC"] = float(roc_auc_score(y_true, y_prob))
@@ -269,7 +282,7 @@ def main():
     parser.add_argument("--model", type=str, default=DEFAULT_MODEL_PATH)
     parser.add_argument("--output_dir", type=str, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--cache_dir", type=str, default=None,
-                        help="LSTM cache dir (default: lstm_cache_kaggle/<split>)")
+                        help="LSTM cache dir (default: lstm_cache/<split>)")
     parser.add_argument("--split", type=str, default="test",
                         choices=["train", "val", "test", "external"],
                         help="Split to evaluate (default: test)")
@@ -283,8 +296,8 @@ def main():
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    SPLITS_DIR = os.path.join(args.data_folder, "splits")
-    CACHE_DIR = args.cache_dir or os.path.join(_SCRIPT_DIR, "lstm_cache_kaggle", args.split)
+    SPLITS_DIR = os.environ.get("LSTM_SPLITS_DIR", os.path.join(args.data_folder, "splits"))
+    CACHE_DIR = args.cache_dir or os.path.join(_SCRIPT_DIR, "lstm_cache", args.split)
     os.makedirs(args.output_dir, exist_ok=True)
 
     logger.info("=" * 60)
@@ -292,6 +305,7 @@ def main():
     logger.info("=" * 60)
     logger.info("Data folder:   %s", args.data_folder)
     logger.info("Model path:    %s", args.model)
+    logger.info("Splits dir:    %s", SPLITS_DIR)
     logger.info("Cache dir:     %s", CACHE_DIR)
     logger.info("Output dir:    %s", args.output_dir)
     logger.info("Split:         %s", args.split)
@@ -314,9 +328,15 @@ def main():
     if "state_dict" in checkpoint:
         model.load_state_dict(checkpoint["state_dict"])
         logger.info("Loaded state_dict (val_auroc=%.4f)", checkpoint.get("auroc", float("nan")))
+        calibrator = checkpoint.get("calibrator")
+        threshold = float(checkpoint.get("threshold", 0.5))
+        logger.info("Loaded calibration: %s", calibrator if calibrator else "identity sigmoid")
+        logger.info("Loaded binary threshold: %.6f (%s)", threshold, checkpoint.get("threshold_source", "default_0.5"))
     else:
         model.load_state_dict(checkpoint)
         logger.info("Loaded raw state_dict")
+        calibrator = None
+        threshold = 0.5
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger.info("Trainable params: %d", n_params)
 
@@ -330,7 +350,9 @@ def main():
     # ---- 批量推理 ----
     logger.info("Running inference (batch_size=%d)...", args.batch_size)
     t1 = time.time()
-    y_true, y_prob, rec_keys = infer_batched(model, samples, args.batch_size)
+    y_true, y_logits, rec_keys = infer_batched(model, samples, args.batch_size)
+    y_prob_raw = sigmoid_np(y_logits)
+    y_prob = apply_calibrator(y_logits, calibrator)
     infer_time = time.time() - t1
     logger.info("Inference complete in %.1fs (%.0f rec/s)", infer_time, len(y_true) / infer_time if infer_time > 0 else 0)
 
@@ -352,7 +374,11 @@ def main():
 
     # ---- 计算指标 ----
     logger.info("Computing metrics...")
-    metrics = compute_all_metrics(y_true, y_prob)
+    metrics = compute_all_metrics(y_true, y_prob, threshold=threshold)
+    metrics["raw_prob_mean"] = float(np.mean(y_prob_raw))
+    metrics["raw_prob_std"] = float(np.std(y_prob_raw))
+    metrics["raw_prob_min"] = float(np.min(y_prob_raw))
+    metrics["raw_prob_max"] = float(np.max(y_prob_raw))
 
     # ---- 写入指标文件 ----
     metrics_path = os.path.join(args.output_dir, "lstm_test_metrics.txt")
@@ -366,11 +392,14 @@ def main():
         f.write(f"Preload time:     {load_time:.1f}s\n")
         f.write(f"Inference time:   {infer_time:.1f}s\n")
         f.write(f"Total wall time:  {total_time:.1f}s\n")
-        f.write(f"Batch size:       {args.batch_size}\n\n")
+        f.write(f"Batch size:       {args.batch_size}\n")
+        f.write(f"Calibration:      {calibrator if calibrator else 'identity sigmoid'}\n")
+        f.write(f"Binary threshold: {threshold:.6f}\n\n")
 
         sections = [
             ("Basic Info", ["n_total", "n_positive", "n_negative", "pos_ratio"]),
-            ("Probability Distribution", ["prob_mean", "prob_std", "prob_median", "prob_min", "prob_max"]),
+            ("Probability Distribution", ["prob_mean", "prob_std", "prob_median", "prob_min", "prob_max", "binary_threshold"]),
+            ("Raw Probability Distribution", ["raw_prob_mean", "raw_prob_std", "raw_prob_min", "raw_prob_max"]),
             ("Core Metrics", ["AUROC", "AUPRC", "Accuracy", "F1", "Precision", "Recall", "Specificity"]),
             ("Confusion Matrix", ["TP", "TN", "FP", "FN"]),
             ("TPR at Capacity", [
@@ -405,10 +434,11 @@ def main():
         parts = key.rsplit("_ses-", 1)
         patient_ids.append(parts[0] if len(parts) == 2 else key)
 
-    y_pred_binary = (y_prob >= 0.5).astype(int)
+    y_pred_binary = (y_prob >= threshold).astype(int)
     df_pred = pd.DataFrame({
         "BDSPPatientID": patient_ids,
         "Cognitive_Impairment": y_pred_binary,
+        "raw_prob": y_prob_raw,
         "Cognitive_Impairment_Probability": y_prob,
     })
     df_pred.to_csv(predictions_path, index=False)
@@ -424,6 +454,7 @@ def main():
     print(f"  AUPRC    = {metrics['AUPRC']:.4f}")
     print(f"  Accuracy = {metrics['Accuracy']:.4f}")
     print(f"  F1       = {metrics['F1']:.4f}")
+    print(f"  Threshold= {metrics['binary_threshold']:.6f}")
     print(f"  TPR@5%   = {metrics['TPR@5%']:.4f}  (cap={metrics['capacity@5%']})")
     print(f"  TPR@10%  = {metrics['TPR@10%']:.4f}  (cap={metrics['capacity@10%']})")
     print(f"  TPR@20%  = {metrics['TPR@20%']:.4f}  (cap={metrics['capacity@20%']})")

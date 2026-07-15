@@ -2,7 +2,7 @@
 """DemographicMixin for FeatureExtractor."""
 
 import numpy as np
-from helper_code import load_age, load_sex, load_bmi, load_race
+from .helper_code import load_age, load_sex, load_bmi, get_standardized_race
 
 class DemographicMixin:
     def extract_demographic_features(self, data):
@@ -36,7 +36,7 @@ class DemographicMixin:
 
         # 3. Race One-Hot Encoding (6 dimensions)
         # Standardizes the raw text into one of six categories using the helper function
-        race_category = load_race(data, standardize=True).lower()
+        race_category = get_standardized_race(data).lower()
         race_vec = np.zeros(5)
         # Pre-defined mapping for index consistency
         race_mapping = {'asian': 0, 'black': 1, 'others': 2, 'unavailable': 3, 'white': 4}
