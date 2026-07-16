@@ -1,0 +1,22 @@
+workspace=/mnt/data5t-in-container/workspace/.medex_run_3d367ccf938f4a0e846846bf9584067e/challenge2026
+data_folder=/mnt/data5t-in-container/workspace/.medex_run_3d367ccf938f4a0e846846bf9584067e/challenge2026
+splits_dir=/mnt/data5t-in-container/workspace/.medex_run_3d367ccf938f4a0e846846bf9584067e/challenge2026/lstm_h100_output_kaggle_quick/split_kaggle_quick
+cache_dir=/mnt/data5t-in-container/workspace/.medex_run_3d367ccf938f4a0e846846bf9584067e/challenge2026/lstm_cache_kaggle_quick
+output_dir=/mnt/data5t-in-container/workspace/.medex_run_3d367ccf938f4a0e846846bf9584067e/challenge2026/lstm_h100_output_kaggle_quick
+model_dir=/mnt/data5t-in-container/workspace/.medex_run_3d367ccf938f4a0e846846bf9584067e/challenge2026/lstm_h100_output_kaggle_quick/lstm_model_kaggle_quick
+infer_dir=/mnt/data5t-in-container/workspace/.medex_run_3d367ccf938f4a0e846846bf9584067e/challenge2026/lstm_h100_output_kaggle_quick/lstm_results_kaggle_quick
+expected_dims=X_seq:483,X_ecg:37,x_static:196
+[INFO] train: count=733 sample=sub-I0006179000025_ses-1.npz X_seq=(889, 483) X_ecg=(885, 37) x_static=(196,) y_shape=() mask=(889,)
+[INFO] val: count=157 sample=sub-I0006179000812_ses-1.npz X_seq=(852, 483) X_ecg=(844, 37) x_static=(196,) y_shape=() mask=(852,)
+[INFO] test: count=158 sample=sub-I0006179001057_ses-1.npz X_seq=(817, 483) X_ecg=(813, 37) x_static=(196,) y_shape=() mask=(817,)
+[INFO] external: count=54 sample=sub-I0002150000076_ses-1.npz X_seq=(1020, 483) X_ecg=(1017, 37) x_static=(196,) y_shape=() mask=(1020,)
+train_records=733 from=/mnt/data5t-in-container/workspace/.medex_run_3d367ccf938f4a0e846846bf9584067e/challenge2026/lstm_cache_kaggle_quick/train
+val_records=157 from=/mnt/data5t-in-container/workspace/.medex_run_3d367ccf938f4a0e846846bf9584067e/challenge2026/lstm_cache_kaggle_quick/val
+test_records=158 from=/mnt/data5t-in-container/workspace/.medex_run_3d367ccf938f4a0e846846bf9584067e/challenge2026/lstm_cache_kaggle_quick/test
+external_records=54 from=/mnt/data5t-in-container/workspace/.medex_run_3d367ccf938f4a0e846846bf9584067e/challenge2026/lstm_cache_kaggle_quick/external
+model_path=/mnt/data5t-in-container/workspace/.medex_run_3d367ccf938f4a0e846846bf9584067e/challenge2026/lstm_h100_output_kaggle_quick/lstm_model_kaggle_quick/lstm_model.pt
+inference_splits=test,external
+train_count=733
+val_count=157
+test_count=158
+external_count=54

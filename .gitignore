@@ -5,6 +5,7 @@ __pycache__/
 h100_cached_output_kaggle_quick/
 h100_cached_output_kaggle/
 lstm_cache_kaggle/
+lstm_cache_kaggle_quick/
 splits/
 medex-*.yaml
 requirements.local.no_torch.txt
@@ -33,3 +34,14 @@ docs/
 
 # Local Docker experiments.
 Dockerfile*.local
+
+# Keep curated milestone outputs and weekly experiment records versioned.
+!reports/
+reports/*
+!reports/milestones/
+reports/milestones/*
+!reports/milestones/output/
+!reports/milestones/output/**
+!reports/weekly/
+reports/weekly/*
+!reports/weekly/*.md
