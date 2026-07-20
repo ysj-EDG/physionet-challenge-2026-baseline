@@ -10,11 +10,11 @@
 2. [数据与预处理](#2-数据与预处理)
 3. [特征工程](#3-特征工程)
 4. [模型架构](#4-模型架构)
-5. [训练流程](#5-训练流程)
-6. [推理与评估](#6-推理与评估)
+5. [官方训练流程](#5-官方训练流程)
+6. [官方推理与评分](#6-官方推理与评分)
 7. [使用方法](#7-使用方法)
 8. [文件结构](#8-文件结构)
-9. [当前验证状态](#9-当前验证状态)
+9. [官方实验结果](#9-官方实验结果)
 10. [依赖环境](#10-依赖环境)
 
 ---
@@ -48,7 +48,7 @@
 
 | 模型 | 输入 | 参数量 | 保存路径 |
 |------|------|--------|----------|
-| **2-Layer LSTM** | 变长时序 (495/epoch) + 196 静态 | ~0.48M | `lstm_model/lstm_model.pt` |
+| **2-Layer LSTM** | 变长时序 (495/epoch) + 196 静态 | ~0.48M | `reports/milestones/output/model/lstm_model.pt` |
 
 ---
 
@@ -67,7 +67,7 @@ PhysioNet Challenge 2026 训练集，包含多家医院 (Site) 的 PSG 记录。
 
 ### 2.2 数据集划分
 
-当前 LSTM 路线使用本地预生成的四个划分文件，统一放在 `{data_folder}/splits/` 或仓库本地 `splits/` 目录中：
+当前 LSTM 路线使用本地预生成的四个划分文件，统一放在仓库本地 `split/` 目录中：
 
 | 文件 | 集合 | 用途 |
 |------|------|------|
@@ -590,16 +590,24 @@ docker build -t physionet-challenge-2026-baseline .
 Docker 构建上下文通过 `.dockerignore` 排除 NPZ、模型权重、输出、日志和本地 smoke
 资产，避免将实验数据打入提交镜像。
 
-### 7.4 四样本 smoke 流程
+### 7.4 结果归档
 
-当前工作区暂时保留本地 H100 smoke 工具：
+当前固定官方流程的模型、推理输出、标签副本、评分和摘要统一归档在：
 
-```bash
-bash submit_h100_smoke.sh
+```text
+reports/milestones/output/
 ```
 
-它会对 4 条记录核对新鲜提取特征，并依次调用官方 `train_model.py` 和
-`run_model.py`。这些本地 smoke 文件和产物由 `.gitignore` 排除，不属于正式提交。
+其中：
+
+- `model/lstm_model.pt`：官方流程重新训练的 checkpoint
+- `test/demographics.csv`、`external/demographics.csv`：官方逐患者推理输出
+- `scores/test_scores.csv`、`scores/external_scores.csv`：官方评分摘要
+- `scores/test_table.csv`、`scores/external_table.csv`：官方逐年龄表
+- `scores/official_comparison.csv`：官方重训练模型与历史 seed 结果对照
+- `summary.json`：当前模型、阈值、校准器和主要结果汇总
+
+详细实验记录见 `reports/weekly/2026-W30.md`。
 
 ---
 
@@ -614,22 +622,35 @@ bash submit_h100_smoke.sh
 ├── train_lstm.py                   # team_code 调用的内部训练后端
 ├── helper_code.py                  # 官方数据读取与输出辅助函数
 ├── per_epoch_features/             # 483/12/196 特征提取实现
+├── reports/
+│   ├── milestones/output/          # 当前官方模型、输入、预测、评分和摘要
+│   └── weekly/                     # 周度实验记录
 ├── requirements.txt                # Python 依赖
 ├── Dockerfile                      # 官方提交镜像
 └── README.md
 ```
 
-本地保留但不提交：`npz_full/`、`split/`、模型输出、4 样本 smoke 数据与结果。
+本地保留但不提交：`data/`、`npz_full/`、`split/` 及 smoke/临时验证数据。
+归档在 `reports/milestones/output/` 的结果用于实验追踪，不进入 Docker 构建上下文。
 
 ---
 
-## 9. 当前验证状态
+## 9. 官方实验结果
 
-- `team_code.py` 已内聚旧推理模块的全部必要能力，不再依赖 `infer_lstm.py`。
-- 4 样本已通过官方 `run_model.py` 逐患者推理。
-- GPU 单患者与旧批量 LSTM 推理的最大概率绝对差为 `9.57e-06`。
-- 其中 1 条概率紧邻 checkpoint 阈值，浮点差导致边界标签翻转；以官方逐患者输出为准。
-- 完整 H100 smoke 仍保留，用于后续重新训练、特征一致性与官方入口联调。
+固定划分包含 train 733、validation 158、test 158 和 external 54 条记录。当前模型
+使用 seed 7，在 validation AUROC 最优的第 7 个 epoch 保存，Platt 校准后的分类阈值为
+`0.0710483`。
+
+| 数据集 | Reward | Age-conditioned AUROC | Age-weighted AUROC | AUROC | AUPRC | Accuracy | F-measure |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Test | 0.404 | 0.842 | 0.848 | 0.837 | 0.358 | 0.703 | 0.277 |
+| External | 1.343 | 0.719 | 0.678 | 0.773 | 0.418 | 0.759 | 0.480 |
+
+现有 Docker 环境挂载当前代码和 `npz_full` 重新训练后，test 158 条与 external 54 条
+预测标签均与本地归档一致；最大概率绝对差分别为 `1.11e-16` 和 `1.04e-16`。
+四个官方 scores/table 文件完全一致。
+
+结果路径：`reports/milestones/output/`。
 
 ---
 
@@ -662,7 +683,7 @@ joblib         # 模型序列化
 | resp | 呼吸信号 | 14 | — | airflow(7) + thorax(2) + abd(2) + joint(3) |
 | onehot | 事件 OneHot | 13 | — | stage(5) + arousal + resp(5) + limb(2) |
 | **epoch 主时序合计** | | **483** | — | 432 + 24 + 14 + 13 |
-| ecg | 滑窗 ECG/HRV + circadian | 12 | — | 11 NeuroKit + 25 optional HRVAnalysis + 1 circadian_cos |
+| ecg | 滑窗 ECG/HRV + circadian | 12 | — | 11 NeuroKit + 1 circadian_cos |
 | **LSTM 每步输入** | | **495** | — | 483 + 12 (ECG 对齐后拼接) |
 | **静态合计** | | — | **196** | demo(10) + algo(186) |
 

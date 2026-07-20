@@ -1,0 +1,41 @@
+{
+  "test": {
+    "rows": 158,
+    "sites": {
+      "S0001": 120,
+      "I0006": 38
+    },
+    "positive": 11,
+    "inference_columns": [
+      "SiteID",
+      "BDSPPatientID",
+      "CreationTime",
+      "BidsFolder",
+      "SessionID",
+      "Age",
+      "Sex",
+      "Race",
+      "Ethnicity",
+      "BMI"
+    ]
+  },
+  "external": {
+    "rows": 54,
+    "sites": {
+      "I0002": 54
+    },
+    "positive": 8,
+    "inference_columns": [
+      "SiteID",
+      "BDSPPatientID",
+      "CreationTime",
+      "BidsFolder",
+      "SessionID",
+      "Age",
+      "Sex",
+      "Race",
+      "Ethnicity",
+      "BMI"
+    ]
+  }
+}
