@@ -5,7 +5,7 @@ ECG HRV 特征提取器 — 基于 neurokit2 + Kubios 风格间期校正 + 5 分
 管道路径:
     原始 ECG → 5min 分段 → ecg_clean → ecg_peaks
     → signal_fixpeaks(Kubios) → hrv_time/freq/nonlinear/symbolic
-    → 每段 36 维 → 跨段 mean+std → 72 维
+    → 每段 11 维 → 跨段 mean+std → 22 维
 """
 
 import logging
@@ -18,23 +18,6 @@ if not hasattr(np, "trapezoid"):
 
 import neurokit2 as nk
 
-try:
-    from hrvanalysis.extract_features import (
-        get_time_domain_features,
-        get_frequency_domain_features,
-        get_poincare_plot_features,
-        get_sampen,
-        get_csi_cvi_features,
-    )
-except Exception as exc:  # pragma: no cover - handled at runtime for cache jobs
-    get_time_domain_features = None
-    get_frequency_domain_features = None
-    get_poincare_plot_features = None
-    get_sampen = None
-    get_csi_cvi_features = None
-    _HRVANALYSIS_IMPORT_ERROR = exc
-else:
-    _HRVANALYSIS_IMPORT_ERROR = None
 
 logger = logging.getLogger("ecg_neurokit")
 
@@ -42,7 +25,7 @@ EPS = 1e-12
 WINDOW_SEC = 300  # 5 分钟
 MIN_WINDOW_SEC = 270  # 最小窗口时长
 
-# 36 个 5min-window ECG/HRV 特征: 原 11 维 + hrv-analysis 公式迁移 25 维。
+# 11 个 5min-window ECG/HRV 特征。
 BASE_MODEL_COLUMNS = [
     "model_HRV_MedianNN",
     "model_HRV_MCVNN",
@@ -57,38 +40,11 @@ BASE_MODEL_COLUMNS = [
     "model_HRV_Symbolic_EqualProb4_2UV",
 ]
 
-HRV_ANALYSIS_COLUMNS = [
-    "hrva_mean_nn",
-    "hrva_sdnn",
-    "hrva_rmssd",
-    "hrva_sdsd",
-    "hrva_nn50",
-    "hrva_pnn50",
-    "hrva_nn20",
-    "hrva_mean_hr",
-    "hrva_min_hr",
-    "hrva_max_hr",
-    "hrva_std_hr",
-    "hrva_range_nn",
-    "hrva_total_power",
-    "hrva_vlf",
-    "hrva_lf_hf_ratio",
-    "hrva_lfnu",
-    "hrva_hfnu",
-    "hrva_sd1",
-    "hrva_sd2",
-    "hrva_sampen",
-    "hrva_csi",
-    "hrva_cvi",
-    "hrva_modified_csi",
-    "hrva_dfa_alpha1",
-    "hrva_dfa_alpha2",
-]
 
-MODEL_COLUMNS = BASE_MODEL_COLUMNS + HRV_ANALYSIS_COLUMNS
+MODEL_COLUMNS = BASE_MODEL_COLUMNS
 
-ECG_NEUROKIT_WINDOW_DIM = len(MODEL_COLUMNS)  # 36
-ECG_NEUROKIT_FEATURE_DIM = len(MODEL_COLUMNS) * 2  # mean + std = 72
+ECG_NEUROKIT_WINDOW_DIM = len(MODEL_COLUMNS)  # 11
+ECG_NEUROKIT_FEATURE_DIM = len(MODEL_COLUMNS) * 2  # mean + std = 22
 
 
 # ============================================================================
@@ -102,125 +58,6 @@ def _value(df: pd.DataFrame, column: str) -> float:
     return float(v) if pd.notna(v) else np.nan
 
 
-def _dict_value(d: dict, key: str) -> float:
-    if not isinstance(d, dict):
-        return np.nan
-    v = d.get(key, np.nan)
-    return float(v) if v is not None and np.isfinite(v) else np.nan
-
-
-def _rpeaks_to_nn_ms(rpeaks, sampling_rate):
-    rpeaks = np.asarray(rpeaks, dtype=float).ravel()
-    if len(rpeaks) < 2:
-        return np.array([], dtype=float)
-    nn = np.diff(rpeaks) * 1000.0 / float(sampling_rate)
-    nn = nn[np.isfinite(nn)]
-    return nn[(nn >= 300.0) & (nn <= 2000.0)]
-
-
-def _dfa_alpha(nn, scale_min, scale_max):
-    nn = np.asarray(nn, dtype=float).ravel()
-    n = len(nn)
-    if n < max(scale_min * 2, scale_min + 2):
-        return np.nan
-    y = np.cumsum(nn - np.mean(nn))
-    ns = np.arange(scale_min, min(scale_max + 1, n // 2 + 1))
-    fluctuations = []
-    scales = []
-    for scale in ns:
-        n_segments = n // scale
-        if n_segments < 2:
-            continue
-        rms_vals = []
-        for i in range(n_segments):
-            seg = y[i * scale:(i + 1) * scale]
-            x = np.arange(len(seg), dtype=float)
-            try:
-                coeff = np.polyfit(x, seg, 1)
-            except Exception:
-                continue
-            trend = np.polyval(coeff, x)
-            rms_vals.append(float(np.sqrt(np.mean((seg - trend) ** 2))))
-        if rms_vals:
-            f = float(np.mean(rms_vals))
-            if f > 0:
-                scales.append(scale)
-                fluctuations.append(f)
-    if len(scales) < 2:
-        return np.nan
-    return float(np.polyfit(np.log10(scales), np.log10(fluctuations), 1)[0])
-
-
-def _extract_hrvanalysis_features(rpeaks, sampling_rate):
-    features = {col: np.nan for col in HRV_ANALYSIS_COLUMNS}
-    if _HRVANALYSIS_IMPORT_ERROR is not None:
-        logger.debug("hrvanalysis unavailable: %s", _HRVANALYSIS_IMPORT_ERROR)
-        return features
-
-    nn = _rpeaks_to_nn_ms(rpeaks, sampling_rate)
-    if len(nn) < 3:
-        return features
-    nn_list = nn.tolist()
-
-    try:
-        td = get_time_domain_features(nn_list)
-    except Exception:
-        td = {}
-    features.update({
-        "hrva_mean_nn": _dict_value(td, "mean_nni"),
-        "hrva_sdnn": _dict_value(td, "sdnn"),
-        "hrva_rmssd": _dict_value(td, "rmssd"),
-        "hrva_sdsd": _dict_value(td, "sdsd"),
-        "hrva_nn50": _dict_value(td, "nni_50"),
-        "hrva_pnn50": _dict_value(td, "pnni_50"),
-        "hrva_nn20": _dict_value(td, "nni_20"),
-        "hrva_mean_hr": _dict_value(td, "mean_hr"),
-        "hrva_min_hr": _dict_value(td, "min_hr"),
-        "hrva_max_hr": _dict_value(td, "max_hr"),
-        "hrva_std_hr": _dict_value(td, "std_hr"),
-        "hrva_range_nn": _dict_value(td, "range_nni"),
-    })
-
-    try:
-        fd = get_frequency_domain_features(nn_list, method="welch", sampling_frequency=4)
-    except Exception:
-        fd = {}
-    features.update({
-        "hrva_total_power": _dict_value(fd, "total_power"),
-        "hrva_vlf": _dict_value(fd, "vlf"),
-        "hrva_lf_hf_ratio": _dict_value(fd, "lf_hf_ratio"),
-        "hrva_lfnu": _dict_value(fd, "lfnu"),
-        "hrva_hfnu": _dict_value(fd, "hfnu"),
-    })
-
-    try:
-        pc = get_poincare_plot_features(nn_list)
-    except Exception:
-        pc = {}
-    features.update({
-        "hrva_sd1": _dict_value(pc, "sd1"),
-        "hrva_sd2": _dict_value(pc, "sd2"),
-    })
-
-    try:
-        se = get_sampen(nn_list)
-    except Exception:
-        se = {}
-    features["hrva_sampen"] = _dict_value(se, "sampen")
-
-    try:
-        csi = get_csi_cvi_features(nn_list)
-    except Exception:
-        csi = {}
-    features.update({
-        "hrva_csi": _dict_value(csi, "csi"),
-        "hrva_cvi": _dict_value(csi, "cvi"),
-        "hrva_modified_csi": _dict_value(csi, "Modified_csi"),
-    })
-
-    features["hrva_dfa_alpha1"] = _dfa_alpha(nn, 4, 16)
-    features["hrva_dfa_alpha2"] = _dfa_alpha(nn, 16, 64)
-    return features
 
 
 def _artifact_count(artifacts: dict) -> int:
@@ -261,7 +98,7 @@ def _sd1sd2_from_rpeaks(rpeaks, sampling_rate) -> float:
 
 def extract_5min_hrv(ecg_1d, sampling_rate, apply_artifact_correction=True):
     """
-    从 5 分钟 ECG 波形提取 36 维 HRV 特征。
+    从 5 分钟 ECG 波形提取 11 维 HRV 特征。
 
     Returns
     -------
@@ -354,14 +191,8 @@ def extract_5min_hrv(ecg_1d, sampling_rate, apply_artifact_correction=True):
         _value(hrv_symbolic, "HRV_Symbolic_EqualProb4_0V"),
         _value(hrv_symbolic, "HRV_Symbolic_EqualProb4_2UV"),
     ]
-    hrv_analysis = _extract_hrvanalysis_features(rpeaks_used, sampling_rate)
-    features = np.array(
-        base_features + [hrv_analysis[col] for col in HRV_ANALYSIS_COLUMNS],
-        dtype=np.float32,
-    )
-
-    features = np.nan_to_num(features, nan=0.0, posinf=0.0, neginf=0.0)
-    return features, None
+    features = np.asarray(base_features, dtype=np.float32)
+    return np.nan_to_num(features, nan=0.0, posinf=0.0, neginf=0.0), None
 
 
 # ============================================================================
@@ -375,12 +206,12 @@ class ECGNeurokitMixin:
 
     def extract_ecg_neurokit(self, ecg_sig, fs):
         """
-        从整夜 ECG 提取聚合 HRV 特征 (72 维)。
+        从整夜 ECG 提取聚合 HRV 特征 (22 维)。
 
         Returns
         -------
-        features : (72,) ndarray
-            36 特征 × 2 统计量 (mean, std)，跨 5 分钟窗口聚合。
+        features : (22,) ndarray
+            11 特征 × 2 统计量 (mean, std)，跨 5 分钟窗口聚合。
         """
         sig = np.asarray(ecg_sig, dtype=float).reshape(-1)
         if np.isnan(sig).any():
@@ -402,9 +233,9 @@ class ECGNeurokitMixin:
             if len(seg) < int(fs * 60):
                 continue
 
-            f36, _ = extract_5min_hrv(seg, fs)
-            if f36 is not None:
-                all_features.append(f36)
+            f11, _ = extract_5min_hrv(seg, fs)
+            if f11 is not None:
+                all_features.append(f11)
 
         if len(all_features) == 0:
             logger.debug("ECG: 0 valid 5-min windows extracted")
@@ -412,7 +243,7 @@ class ECGNeurokitMixin:
 
         logger.debug("ECG: %d valid 5-min windows extracted", len(all_features))
 
-        all_features = np.stack(all_features, axis=0)  # (N_win, 36)
+        all_features = np.stack(all_features, axis=0)  # (N_win, 11)
         win_mean = np.mean(all_features, axis=0)
         win_std = np.std(all_features, axis=0)
 

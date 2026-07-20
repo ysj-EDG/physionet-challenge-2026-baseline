@@ -2,6 +2,13 @@ __pycache__/
 *.py[cod]
 
 # Local H100 extraction/training artifacts and generated data.
+npz_full/
+smoke_*data/
+smoke_model/
+smoke_output*/
+h100_smoke_output/
+h100*.py
+submit_h100_smoke.sh
 h100_cached_output_kaggle_quick/
 h100_cached_output_kaggle/
 lstm_cache_kaggle/

@@ -23,14 +23,12 @@ warnings.filterwarnings("ignore")
 logger = logging.getLogger("infer_lstm")
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-
-# These CLI defaults are portable; official evaluation calls team_code.py directly.
-DEFAULT_DATA_FOLDER = "."
-DEFAULT_MODEL_PATH = os.path.join(_SCRIPT_DIR, "lstm_model", "lstm_model.pt")
-DEFAULT_OUTPUT_DIR = os.path.join(_SCRIPT_DIR, "lstm_results")
+DEFAULT_DATA_FOLDER = "data"
+DEFAULT_MODEL_PATH = os.path.join(_SCRIPT_DIR, "model", "lstm_model.pt")
+DEFAULT_OUTPUT_DIR = os.path.join(_SCRIPT_DIR, "predictions")
 
 SEQ_DIM = 483
-ECG_DIM = 37
+ECG_DIM = 12
 STATIC_DIM = 196
 INPUT_DIM = SEQ_DIM + ECG_DIM
 HIDDEN_DIM = 128
@@ -282,7 +280,7 @@ def main():
     parser.add_argument("--model", type=str, default=DEFAULT_MODEL_PATH)
     parser.add_argument("--output_dir", type=str, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--cache_dir", type=str, default=None,
-                        help="LSTM cache dir (default: lstm_cache/<split>)")
+                        help="LSTM cache dir (default: npz_full/<split>)")
     parser.add_argument("--split", type=str, default="test",
                         choices=["train", "val", "test", "external"],
                         help="Split to evaluate (default: test)")
@@ -297,7 +295,7 @@ def main():
     )
 
     SPLITS_DIR = os.environ.get("LSTM_SPLITS_DIR", os.path.join(args.data_folder, "splits"))
-    CACHE_DIR = args.cache_dir or os.path.join(_SCRIPT_DIR, "lstm_cache", args.split)
+    CACHE_DIR = args.cache_dir or os.path.join(_SCRIPT_DIR, "npz_full", args.split)
     os.makedirs(args.output_dir, exist_ok=True)
 
     logger.info("=" * 60)

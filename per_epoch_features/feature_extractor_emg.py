@@ -148,9 +148,10 @@ def _extract_emg_epoch(emg_filt, envelope, fs, baseline, mode="chin",
     log_hf_lf = float(np.log((high_power + EPS) / (low_power + EPS))
                       if low_power > 0 else 0.0)
 
-    # 下颏 3s mini-epoch
+    # 3s mini-epoch burst fraction for chin and both leg channels.
+    # Previously leg values were unconditionally converted to zero.
     phasic_fraction = np.nan
-    if mode == "chin" and abs(duration_sec - 30.0) < 1.0:
+    if abs(duration_sec - 30.0) < 1.0:
         mini_samples = int(round(3.0 * fs))
         active_mini = 0
         for mi in range(10):
