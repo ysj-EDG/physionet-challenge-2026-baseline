@@ -14,8 +14,7 @@
 6. [官方推理与评分](#6-官方推理与评分)
 7. [使用方法](#7-使用方法)
 8. [文件结构](#8-文件结构)
-9. [官方实验结果](#9-官方实验结果)
-10. [依赖环境](#10-依赖环境)
+9. [依赖环境](#9-依赖环境)
 
 ---
 
@@ -522,8 +521,6 @@ train_model.py
 不会重新提取特征。新克隆的官方评测环境没有本地缓存时，
 `team_code.py` 会从原始数据确定性划分 train/validation，并在临时目录提取特征。
 
-`train_lstm.py` 是内部训练后端，不再作为实验入口；旧 seed sweep 模型也不再用于
-后续正式实验。
 
 ---
 
@@ -560,8 +557,19 @@ python evaluate_model.py \
   -t output/table.csv
 ```
 
-正式比较以官方评分输出为准，重点包括 Age-conditioned AUROC 和 Reward；
-普通 AUROC、AUPRC、Accuracy、F-measure 等仅作为辅助分析。
+`evaluate_model.py` 输出以下指标：
+
+| 指标 | 说明 |
+|---|---|
+| Age-conditioned AUROC | 在年龄差不超过指定范围的正负样本对上计算排序能力，降低年龄分布差异的影响 |
+| Reward | 根据不同年龄的阳性患病率，对正确和错误分类进行患病率加权的奖励指标 |
+| Age-weighted AUROC | 按样本年龄分布对各年龄范围内的 AUROC 加权汇总 |
+| AUROC | 基于预测概率衡量全部正负样本的整体排序能力 |
+| AUPRC | 精确率-召回率曲线下面积，反映类别不平衡条件下的识别能力 |
+| Accuracy | 二分类预测的总体正确率 |
+| F-measure | 阳性类别精确率与召回率的调和平均值 |
+
+正式比较以 `evaluate_model.py` 的输出为准。
 
 ---
 
@@ -592,17 +600,17 @@ Docker 构建上下文通过 `.dockerignore` 排除 NPZ、模型权重、输出�
 
 ### 7.4 结果归档
 
-官方多 seed 流程的模型、推理输出、评分和摘要统一归档在：
+官方流程的模型、推理输出、评分和汇总结果归档在：
 
 ```text
 reports/milestones/output/seed_results/
 ```
 
-其中每个 `seed_<seed>/` 目录保存对应 seed 的模型、Test/External 推理结果、官方评分和日志；
-根目录下的 `official_seed_results.csv`、`official_seed_summary.csv` 和
-`run_summary.json` 分别保存逐项结果、汇总统计和运行元数据。
+结果表格、实验进度与对比分析见：
 
-详细实验记录见 `reports/weekly/2026-W30.md`。
+```text
+reports/weekly/2026-W30.md
+```
 
 ---
 
@@ -625,42 +633,7 @@ reports/milestones/output/seed_results/
 └── README.md
 ```
 
-本地保留但不提交：`data/`、`npz_full/`、`split/` 及 smoke/临时验证数据。
-归档在 `reports/milestones/output/` 的结果用于实验追踪，不进入 Docker 构建上下文。
-
----
-
-## 9. 官方实验结果
-
-固定划分包含 train 733、validation 158、test 158 和 external 54 条记录。当前模型
-使用 seed 7，在 validation AUROC 最优的第 7 个 epoch 保存，Platt 校准后的分类阈值为
-`0.0710483`。
-
-| 数据集 | Reward | Age-conditioned AUROC | Age-weighted AUROC | AUROC | AUPRC | Accuracy | F-measure |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| Test | 0.404 | 0.842 | 0.848 | 0.837 | 0.358 | 0.703 | 0.277 |
-| External | 1.343 | 0.719 | 0.678 | 0.773 | 0.418 | 0.759 | 0.480 |
-
-5 个 seed（1、7、42、2026、3407）均重新执行官方训练、逐患者推理和评分：
-
-| 数据集 | Reward | Age-conditioned AUROC | Age-weighted AUROC | AUROC | AUPRC | Accuracy | F-measure |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| Test，均值 ± SD | 0.320 ± 0.077 | 0.774 ± 0.115 | 0.785 ± 0.082 | 0.767 ± 0.083 | 0.284 ± 0.091 | 0.656 ± 0.110 | 0.237 ± 0.033 |
-| External，均值 ± SD | 1.099 ± 0.702 | 0.656 ± 0.119 | 0.627 ± 0.089 | 0.704 ± 0.114 | 0.318 ± 0.097 | 0.689 ± 0.087 | 0.382 ± 0.158 |
-
-按 validation AUROC 选择会得到 seed 42，但该 seed 的 test/external 泛化较弱，说明当前
-validation 划分的模型选择方差较大。完整明细位于
-`reports/milestones/output/seed_results/`。
-
-现有 Docker 环境挂载当前代码和 `npz_full` 重新训练后，test 158 条与 external 54 条
-预测标签均与本地归档一致；最大概率绝对差分别为 `1.11e-16` 和 `1.04e-16`。
-四个官方 scores/table 文件完全一致。
-
-结果路径：`reports/milestones/output/seed_results/`。
-
----
-
-## 10. 依赖环境
+## 9. 依赖环境
 
 ```
 numpy, scipy, pandas, scikit-learn
