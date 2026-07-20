@@ -10,11 +10,10 @@
 2. [数据与预处理](#2-数据与预处理)
 3. [特征工程](#3-特征工程)
 4. [模型架构](#4-模型架构)
-5. [官方训练流程](#5-官方训练流程)
-6. [官方推理与评分](#6-官方推理与评分)
-7. [使用方法](#7-使用方法)
-8. [文件结构](#8-文件结构)
-9. [依赖环境](#9-依赖环境)
+5. [训练流程](#5-训练流程)
+6. [使用与结果归档](#6-使用与结果归档)
+7. [文件结构](#7-文件结构)
+8. [依赖环境](#8-依赖环境)
 
 ---
 
@@ -68,12 +67,12 @@ PhysioNet Challenge 2026 训练集，包含多家医院 (Site) 的 PSG 记录。
 
 当前 LSTM 路线使用本地预生成的四个划分文件，统一放在仓库本地 `split/` 目录中：
 
-| 文件 | 集合 | 用途 |
-|------|------|------|
-| `train_records.json` | Train | 模型训练 |
-| `val_records.json` | Val | 早停、学习率调度和超参选择 |
-| `test_records.json` | Test | 主测试集推理与指标输出 |
-| `external_records.json` | External | 额外外部记录推理与泛化检查 |
+| 文件 | 集合 | 用途 | 样本数 | 阴性 | 阳性 | 阳性比例 | Site 分布 |
+|---|---|---|---:|---:|---:|---:|---|
+| `train_records.json` | Train | 模型训练 | 733 | 680 | 53 | 7.23% | I0006: 120, S0001: 613 |
+| `val_records.json` | Val | 早停、学习率调度和超参选择 | 158 | 146 | 12 | 7.59% | I0006: 34, S0001: 124 |
+| `test_records.json` | Test | 主测试集推理与指标输出 | 158 | 147 | 11 | 6.96% | I0006: 38, S0001: 120 |
+| `external_records.json` | External | 额外外部记录推理与泛化检查 | 54 | 46 | 8 | 14.81% | I0002: 54 |
 
 ### 2.3 通道预处理
 
@@ -118,7 +117,25 @@ PhysioNet Challenge 2026 训练集，包含多家医院 (Site) 的 PSG 记录。
 └──────────────────────────────────────────────────────┘
 ```
 
-### 3.1 人口学特征 (10 维)
+### 3.1 PerEpochExtractor — 统一入口
+
+**文件**：`per_epoch_features/per_epoch_extractor.py`
+**类别**：`PerEpochExtractor` (继承 DemographicMixin + AlgorithmicMixin + EEGCoherenceMixin)
+
+```python
+extractor = PerEpochExtractor()
+X_seq, X_ecg, x_static, y, mask = extractor.extract_all(record, data_folder)
+
+# X_seq:    (N_epochs, 483)   # per-epoch 主时序
+# X_ecg:    (N_5min_wins, 12)  # 滑动 ECG/HRV + circadian_cos
+# x_static: (196,)            # 全夜静态
+# y:        int               # 标签 0/1
+# mask:     (N_epochs,) bool  # 有 ECG 对齐的 epoch
+```
+
+---
+
+### 3.2 人口学特征 (10 维)
 
 **文件**：`per_epoch_features/feature_extractor_demographic.py`
 **类别**：`DemographicMixin`
@@ -130,7 +147,7 @@ PhysioNet Challenge 2026 训练集，包含多家医院 (Site) 的 PSG 记录。
 | 5–9 | Race | One-hot: Asian, Black, Others, Unavailable, White |
 | 10 | BMI | 连续值 (kg/m²) |
 
-### 3.2 算法标注特征 (186 维)
+### 3.3 算法标注特征 (186 维)
 
 **文件**：`per_epoch_features/feature_extractor_algorithmic.py`
 **类别**：`AlgorithmicMixin`
@@ -138,7 +155,7 @@ PhysioNet Challenge 2026 训练集，包含多家医院 (Site) 的 PSG 记录。
 
 CAISR 睡眠分期编码：`1=N3, 2=N2, 3=N1, 4=REM, 5=Wake`
 
-#### 3.2.1 睡眠结构特征 (84 维)
+#### 3.3.1 睡眠结构特征 (84 维)
 
 **基础睡眠参数 (7 维)**：TRT, TST, SE, SOL, REM_latency, wake_time, WASO
 
@@ -197,7 +214,7 @@ deep_sleep_preservation_index = N3_pct + longest_N3_hours − N3_fragmentation
 REM_integrity_index        = REM_pct + mean_REM_bout_hours − REM_fragmentation
 ```
 
-#### 3.2.2 觉醒事件特征 (30 维)
+#### 3.3.2 觉醒事件特征 (30 维)
 
 **事件分割**：二值标签 (0.5s 分辨率) → diff 找边 → (start_sec, end_sec, duration)
 
@@ -217,7 +234,7 @@ REM_integrity_index        = REM_pct + mean_REM_bout_hours − REM_fragmentation
 - 呼吸关联：觉醒与呼吸事件重叠 ±10s
 - 肢体关联：觉醒与肢体事件重叠 ±10s
 
-#### 3.2.3 呼吸事件特征 (42 维)
+#### 3.3.3 呼吸事件特征 (42 维)
 
 **事件分割**：多类标签序列 (1s 分辨率，0=无, 1=OA, 2=CA, 3=MA, 4=HY, 5=RERA)，连续同标签合并为一个事件。
 
@@ -239,7 +256,7 @@ central_dominance = CA / total
 
 **最长事件簇**：贪心聚类，相邻事件间隔 < 30s 视为同一簇。
 
-#### 3.2.4 肢体运动事件特征 (30 维)
+#### 3.3.4 肢体运动事件特征 (30 维)
 
 **事件分割**：多类标签 (1s 分辨率，0=无, 1=孤立性, 2=周期性 PLM)
 
@@ -254,7 +271,7 @@ central_dominance = CA / total
 
 ---
 
-### 3.3 EEG Per-Epoch 特征 (432 维/epoch)
+### 3.4 EEG Per-Epoch 特征 (432 维/epoch)
 
 **文件**：`per_epoch_features/feature_extractor_eeg_coherence.py`
 **类别**：`EEGCoherenceMixin`
@@ -299,7 +316,7 @@ central_dominance = CA / total
 
 ---
 
-### 3.4 EMG Per-Epoch 特征 (24 维/epoch)
+### 3.5 EMG Per-Epoch 特征 (24 维/epoch)
 
 **文件**：`per_epoch_features/feature_extractor_emg.py`
 **类别**：`EMGMixin`
@@ -329,7 +346,7 @@ central_dominance = CA / total
 
 ---
 
-### 3.5 呼吸 Per-Epoch 特征 (14 维/epoch)
+### 3.6 呼吸 Per-Epoch 特征 (14 维/epoch)
 
 **文件**：`per_epoch_features/feature_extractor_resp.py`
 **类别**：`RespMixin`
@@ -356,7 +373,7 @@ central_dominance = CA / total
 
 ---
 
-### 3.6 事件 OneHot Per-Epoch 特征 (13 维/epoch)
+### 3.7 事件 OneHot Per-Epoch 特征 (13 维/epoch)
 
 **文件**：`per_epoch_features/feature_extractor_event_onehot.py`
 **类别**：`EventOneHotMixin`
@@ -372,7 +389,7 @@ central_dominance = CA / total
 
 ---
 
-### 3.7 ECG HRV 与昼夜节律特征 (12 维/5min-window)
+### 3.8 ECG HRV 与昼夜节律特征 (12 维/5min-window)
 
 **文件**：`per_epoch_features/feature_extractor_ecg_neurokit.py`
 **类别**：`ECGNeurokitMixin`
@@ -410,24 +427,6 @@ ECG 原始信号 (200 Hz)
 #### 时间对齐
 
 前 5 分钟 (epoch 0–9) 无 ECG 特征。从第 10 个 epoch 开始，`X_ecg[i]` 对齐第 `10+i` 个 epoch。mask 向量标记哪些 epoch 有完整 ECG。
-
----
-
-### 3.8 PerEpochExtractor — 统一入口
-
-**文件**：`per_epoch_features/per_epoch_extractor.py`
-**类别**：`PerEpochExtractor` (继承 DemographicMixin + AlgorithmicMixin + EEGCoherenceMixin)
-
-```python
-extractor = PerEpochExtractor()
-X_seq, X_ecg, x_static, y, mask = extractor.extract_all(record, data_folder)
-
-# X_seq:    (N_epochs, 483)   # per-epoch 主时序
-# X_ecg:    (N_5min_wins, 12)  # 滑动 ECG/HRV + circadian_cos
-# x_static: (196,)            # 全夜静态
-# y:        int               # 标签 0/1
-# mask:     (N_epochs,) bool  # 有 ECG 对齐的 epoch
-```
 
 ---
 
@@ -500,53 +499,104 @@ X_seq, X_ecg, x_static, y, mask = extractor.extract_all(record, data_folder)
 
 ---
 
-## 5. 官方训练流程
+## 5. 训练流程
 
-后续实验统一从官方入口启动：
+### 5.0 数据准备
 
-```bash
-python train_model.py -d data -m output/model -v
+训练入口接收包含标签的 Challenge 数据目录，目录中至少包括 `demographics.csv`、
+`physiological_data/` 和 `algorithmic_annotations/`。本地实验区与官方环境采用相同特征定义，
+但数据准备路径不同：
+
+```text
+实验区
+split/*.json + npz_full/{train,val,test,external}/*.npz
+    → 按固定划分直接加载缓存
+    → 不重复读取 EDF 和提取特征
+
+官方环境
+带标签的 demographics.csv + 原始 PSG/CAISR EDF
+    → team_code.py 按标签执行确定性 SHA256 分层划分
+    → PerEpochExtractor 逐患者提取特征
+    → 临时生成 train/val/test NPZ
+    → 训练结束后仅保留 model 目录中的模型文件
 ```
 
-调用链为：
+单条 NPZ 包含：
+
+| 字段 | 形状 | 说明 |
+|---|---|---|
+| `X_seq` | `(N_epochs, 483)` | EEG、EMG、呼吸和事件时序特征 |
+| `X_ecg` | `(N_5min_windows, 12)` | ECG/HRV 与昼夜节律特征 |
+| `x_static` | `(196,)` | 人口学和 CAISR 全夜静态特征 |
+| `y` | 标量 | 二分类标签，仅训练阶段使用 |
+| `mask` | `(N_epochs,)` | ECG 时间对齐有效位置 |
+
+### 5.1 官方训练：`train_model.py`
+
+运行命令：
+
+```bash
+python train_model.py -d /path/to/training_data -m output/model -v
+```
+
+调用链：
 
 ```text
 train_model.py
-    → team_code.train_model()
-        → train_lstm.py
+    → team_code.train_model(data_folder, model_folder, verbose)
+        ├── 实验区：验证固定 split 与 npz_full 后直接调用训练后端
+        ├── 官方环境：确定性分层划分并逐条提取临时 NPZ
+        └── train_lstm.py
+            ├── 训练 2-Layer LSTM
+            ├── 按 validation AUROC 选择 checkpoint
+            ├── 在 validation 上拟合 Platt 概率校准
+            └── 保存分类阈值和模型元数据
 ```
 
-当 `-d data` 指向仓库内的固定数据目录，且 `split/` 与
-`npz_full/{train,val,test,external}/` 均存在时，训练会直接复用已有 NPZ，
-不会重新提取特征。新克隆的官方评测环境没有本地缓存时，
-`team_code.py` 会从原始数据确定性划分 train/validation，并在临时目录提取特征。
+| 类型 | 路径或内容 |
+|---|---|
+| 输入 | `-d`：带标签的 Challenge 训练数据目录 |
+| 输出目录 | `-m`：官方在训练与推理阶段之间持久化的模型目录 |
+| 主要输出 | `<model_folder>/lstm_model.pt` |
 
+### 5.2 官方推理：`run_model.py`
 
----
-
-## 6. 官方推理与评分
-
-### 6.1 推理
+运行命令：
 
 ```bash
-python run_model.py -d /path/to/input_data -m output/model -o output/predictions -v
+python run_model.py \
+  -d /path/to/holdout_data \
+  -m output/model \
+  -o output/predictions \
+  -v
 ```
 
-官方调用链为：
+调用链：
 
 ```text
 run_model.py
-    → team_code.load_model()
-    → team_code.run_model()  # 每位患者调用一次
+    → team_code.load_model(model_folder, verbose)
+        ├── 加载 checkpoint 与特征维度
+        ├── 重建 LSTM 并恢复权重
+        └── 恢复 Platt 校准器和分类阈值
+    → 对每位患者调用 team_code.run_model(model, record, data_folder, verbose)
+        ├── 优先读取可用 NPZ 缓存
+        ├── 无缓存时从原始 PSG/CAISR EDF 提取特征
+        ├── 将 ECG 从第 10 个 epoch 开始对齐
+        ├── 执行单患者推理与概率校准
+        └── 生成二分类结果和预测概率
 ```
 
-`team_code.py` 内部包含 LSTM 结构、checkpoint 权重加载、ECG 从第 10 个 epoch
-开始的对齐、单患者推理、Platt 概率校准和阈值化。推理优先按记录名读取 NPZ；
-缓存不存在时回退到原始 PSG 特征提取。
+| 类型 | 路径或内容 |
+|---|---|
+| 输入数据 | `-d`：可不包含标签的 holdout 数据目录 |
+| 输入模型 | `-m`：训练阶段生成的 model 目录 |
+| 输出目录 | `-o`：逐患者预测结果目录 |
+| 主要输出 | `<output_folder>/demographics.csv`，包含 `Cognitive_Impairment` 和 `Cognitive_Impairment_Probability` |
 
-### 6.2 评分
+### 5.3 官方评分：`evaluate_model.py`
 
-`evaluate_model.py` 是独立的官方评分脚本，不负责加载模型或生成预测：
+运行命令：
 
 ```bash
 python evaluate_model.py \
@@ -557,7 +607,17 @@ python evaluate_model.py \
   -t output/table.csv
 ```
 
-`evaluate_model.py` 输出以下指标：
+`evaluate_model.py` 独立读取标签、预测和年龄患病率数据，不负责加载模型或生成预测。
+
+| 参数 | 输入/输出 | 说明 |
+|---|---|---|
+| `-d` | 输入 | holdout 标签 CSV |
+| `-o` | 输入 | `run_model.py` 生成的预测 CSV |
+| `-p` | 输入 | 用于估计不同年龄阳性患病率的标签 CSV |
+| `-s` | 输出 | 总体评分文件 |
+| `-t` | 输出 | 按年龄汇总的评分明细表 |
+
+官方输出指标：
 
 | 指标 | 说明 |
 |---|---|
@@ -573,23 +633,15 @@ python evaluate_model.py \
 
 ---
 
-## 7. 使用方法
+## 6. 使用与结果归档
 
-### 7.1 安装依赖
+### 6.1 安装依赖
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 7.2 完整官方流程
-
-```bash
-python train_model.py -d data -m output/model -v
-python run_model.py -d /path/to/test -m output/model -o output/test -v
-python evaluate_model.py --help
-```
-
-### 7.3 Docker
+### 6.2 Docker
 
 ```bash
 docker build -t physionet-challenge-2026-baseline .
@@ -598,7 +650,7 @@ docker build -t physionet-challenge-2026-baseline .
 Docker 构建上下文通过 `.dockerignore` 排除 NPZ、模型权重、输出、日志和本地 smoke
 资产，避免将实验数据打入提交镜像。
 
-### 7.4 结果归档
+### 6.3 结果归档
 
 官方流程的模型、推理输出、评分和汇总结果归档在：
 
@@ -614,28 +666,50 @@ reports/weekly/2026-W30.md
 
 ---
 
-## 8. 文件结构
+## 7. 文件结构
 
 ```text
 .
 ├── train_model.py                  # 官方训练命令入口
 ├── run_model.py                    # 官方逐患者批量推理入口
 ├── evaluate_model.py               # 官方独立评分入口
-├── team_code.py                    # 训练桥接、模型定义、加载、单患者推理与校准
-├── train_lstm.py                   # team_code 调用的内部训练后端
+├── team_code.py                    # 模型、训练桥接、加载、单患者推理与校准
+├── train_lstm.py                   # team_code 调用的 LSTM 训练后端
 ├── helper_code.py                  # 官方数据读取与输出辅助函数
-├── per_epoch_features/             # 483/12/196 特征提取实现
+├── channel_table.csv               # PSG 通道名称标准化映射
+├── per_epoch_features/
+│   ├── __init__.py                 # 对外导出特征提取 API
+│   ├── __main__.py                 # python -m per_epoch_features 入口
+│   ├── per_epoch_extractor.py      # 统一提取 X_seq、X_ecg、x_static 和 mask
+│   ├── per_epoch_api.py            # 可复用 Python API 与命令行实现
+│   ├── helper_code.py              # EDF、demographics 和通道数据读取
+│   ├── channel_table.csv           # 特征包内部通道名称映射
+│   ├── feature_extractor_demographic.py       # 10 维人口学静态特征
+│   ├── feature_extractor_algorithmic.py       # 186 维 CAISR 静态特征
+│   ├── feature_extractor_eeg_coherence.py     # EEG 频谱与相干时序特征
+│   ├── eeg_sleep_features.py                  # EEG PSD/相干底层计算
+│   ├── feature_extractor_eeg_bsr.py           # 18 维 EEG BSR 特征
+│   ├── feature_extractor_emg.py               # 24 维 EMG 时序特征
+│   ├── feature_extractor_resp.py              # 14 维呼吸时序特征
+│   ├── feature_extractor_event_onehot.py      # 13 维分期与事件特征
+│   ├── feature_extractor_ecg_neurokit.py      # 11 维 ECG/HRV 窗口特征
+│   ├── feature_extractor_hrv_circadian_cos.py # 1 维昼夜节律特征
+│   ├── example_external_call.py    # 外部程序调用 API 的示例
+│   ├── requirements.txt            # 特征包最小依赖
+│   └── README.md                   # 特征包接口说明
 ├── reports/
-│   ├── milestones/output/          # 官方多 seed 结果（仅保留 seed_results）
+│   ├── milestones/output/          # 官方流程实验结果归档
 │   └── weekly/                     # 周度实验记录
 ├── requirements.txt                # Python 依赖
 ├── Dockerfile                      # 官方提交镜像
 └── README.md
 ```
 
-## 9. 依赖环境
+---
 
-```
+## 8. 依赖环境
+
+```text
 numpy, scipy, pandas, scikit-learn
 torch
 neurokit2
