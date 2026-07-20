@@ -14,7 +14,7 @@
 6. [推理与评估](#6-推理与评估)
 7. [使用方法](#7-使用方法)
 8. [文件结构](#8-文件结构)
-9. [实验结果](#9-实验结果)
+9. [当前验证状态](#9-当前验证状态)
 10. [依赖环境](#10-依赖环境)
 
 ---
@@ -40,15 +40,15 @@
          │
          └── Per-30s 时序主特征 (483 维/epoch)
                Per-epoch: EEG(432, 含18维 BSR) + EMG(24) + Resp(14) + OneHot(13)
-               + ECG HRV(37) (滑动5分钟窗口, stride=30s, 对齐后拼接)
-               → LSTM 时序输入 520 维/epoch
+               + ECG HRV(12) (滑动5分钟窗口, stride=30s, 对齐后拼接)
+               → LSTM 时序输入 495 维/epoch
 ```
 
 ### 模型
 
 | 模型 | 输入 | 参数量 | 保存路径 |
 |------|------|--------|----------|
-| **2-Layer LSTM** | 变长时序 (520/epoch) + 196 静态 | ~1.0M | `lstm_model/lstm_model.pt` |
+| **2-Layer LSTM** | 变长时序 (495/epoch) + 196 静态 | ~0.48M | `lstm_model/lstm_model.pt` |
 
 ---
 
@@ -107,8 +107,8 @@ PhysioNet Challenge 2026 训练集，包含多家医院 (Site) 的 PSG 记录。
 ┌──────────────────────────────────────────────────────┐
 │  时序输入 (per epoch, 变长)                           │
 │  = EEG(432, 含 BSR) + EMG(24) + Resp(14) + OneHot(13)  │
-│    + ECG HRV(37, 滑动5分钟, stride=30s, 对齐后拼接)      │
-│  = 520 dims/epoch                                     │
+│    + ECG HRV(12, 滑动5分钟, stride=30s, 对齐后拼接)      │
+│  = 495 dims/epoch                                     │
 ├──────────────────────────────────────────────────────┤
 │  静态拼接 (全夜, 固定)                                 │
 │  = Demographic(10) + Algorithmic(186)                 │
@@ -373,7 +373,7 @@ central_dominance = CA / total
 
 ---
 
-### 3.7 ECG HRV 与昼夜节律特征 (37 维/5min-window)
+### 3.7 ECG HRV 与昼夜节律特征 (12 维/5min-window)
 
 **文件**：`per_epoch_features/feature_extractor_ecg_neurokit.py`
 **类别**：`ECGNeurokitMixin`
@@ -389,7 +389,7 @@ ECG 原始信号 (200 Hz)
     → nk.signal_fixpeaks(method="Kubios", iterative=True)  # 间期校正
     → nk.hrv_time() + nk.hrv_frequency(psd_method="welch")
       + nk.hrv_nonlinear() + nk.hrv_symbolic()
-    → 每窗口 36 维 ECG/HRV + 1 维 circadian_cos
+    → 每窗口 11 维 ECG/HRV + 1 维 circadian_cos
 ```
 
 #### 11 个 NeuroKit 核心特征
@@ -424,7 +424,7 @@ extractor = PerEpochExtractor()
 X_seq, X_ecg, x_static, y, mask = extractor.extract_all(record, data_folder)
 
 # X_seq:    (N_epochs, 483)   # per-epoch 主时序
-# X_ecg:    (N_5min_wins, 37)  # 滑动 ECG/HRV + circadian_cos
+# X_ecg:    (N_5min_wins, 12)  # 滑动 ECG/HRV + circadian_cos
 # x_static: (196,)            # 全夜静态
 # y:        int               # 标签 0/1
 # mask:     (N_epochs,) bool  # 有 ECG 对齐的 epoch
@@ -438,8 +438,8 @@ X_seq, X_ecg, x_static, y, mask = extractor.extract_all(record, data_folder)
 
 ```
                     X_seq (T×483) ──┐
-                    X_ecg (T×37) ────┤
-                                     ├── concat → (T×520)
+                    X_ecg (T×12) ────┤
+                                     ├── concat → (T×495)
                                     │
     ┌───────────────────────────────┘
     │
@@ -472,7 +472,7 @@ X_seq, X_ecg, x_static, y, mask = extractor.extract_all(record, data_folder)
          sigmoid → P ∈ [0, 1]
 ```
 
-**参数量**：~1,027,713
+**参数量**：481,153
 
 **训练超参数**：
 
@@ -501,195 +501,135 @@ X_seq, X_ecg, x_static, y, mask = extractor.extract_all(record, data_folder)
 
 ---
 
-## 5. 训练流程
+## 5. 官方训练流程
 
-### 5.1 数据准备
-
-```bash
-python split_dataset.py
-```
-
-输出 `{data_folder}/splits/`：
-```
-train_records.json   (70%)
-val_records.json     (10%)
-test_records.json    (20%)
-split_summary.json
-```
-
-### 5.2 训练 LSTM
+后续实验统一从官方入口启动：
 
 ```bash
-python train_lstm.py
+python train_model.py -d data -m output/model -v
 ```
 
-**特征缓存机制**：首次运行对每条记录调用 `PerEpochExtractor.extract_all()` 并写入 `lstm_cache/{train,val,test}/*.npz`，后续运行直接从缓存加载（毫秒级）。
+调用链为：
 
-**训练流程**：
+```text
+train_model.py
+    → team_code.train_model()
+        → train_lstm.py
+```
 
-1. 加载 `train/val/test` 的 records JSON
-2. 构建 `PSGDataset`（首次提取特征 + 写入缓存，后续直接读缓存）
-3. 构建 `DataLoader` + 自定义 `collate_fn`（变长序列 pad + ECG 对齐）
-4. 特征诊断：对第一个 batch 打印各张量的 shape / nan / inf / min / max / mean / std
-5. 训练循环：
-   - 每 epoch 训练完在 val 集上评估 AUROC + TPR@5%
-   - ReduceLROnPlateau（val AUROC 上 8 epoch 不涨则学习率减半）
-   - 早停：15 epoch 无提升
-6. 加载最佳 checkpoint，在 test 集上评估
-7. 保存 `lstm_model/lstm_model.pt`（含 state_dict + val_auroc）
+当 `-d data` 指向仓库内的固定数据目录，且 `split/` 与
+`npz_full/{train,val,test,external}/` 均存在时，训练会直接复用已有 NPZ，
+不会重新提取特征。新克隆的官方评测环境没有本地缓存时，
+`team_code.py` 会从原始数据确定性划分 train/validation，并在临时目录提取特征。
+
+`train_lstm.py` 是内部训练后端，不再作为实验入口；旧 seed sweep 模型也不再用于
+后续正式实验。
 
 ---
 
-## 6. 推理与评估
+## 6. 官方推理与评分
 
-### 6.1 推理脚本
+### 6.1 推理
 
 ```bash
-python infer_lstm.py
-# 或指定参数
-python infer_lstm.py --data_folder /path/to/data --batch_size 256 --output_dir ./results
+python run_model.py -d /path/to/input_data -m output/model -o output/predictions -v
 ```
 
-**优化策略**：
+官方调用链为：
 
-| 优化 | 说明 |
-|------|------|
-| **预加载** | 一次性将所有 `.npz` 缓存读入内存，消除 per-batch 磁盘 I/O |
-| **长度排序** | 按序列长度降序排列，同 batch 内长度相近 → padding 浪费最小 |
-| **大批次** | 默认 batch_size=256（仅推理无梯度，GPU 利用率充分） |
-| **inference_mode** | `torch.inference_mode()` 替代 `no_grad()`，禁用 autograd 开销 |
-| **cudnn benchmark** | GPU 上自动选择最优卷积算法 |
-| **cache miss 跳过** | 缓存不存在的记录直接跳过，不实时提取 |
+```text
+run_model.py
+    → team_code.load_model()
+    → team_code.run_model()  # 每位患者调用一次
+```
 
-### 6.2 输出文件
+`team_code.py` 内部包含 LSTM 结构、checkpoint 权重加载、ECG 从第 10 个 epoch
+开始的对齐、单患者推理、Platt 概率校准和阈值化。推理优先按记录名读取 NPZ；
+缓存不存在时回退到原始 PSG 特征提取。
 
-| 文件 | 格式 | 内容 |
-|------|------|------|
-| `lstm_test_predictions.csv` | CSV | `BDSPPatientID, Cognitive_Impairment, Cognitive_Impairment_Probability` |
-| `lstm_test_metrics.txt` | 文本 | 完整评估指标（分组+全文） |
+### 6.2 评分
 
-### 6.3 评估指标
+`evaluate_model.py` 是独立的官方评分脚本，不负责加载模型或生成预测：
 
-| 类别 | 指标 |
-|------|------|
-| **基本信息** | n_total, n_positive, n_negative, pos_ratio |
-| **概率分布** | prob_mean, prob_std, prob_median, prob_min, prob_max |
-| **核心指标** | AUROC, AUPRC, Accuracy, F1, Precision, Recall, Specificity |
-| **混淆矩阵** | TP, TN, FP, FN |
-| **TPR@容量** | TPR@1%, @5%, @10%, @20%, @30%, @50% (含对应 capacity) |
-| **分类条件概率** | 正/负类的预测概率均值 |
-| **最佳阈值** | Youden's J 最优阈值及对应 TPR/FPR |
-| **性能统计** | preload time, inference time, total wall time |
+```bash
+python evaluate_model.py \
+  -d /path/to/labels.csv \
+  -o output/predictions/demographics.csv \
+  -p /path/to/prevalence.csv \
+  -s output/scores.csv \
+  -t output/table.csv
+```
+
+正式比较以官方评分输出为准，重点包括 Age-conditioned AUROC 和 Reward；
+普通 AUROC、AUPRC、Accuracy、F-measure 等仅作为辅助分析。
 
 ---
 
 ## 7. 使用方法
 
-### 7.1 环境配置
+### 7.1 安装依赖
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 7.2 完整训练 + 推理流程
+### 7.2 完整官方流程
 
 ```bash
-# 1. 划分数据集
-python split_dataset.py
-
-# 2. 训练 LSTM (~数小时 GPU)
-python train_lstm.py
-
-# 3. 测试集推理 + 输出指标
-python infer_lstm.py
+python train_model.py -d data -m output/model -v
+python run_model.py -d /path/to/test -m output/model -o output/test -v
+python evaluate_model.py --help
 ```
 
-### 7.3 路径配置
+### 7.3 Docker
 
-训练脚本默认路径（根据实际环境修改）：
-
-```python
-# train_lstm.py
-DATA_FOLDER = "/mnt/database/physionet2026/training_set"
-```
-
-推理脚本支持命令行参数：
 ```bash
-python infer_lstm.py --data_folder /path/to/training_set --model lstm_model/lstm_model.pt
+docker build -t physionet-challenge-2026-baseline .
 ```
+
+Docker 构建上下文通过 `.dockerignore` 排除 NPZ、模型权重、输出、日志和本地 smoke
+资产，避免将实验数据打入提交镜像。
+
+### 7.4 四样本 smoke 流程
+
+当前工作区暂时保留本地 H100 smoke 工具：
+
+```bash
+bash submit_h100_smoke.sh
+```
+
+它会对 4 条记录核对新鲜提取特征，并依次调用官方 `train_model.py` 和
+`run_model.py`。这些本地 smoke 文件和产物由 `.gitignore` 排除，不属于正式提交。
 
 ---
 
 ## 8. 文件结构
 
-```
+```text
 .
-├── team_code.py                    # 官方提交入口；桥接训练、模型加载、单记录推理和批量推理
-├── train_lstm.py                   # LSTM 训练入口；构建 Dataset/DataLoader、训练、验证、测试评估和保存模型
-├── infer_lstm.py                   # LSTM 推理入口；读取缓存特征，输出预测 CSV 和评估指标
-├── per_epoch_features/                    # 可移植的加速特征提取包
-│   ├── per_epoch_extractor.py             # 483/37/196 特征统一入口
-│   ├── feature_extractor_algorithmic.py   # CAISR 静态与事件特征
-│   ├── feature_extractor_eeg_coherence.py # EEG 频谱、相干与 BSR
-│   ├── feature_extractor_ecg_neurokit.py  # 37 维滑窗 ECG/HRV + circadian_cos
-│   ├── feature_extractor_emg.py           # EMG per-epoch 特征
-│   ├── feature_extractor_resp.py          # 呼吸 per-epoch 特征
-│   └── eeg_sleep_features.py              # EEG 睡眠频谱和辅助算法
-├── helper_code.py                  # PhysioNet 官方数据读取、记录遍历和输出写入辅助函数
-├── evaluate_model.py               # 官方评估脚本；计算挑战指标和输出评估结果
-├── run_model.py                    # 官方批量运行脚本；对数据目录逐记录调用模型
-├── train_model.py                  # 官方训练包装入口；保持挑战模板兼容
-├── create_labels.py                # 本地标签生成/检查辅助脚本；当前不属于主训练入口
-├── channel_table.csv               # PSG 通道别名与标准名映射
-├── requirements.txt                # Python 运行依赖
-├── Dockerfile                      # 官方 CUDA/PyTorch 构建文件
-├── docs/                           # 方法记录、笔记和文献阅读
-├── reports/                        # 周报、里程碑材料、图片和 H100 结果归档
-├── splits/                         # 本地划分 JSON，不提交
-├── lstm_cache/                     # 模型目录内的本地 .npz 特征缓存，不提交
-├── reports/milestones/output/      # H100 运行结果归档：模型、test/external 预测和指标
-└── README.md                       # 本文件
+├── train_model.py                  # 官方训练命令入口
+├── run_model.py                    # 官方逐患者批量推理入口
+├── evaluate_model.py               # 官方独立评分入口
+├── team_code.py                    # 训练桥接、模型定义、加载、单患者推理与校准
+├── train_lstm.py                   # team_code 调用的内部训练后端
+├── helper_code.py                  # 官方数据读取与输出辅助函数
+├── per_epoch_features/             # 483/12/196 特征提取实现
+├── requirements.txt                # Python 依赖
+├── Dockerfile                      # 官方提交镜像
+└── README.md
 ```
+
+本地保留但不提交：`npz_full/`、`split/`、模型输出、4 样本 smoke 数据与结果。
 
 ---
 
-## 9. 实验结果
+## 9. 当前验证状态
 
-> 测试集 122 条记录 (正负各 61)，GPU (CUDA)，batch_size=256
-
-| 指标 | 值 |
-|------|-----|
-| **AUROC** | **0.7221** |
-| **AUPRC** | **0.6680** |
-| Accuracy | 0.5492 |
-| F1 | 0.6893 |
-| Precision | 0.5259 |
-| Recall | 1.0000 |
-| Specificity | 0.0984 |
-| | |
-| TP | 61 |
-| TN | 6 |
-| FP | 55 |
-| FN | 0 |
-| | |
-| **TPR@1%** (cap=1) | 1.0000 |
-| **TPR@5%** (cap=6) | 0.5000 |
-| **TPR@10%** (cap=12) | 0.5833 |
-| **TPR@20%** (cap=24) | 0.7083 |
-| **TPR@30%** (cap=36) | 0.6944 |
-| **TPR@50%** (cap=61) | 0.6885 |
-| | |
-| 正类概率均值 | 0.8209 |
-| 负类概率均值 | 0.7045 |
-| Youden 最佳阈值 | 0.7242 |
-| 最佳阈值 TPR | 0.8525 |
-| 最佳阈值 FPR | 0.4262 |
-| | |
-| 预加载耗时 | 1.7s |
-| 推理耗时 | 0.3s |
-| 总耗时 | 2.1s |
-
-完整指标见 `lstm_results/lstm_test_metrics.txt`。
+- `team_code.py` 已内聚旧推理模块的全部必要能力，不再依赖 `infer_lstm.py`。
+- 4 样本已通过官方 `run_model.py` 逐患者推理。
+- GPU 单患者与旧批量 LSTM 推理的最大概率绝对差为 `9.57e-06`。
+- 其中 1 条概率紧邻 checkpoint 阈值，浮点差导致边界标签翻转；以官方逐患者输出为准。
+- 完整 H100 smoke 仍保留，用于后续重新训练、特征一致性与官方入口联调。
 
 ---
 
@@ -722,8 +662,8 @@ joblib         # 模型序列化
 | resp | 呼吸信号 | 14 | — | airflow(7) + thorax(2) + abd(2) + joint(3) |
 | onehot | 事件 OneHot | 13 | — | stage(5) + arousal + resp(5) + limb(2) |
 | **epoch 主时序合计** | | **483** | — | 432 + 24 + 14 + 13 |
-| ecg | 滑窗 ECG/HRV + circadian | 37 | — | 11 NeuroKit + 25 optional HRVAnalysis + 1 circadian_cos |
-| **LSTM 每步输入** | | **520** | — | 483 + 37 (ECG 对齐后拼接) |
+| ecg | 滑窗 ECG/HRV + circadian | 12 | — | 11 NeuroKit + 25 optional HRVAnalysis + 1 circadian_cos |
+| **LSTM 每步输入** | | **495** | — | 483 + 12 (ECG 对齐后拼接) |
 | **静态合计** | | — | **196** | demo(10) + algo(186) |
 
 ## 附录 B: CAISR 编码速查表

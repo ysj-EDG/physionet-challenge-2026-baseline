@@ -3,7 +3,7 @@
 2-Layer LSTM + Static Feature Concatenation.
 
 时序输入: per-30s epoch (EEG 432 + EMG 24 + Resp 14 + OneHot 13) = 483 dims
-ECG 输入: 滑动5分钟窗口 37 dims (36 HRV + circadian_cos, 从第5分钟开始对齐)
+ECG 输入: 滑动5分钟窗口 12 dims (11 HRV + circadian_cos, 从第5分钟开始对齐)
 静态输入: demographic(10) + algorithmic(186) = 196 dims
 
 架构:

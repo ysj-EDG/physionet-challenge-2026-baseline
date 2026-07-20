@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-"""Challenge entry points backed by the current 12-D ECG LSTM pipeline.
+"""Official Challenge training, model loading, and per-patient inference.
 
 The official scripts call only ``train_model``, ``load_model`` and ``run_model``.
-Local experiments keep using the unchanged cache-backed scripts directly.
+The LSTM architecture and inference implementation live in this module.
 """
 
 from __future__ import annotations
@@ -20,33 +20,141 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import torch
+import torch.nn as nn
 
-import infer_lstm
 from helper_code import DEMOGRAPHICS_FILE, HEADERS, load_label
 
+# ============================================================================
+# Configuration
+# ============================================================================
+# 固定特征维度和网络超参数；必须同时匹配 NPZ 缓存结构与
+# train_lstm.py 生成的 checkpoint。
 
-SEQ_FEATURE_DIM = infer_lstm.SEQ_DIM
-ECG_DIM = infer_lstm.ECG_DIM
-STATIC_DIM = infer_lstm.STATIC_DIM
+SEQ_FEATURE_DIM = 483
+ECG_DIM = 12
+STATIC_DIM = 196
+INPUT_DIM = SEQ_FEATURE_DIM + ECG_DIM
+HIDDEN_DIM = 128
+NUM_LAYERS = 2
+DROPOUT = 0.3
+FC_HIDDEN = 64
+ECG_EPOCH_OFFSET = 10
 
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+if DEVICE.type == "cuda":
+    torch.backends.cudnn.benchmark = True
+
+# ============================================================================
+# Model Architecture
+# ============================================================================
+# checkpoint 仅保存 state_dict，因此这里是官方推理加载权重时使用的
+# 标准模型结构。
+
+class LSTMModel(nn.Module):
+    """与本地及官方训练 checkpoint 完全一致的双层 LSTM。"""
+
+    def __init__(self):
+        super().__init__()
+        self.lstm = nn.LSTM(
+            INPUT_DIM,
+            HIDDEN_DIM,
+            NUM_LAYERS,
+            batch_first=True,
+            dropout=DROPOUT,
+            bidirectional=False,
+        )
+        self.fc = nn.Sequential(
+            nn.Linear(2 * HIDDEN_DIM + STATIC_DIM, FC_HIDDEN),
+            nn.ReLU(),
+            nn.Dropout(DROPOUT),
+            nn.Linear(FC_HIDDEN, 1),
+        )
+
+    def forward(self, X_seq, X_ecg, x_static, lengths):
+        inputs = torch.cat([X_seq, X_ecg], dim=-1)
+        packed = nn.utils.rnn.pack_padded_sequence(
+            inputs,
+            lengths.cpu(),
+            batch_first=True,
+            enforce_sorted=True,
+        )
+        _, (hidden, _) = self.lstm(packed)
+        recurrent_features = torch.cat([hidden[0], hidden[1]], dim=-1)
+        combined = torch.cat([recurrent_features, x_static], dim=-1)
+        return self.fc(combined).squeeze(-1)
+
+# ============================================================================
+# Probability Calibration and Single-Patient Inference
+# ============================================================================
+# 网络输出原始 logit；Platt 校准器将其转换为概率。_infer_one 复现官方
+# 单记录推理路径，并把较短的 ECG 序列从第 10 个 epoch 开始对齐。
+
+def _sigmoid(values):
+    """使用数值稳定的 sigmoid 将 logits 转换为概率。"""
+    values = np.asarray(values, dtype=float)
+    return 1.0 / (1.0 + np.exp(-np.clip(values, -50.0, 50.0)))
+
+
+def _apply_calibrator(logits, calibrator):
+    """应用保存的 Platt 校准器；无校准器时直接使用 sigmoid。"""
+    if not calibrator:
+        return _sigmoid(logits)
+    coefficient = float(calibrator.get("coef", 1.0))
+    intercept = float(calibrator.get("intercept", 0.0))
+    return _sigmoid(coefficient * np.asarray(logits, dtype=float) + intercept)
+
+
+@torch.inference_mode()
+def _infer_one(network, sample):
+    """构建单患者张量、完成 ECG 对齐并返回一个 logit。"""
+    length = int(sample["length"])
+    X_seq = torch.zeros(1, length, SEQ_FEATURE_DIM, device=DEVICE)
+    X_ecg = torch.zeros(1, length, ECG_DIM, device=DEVICE)
+    x_static = torch.zeros(1, STATIC_DIM, device=DEVICE)
+    lengths = torch.tensor([length], dtype=torch.long, device=DEVICE)
+
+    X_seq[0, :length] = torch.from_numpy(sample["X_seq"]).to(DEVICE)
+    ecg_length = min(sample["X_ecg"].shape[0], length - ECG_EPOCH_OFFSET)
+    if ecg_length > 0:
+        X_ecg[0, ECG_EPOCH_OFFSET:ECG_EPOCH_OFFSET + ecg_length] = torch.from_numpy(
+            sample["X_ecg"][:ecg_length]
+        ).to(DEVICE)
+    x_static[0] = torch.from_numpy(sample["x_static"]).to(DEVICE)
+
+    logit = network(X_seq, X_ecg, x_static, lengths)
+    return float(logit.detach().cpu().item())
+
+# ============================================================================
+# Workspace Paths and Record Identity
+# ============================================================================
+# 记录键负责关联 demographics 行、split JSON 条目和 NPZ 文件名。
+# ROOT 为官方封装中的所有仓库内路径提供统一基准。
 
 ROOT = Path(__file__).resolve().parent
 SPLIT_NAMES = ("train", "val", "test", "external")
 
 
 def _record_key(record):
+    """返回缓存 NPZ 使用的标准 BIDS/session 记录键。"""
     return f"{record[HEADERS['bids_folder']]}_ses-{record[HEADERS['session_id']]}"
 
 
 def _record_identifiers(record):
+    """仅保留生成 split JSON 所需的记录标识。"""
     return {
         HEADERS["bids_folder"]: record[HEADERS["bids_folder"]],
         HEADERS["site_id"]: record[HEADERS["site_id"]],
         HEADERS["session_id"]: record[HEADERS["session_id"]],
     }
 
+# ============================================================================
+# Feature Validation and Raw-Data Extraction
+# ============================================================================
+# 缓存样本和实时提取样本在进入网络前统一执行 dtype、shape、非有限值
+# 以及隐藏标签兼容处理。
 
 def _normalise_arrays(X_seq, X_ecg, x_static, mask):
+    """验证特征形状、转换 dtype，并替换非有限值。"""
     X_seq = np.asarray(X_seq, dtype=np.float32)
     if X_seq.ndim != 2 or len(X_seq) == 0 or X_seq.shape[1] != SEQ_FEATURE_DIM:
         raise ValueError(f"invalid X_seq shape {X_seq.shape}")
@@ -79,7 +187,7 @@ def _normalise_arrays(X_seq, X_ecg, x_static, mask):
 
 @contextmanager
 def _label_optional_extraction():
-    """Make feature extraction work when official holdout labels are hidden."""
+    """在官方隐藏集不提供标签时，允许特征提取继续运行。"""
     import per_epoch_features.per_epoch_extractor as extractor_module
 
     original = extractor_module.load_diagnoses
@@ -91,6 +199,7 @@ def _label_optional_extraction():
 
 
 def _extract_features(record, data_folder):
+    """NPZ 缓存不存在时，从 Challenge 原始文件提取单条记录。"""
     from per_epoch_features.per_epoch_extractor import PerEpochExtractor
 
     with _label_optional_extraction():
@@ -99,8 +208,14 @@ def _extract_features(record, data_folder):
         )
     return _normalise_arrays(X_seq, X_ecg, x_static, mask)
 
+# ============================================================================
+# Official Training Preparation
+# ============================================================================
+# 本地实验复用固定 split 和 npz_full；官方环境没有缓存时，则从输入原始
+# 数据确定性地生成 train/validation 划分和临时 NPZ。
 
 def _has_fixed_local_cache(data_folder):
+    """检查仓库内固定 split 和 NPZ 缓存是否可直接复用。"""
     try:
         is_local_data = Path(data_folder).resolve() == (ROOT / "data").resolve()
     except OSError:
@@ -112,7 +227,7 @@ def _has_fixed_local_cache(data_folder):
 
 
 def _stable_train_val_split(frame, validation_fraction=0.20):
-    """Deterministic label-stratified split for official training data."""
+    """对官方训练数据执行确定性的标签分层划分。"""
     train_indices, val_indices = [], []
     labels = frame.apply(lambda row: load_label(row.to_dict()), axis=1)
     for label in sorted(labels.unique()):
@@ -129,12 +244,14 @@ def _stable_train_val_split(frame, validation_fraction=0.20):
 
 
 def _write_records(frame, path):
+    """将官方记录标识写入 split JSON。"""
     records = [_record_identifiers(row) for row in frame.to_dict("records")]
     path.write_text(json.dumps(records, indent=2) + "\n", encoding="utf-8")
     return records
 
 
 def _cache_records(records, rows_by_key, split, cache_root, data_folder):
+    """为一个训练划分提取并缓存全部记录。"""
     split_dir = cache_root / split
     split_dir.mkdir(parents=True, exist_ok=True)
     for record in records:
@@ -153,6 +270,7 @@ def _cache_records(records, rows_by_key, split, cache_root, data_folder):
 
 
 def _link_validation_as_test(cache_root, validation_records):
+    """将 validation NPZ 复用为训练器内部诊断 test split。"""
     test_dir = cache_root / "test"
     test_dir.mkdir(parents=True, exist_ok=True)
     for record in validation_records:
@@ -165,6 +283,7 @@ def _link_validation_as_test(cache_root, validation_records):
 
 
 def _run_unchanged_trainer(data_folder, model_folder, splits_dir, cache_dir, verbose):
+    """使用官方封装传入的路径和随机种子启动 train_lstm.py。"""
     env = os.environ.copy()
     env.update(
         {
@@ -184,7 +303,7 @@ def _run_unchanged_trainer(data_folder, model_folder, splits_dir, cache_dir, ver
 
 
 def train_model(data_folder, model_folder, verbose):
-    """Train through the official API while preserving the current LSTM code."""
+    """通过官方 API 训练，同时复用当前 LSTM 训练后端。"""
     data_folder = Path(data_folder).resolve()
     model_folder = Path(model_folder).resolve()
     model_folder.mkdir(parents=True, exist_ok=True)
@@ -212,11 +331,17 @@ def train_model(data_folder, model_folder, verbose):
         _link_validation_as_test(cache_root, val_records)
         _run_unchanged_trainer(data_folder, model_folder, splits_dir, cache_root, verbose)
 
+# ============================================================================
+# Checkpoint Loading
+# ============================================================================
+# 官方 run_model.py 仅调用一次：验证 checkpoint、重建 LSTM、恢复校准器
+# 与阈值，并准备后续所有患者共用的缓存搜索路径。
 
 def load_model(model_folder, verbose):
+    """加载 checkpoint，并返回可跨患者复用的全部推理状态。"""
     model_folder = Path(model_folder).resolve()
     model_path = model_folder / "lstm_model.pt"
-    checkpoint = torch.load(model_path, map_location=infer_lstm.device, weights_only=False)
+    checkpoint = torch.load(model_path, map_location=DEVICE, weights_only=False)
     if not isinstance(checkpoint, dict) or "state_dict" not in checkpoint:
         raise RuntimeError(f"Unsupported checkpoint format: {model_path}")
 
@@ -225,7 +350,7 @@ def load_model(model_folder, verbose):
     if saved_dims is not None and saved_dims != expected_dims:
         raise RuntimeError(f"Checkpoint feature dimensions {saved_dims} do not match {expected_dims}")
 
-    network = infer_lstm.LSTMModel().to(infer_lstm.device)
+    network = LSTMModel().to(DEVICE)
     network.load_state_dict(checkpoint["state_dict"])
     network.eval()
 
@@ -245,8 +370,14 @@ def load_model(model_folder, verbose):
         "threshold": float(checkpoint.get("threshold", 0.5)),
     }
 
+# ============================================================================
+# Inference Sample Loading
+# ============================================================================
+# 推理优先读取预计算 NPZ；未命中时回退到原始数据特征提取，并尝试写入
+# 推理缓存。数值裁剪与训练保持一致，避免极端特征破坏 LSTM 稳定性。
 
 def _cached_sample(record, cache_roots):
+    """从首个命中该记录的缓存中返回已验证数组。"""
     name = f"{_record_key(record)}.npz"
     for root in cache_roots:
         candidates = [root / name] + [root / split / name for split in SPLIT_NAMES]
@@ -262,6 +393,7 @@ def _cached_sample(record, cache_roots):
 
 
 def _sample(record, data_folder, cache_roots):
+    """构建 _infer_one 使用的标准化样本字典。"""
     arrays = _cached_sample(record, cache_roots)
     if arrays is None:
         arrays = _extract_features(record, data_folder)
@@ -286,14 +418,19 @@ def _sample(record, data_folder, cache_roots):
         "rec_key": _record_key(record),
     }
 
+# ============================================================================
+# Official Per-Patient Inference Entry Point
+# ============================================================================
+# 未修改的官方 run_model.py 对每位患者调用一次；返回 Challenge 输出表
+# 所需的阈值化二分类结果和校准概率。
 
 def run_model(model, record, data_folder, verbose):
-    """Run one official record; failures are raised instead of hidden as 0.5."""
+    """执行一条官方记录；异常直接抛出，不以 0.5 隐藏失败。"""
     sample = _sample(record, data_folder, model["cache_roots"])
-    _labels, logits, _keys = infer_lstm.infer_batched(
-        model["network"], [sample], batch_size=1
+    logit = _infer_one(model["network"], sample)
+    probability = float(
+        _apply_calibrator(np.asarray([logit]), model["calibrator"])[0]
     )
-    probability = float(infer_lstm.apply_calibrator(logits, model["calibrator"])[0])
     if not np.isfinite(probability):
         raise RuntimeError(f"Non-finite prediction for {_record_key(record)}")
     probability = float(np.clip(probability, 0.0, 1.0))
