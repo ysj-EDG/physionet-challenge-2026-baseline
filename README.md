@@ -48,7 +48,7 @@
 
 | 模型 | 输入 | 参数量 | 保存路径 |
 |------|------|--------|----------|
-| **2-Layer LSTM** | 变长时序 (495/epoch) + 196 静态 | ~0.48M | `reports/milestones/output/model/lstm_model.pt` |
+| **2-Layer LSTM** | 变长时序 (495/epoch) + 196 静态 | ~0.48M | `reports/milestones/output/seed_results/seed_<seed>/model/lstm_model.pt` |
 
 ---
 
@@ -592,22 +592,15 @@ Docker 构建上下文通过 `.dockerignore` 排除 NPZ、模型权重、输出�
 
 ### 7.4 结果归档
 
-当前固定官方流程的模型、推理输出、标签副本、评分和摘要统一归档在：
+官方多 seed 流程的模型、推理输出、评分和摘要统一归档在：
 
 ```text
-reports/milestones/output/
+reports/milestones/output/seed_results/
 ```
 
-其中：
-
-- `model/lstm_model.pt`：官方流程重新训练的 checkpoint
-- `test/demographics.csv`、`external/demographics.csv`：官方逐患者推理输出
-- `scores/test_scores.csv`、`scores/external_scores.csv`：官方评分摘要
-- `scores/test_table.csv`、`scores/external_table.csv`：官方逐年龄表
-- `seed_results/official_seed_results.csv`：5 个 seed 的官方逐项结果
-- `seed_results/official_seed_summary.csv`：多 seed 均值、标准差和范围
-- `seed_results/run_summary.json`：运行环境、选择规则和 checkpoint 元数据
-- `summary.json`：当前固定模型、阈值、校准器和主要结果汇总
+其中每个 `seed_<seed>/` 目录保存对应 seed 的模型、Test/External 推理结果、官方评分和日志；
+根目录下的 `official_seed_results.csv`、`official_seed_summary.csv` 和
+`run_summary.json` 分别保存逐项结果、汇总统计和运行元数据。
 
 详细实验记录见 `reports/weekly/2026-W30.md`。
 
@@ -625,7 +618,7 @@ reports/milestones/output/
 ├── helper_code.py                  # 官方数据读取与输出辅助函数
 ├── per_epoch_features/             # 483/12/196 特征提取实现
 ├── reports/
-│   ├── milestones/output/          # 当前官方模型、输入、预测、评分和摘要
+│   ├── milestones/output/          # 官方多 seed 结果（仅保留 seed_results）
 │   └── weekly/                     # 周度实验记录
 ├── requirements.txt                # Python 依赖
 ├── Dockerfile                      # 官方提交镜像
@@ -663,7 +656,7 @@ validation 划分的模型选择方差较大。完整明细位于
 预测标签均与本地归档一致；最大概率绝对差分别为 `1.11e-16` 和 `1.04e-16`。
 四个官方 scores/table 文件完全一致。
 
-结果路径：`reports/milestones/output/`。
+结果路径：`reports/milestones/output/seed_results/`。
 
 ---
 
