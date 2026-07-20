@@ -604,8 +604,10 @@ reports/milestones/output/
 - `test/demographics.csv`、`external/demographics.csv`：官方逐患者推理输出
 - `scores/test_scores.csv`、`scores/external_scores.csv`：官方评分摘要
 - `scores/test_table.csv`、`scores/external_table.csv`：官方逐年龄表
-- `scores/official_comparison.csv`：官方重训练模型与历史 seed 结果对照
-- `summary.json`：当前模型、阈值、校准器和主要结果汇总
+- `seed_results/official_seed_results.csv`：5 个 seed 的官方逐项结果
+- `seed_results/official_seed_summary.csv`：多 seed 均值、标准差和范围
+- `seed_results/run_summary.json`：运行环境、选择规则和 checkpoint 元数据
+- `summary.json`：当前固定模型、阈值、校准器和主要结果汇总
 
 详细实验记录见 `reports/weekly/2026-W30.md`。
 
@@ -645,6 +647,17 @@ reports/milestones/output/
 |---|---:|---:|---:|---:|---:|---:|---:|
 | Test | 0.404 | 0.842 | 0.848 | 0.837 | 0.358 | 0.703 | 0.277 |
 | External | 1.343 | 0.719 | 0.678 | 0.773 | 0.418 | 0.759 | 0.480 |
+
+5 个 seed（1、7、42、2026、3407）均重新执行官方训练、逐患者推理和评分：
+
+| 数据集 | Reward | Age-conditioned AUROC | Age-weighted AUROC | AUROC | AUPRC | Accuracy | F-measure |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Test，均值 ± SD | 0.320 ± 0.077 | 0.774 ± 0.115 | 0.785 ± 0.082 | 0.767 ± 0.083 | 0.284 ± 0.091 | 0.656 ± 0.110 | 0.237 ± 0.033 |
+| External，均值 ± SD | 1.099 ± 0.702 | 0.656 ± 0.119 | 0.627 ± 0.089 | 0.704 ± 0.114 | 0.318 ± 0.097 | 0.689 ± 0.087 | 0.382 ± 0.158 |
+
+按 validation AUROC 选择会得到 seed 42，但该 seed 的 test/external 泛化较弱，说明当前
+validation 划分的模型选择方差较大。完整明细位于
+`reports/milestones/output/seed_results/`。
 
 现有 Docker 环境挂载当前代码和 `npz_full` 重新训练后，test 158 条与 external 54 条
 预测标签均与本地归档一致；最大概率绝对差分别为 `1.11e-16` 和 `1.04e-16`。

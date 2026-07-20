@@ -1,0 +1,73 @@
+{
+  "workflow": "train_model.py -> run_model.py -> evaluate_model.py",
+  "environment": "sleepfm_env",
+  "seeds": [
+    1,
+    7,
+    42,
+    2026,
+    3407
+  ],
+  "selection_rule": "maximum validation AUROC; test/external not used",
+  "selected_seed": 42,
+  "selected_validation_auroc": 0.7928082191780822,
+  "checkpoints": {
+    "1": {
+      "seed": 1,
+      "best_epoch": 3,
+      "validation_auroc": 0.7391552511415526,
+      "threshold": 0.06335867250163878,
+      "calibrator": {
+        "method": "platt_logistic",
+        "coef": 0.3142945114064298,
+        "intercept": -3.2249008795988865
+      }
+    },
+    "7": {
+      "seed": 7,
+      "best_epoch": 7,
+      "validation_auroc": 0.7080479452054794,
+      "threshold": 0.07104830421758436,
+      "calibrator": {
+        "method": "platt_logistic",
+        "coef": 0.40797682475858066,
+        "intercept": -3.050874504717275
+      }
+    },
+    "42": {
+      "seed": 42,
+      "best_epoch": 1,
+      "validation_auroc": 0.7928082191780822,
+      "threshold": 0.11827101532828285,
+      "calibrator": {
+        "method": "platt_logistic",
+        "coef": 0.8238994717358142,
+        "intercept": -4.928972233221087
+      }
+    },
+    "2026": {
+      "seed": 2026,
+      "best_epoch": 11,
+      "validation_auroc": 0.7157534246575342,
+      "threshold": 0.0626659854856451,
+      "calibrator": {
+        "method": "platt_logistic",
+        "coef": 0.35133023619227943,
+        "intercept": -3.02022582005387
+      }
+    },
+    "3407": {
+      "seed": 3407,
+      "best_epoch": 6,
+      "validation_auroc": 0.7265981735159818,
+      "threshold": 0.05985618720231912,
+      "calibrator": {
+        "method": "platt_logistic",
+        "coef": 0.5434964328902451,
+        "intercept": -3.667694861011905
+      }
+    }
+  },
+  "detail_csv": "reports/milestones/output/seed_results/official_seed_results.csv",
+  "summary_csv": "reports/milestones/output/seed_results/official_seed_summary.csv"
+}

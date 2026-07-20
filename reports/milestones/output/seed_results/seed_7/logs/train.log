@@ -1,0 +1,50 @@
+2026-07-20 10:00:22 | INFO    | train_lstm | Device: cuda
+2026-07-20 10:00:22 | INFO    | train_lstm | Random seed: 7 (deterministic algorithms enabled)
+2026-07-20 10:00:22 | INFO    | train_lstm | Data folder: /database/home/gaohaojie/workspace/python-example-2026/data
+2026-07-20 10:00:22 | INFO    | train_lstm | Splits dir: /database/home/gaohaojie/workspace/python-example-2026/split
+2026-07-20 10:00:22 | INFO    | train_lstm | Cache dir: /database/home/gaohaojie/workspace/python-example-2026/npz_full
+2026-07-20 10:00:22 | INFO    | train_lstm | Model dir: /database/home/gaohaojie/workspace/python-example-2026/reports/milestones/output/seed_results/seed_7/model
+2026-07-20 10:00:22 | INFO    | train_lstm | Loaded train split: 733 records from /database/home/gaohaojie/workspace/python-example-2026/split/train_records.json
+2026-07-20 10:00:22 | INFO    | train_lstm | Loaded val split: 158 records from /database/home/gaohaojie/workspace/python-example-2026/split/val_records.json
+2026-07-20 10:00:22 | INFO    | train_lstm | Loaded test split: 158 records from /database/home/gaohaojie/workspace/python-example-2026/split/test_records.json
+2026-07-20 10:00:22 | INFO    | train_lstm | Total: Train=733, Val=158, Test=158
+2026-07-20 10:00:22 | INFO    | train_lstm | Building datasets (cache dir: /database/home/gaohaojie/workspace/python-example-2026/npz_full)...
+2026-07-20 10:00:22 | INFO    | train_lstm | Dataset sizes: Train=733, Val=158, Test=158
+2026-07-20 10:00:22 | INFO    | train_lstm | Balanced train sampler enabled: class_counts={0: 680, 1: 53} missing=0 num_samples=733 replacement=True
+2026-07-20 10:00:22 | INFO    | train_lstm | Running feature diagnostic on first training batch...
+2026-07-20 10:00:22 | INFO    | train_lstm |   X_seq: shape=(8, 994, 483), nan=0, inf=0, min=-31.8582, max=50.0000, mean=1.3583, std=3.5725
+2026-07-20 10:00:23 | INFO    | train_lstm |   X_ecg: shape=(8, 994, 12), nan=0, inf=0, min=-0.1716, max=50.0000, mean=8.1716, std=16.5246
+2026-07-20 10:00:23 | INFO    | train_lstm |   x_static: shape=(8, 196), nan=0, inf=0, min=-50.0000, max=50.0000, mean=24.2619, std=23.2065
+2026-07-20 10:00:23 | INFO    | train_lstm |   y: 6 positives out of 8
+2026-07-20 10:00:23 | INFO    | train_lstm | LSTM model created: LSTMModel
+2026-07-20 10:00:23 | INFO    | train_lstm | Trainable params: 481153
+2026-07-20 10:00:24 | INFO    | train_lstm | Train cached labels: pos=53 neg=680 missing=0 pos_weight=12.830189
+2026-07-20 10:00:25 | INFO    | train_lstm | Checkpoint selection: score = val_auroc
+2026-07-20 10:01:08 | INFO    | train_lstm | Epoch   1 | loss=18.1124 | val_auroc=0.5274 | val_tpr5=0.4286 | select_score=0.5274 | time=43s
+2026-07-20 10:01:52 | INFO    | train_lstm | Epoch   2 | loss=2.6899 | val_auroc=0.5308 | val_tpr5=0.1429 | select_score=0.5308 | time=44s
+2026-07-20 10:02:36 | INFO    | train_lstm | Epoch   3 | loss=2.2512 | val_auroc=0.5114 | val_tpr5=0.2857 | select_score=0.5114 | time=44s
+2026-07-20 10:03:20 | INFO    | train_lstm | Epoch   4 | loss=2.2443 | val_auroc=0.6564 | val_tpr5=0.1429 | select_score=0.6564 | time=44s
+2026-07-20 10:04:04 | INFO    | train_lstm | Epoch   5 | loss=2.0364 | val_auroc=0.6638 | val_tpr5=0.1429 | select_score=0.6638 | time=44s
+2026-07-20 10:05:04 | INFO    | train_lstm | Epoch   6 | loss=1.8923 | val_auroc=0.6729 | val_tpr5=0.2857 | select_score=0.6729 | time=60s
+2026-07-20 10:05:46 | INFO    | train_lstm | Epoch   7 | loss=1.9312 | val_auroc=0.7080 | val_tpr5=0.4286 | select_score=0.7080 | time=42s
+2026-07-20 10:06:29 | INFO    | train_lstm | Epoch   8 | loss=1.7080 | val_auroc=0.6812 | val_tpr5=0.1429 | select_score=0.6812 | time=42s
+2026-07-20 10:07:09 | INFO    | train_lstm | Epoch   9 | loss=1.6450 | val_auroc=0.6886 | val_tpr5=0.2857 | select_score=0.6886 | time=40s
+2026-07-20 10:07:53 | INFO    | train_lstm | Epoch  10 | loss=1.8295 | val_auroc=0.6861 | val_tpr5=0.4286 | select_score=0.6861 | time=43s
+2026-07-20 10:08:39 | INFO    | train_lstm | Epoch  11 | loss=1.7442 | val_auroc=0.6661 | val_tpr5=0.2857 | select_score=0.6661 | time=46s
+2026-07-20 10:09:24 | INFO    | train_lstm | Epoch  12 | loss=1.7090 | val_auroc=0.6875 | val_tpr5=0.2857 | select_score=0.6875 | time=46s
+2026-07-20 10:10:06 | INFO    | train_lstm | Epoch  13 | loss=1.4211 | val_auroc=0.6632 | val_tpr5=0.1429 | select_score=0.6632 | time=42s
+2026-07-20 10:10:46 | INFO    | train_lstm | Epoch  14 | loss=1.4341 | val_auroc=0.6615 | val_tpr5=0.2857 | select_score=0.6615 | time=40s
+2026-07-20 10:11:42 | INFO    | train_lstm | Epoch  15 | loss=1.5487 | val_auroc=0.6233 | val_tpr5=0.2857 | select_score=0.6233 | time=56s
+2026-07-20 10:12:25 | INFO    | train_lstm | Epoch  16 | loss=1.3698 | val_auroc=0.6045 | val_tpr5=0.2857 | select_score=0.6045 | time=43s
+2026-07-20 10:13:05 | INFO    | train_lstm | Epoch  17 | loss=1.3953 | val_auroc=0.6804 | val_tpr5=0.2857 | select_score=0.6804 | time=41s
+2026-07-20 10:13:45 | INFO    | train_lstm | Epoch  18 | loss=1.3108 | val_auroc=0.6969 | val_tpr5=0.2857 | select_score=0.6969 | time=40s
+2026-07-20 10:14:25 | INFO    | train_lstm | Epoch  19 | loss=1.2666 | val_auroc=0.6227 | val_tpr5=0.1429 | select_score=0.6227 | time=40s
+2026-07-20 10:15:04 | INFO    | train_lstm | Epoch  20 | loss=1.2962 | val_auroc=0.6638 | val_tpr5=0.1429 | select_score=0.6638 | time=40s
+2026-07-20 10:15:46 | INFO    | train_lstm | Epoch  21 | loss=1.1897 | val_auroc=0.6396 | val_tpr5=0.1429 | select_score=0.6396 | time=42s
+2026-07-20 10:16:27 | INFO    | train_lstm | Epoch  22 | loss=1.1535 | val_auroc=0.6364 | val_tpr5=0.1429 | select_score=0.6364 | time=40s
+2026-07-20 10:16:27 | INFO    | train_lstm | Early stopping at epoch 22 (best epoch=7 score=0.7080 AUROC=0.7080 TPR@5%=0.4286)
+2026-07-20 10:16:33 | INFO    | train_lstm | Validation calibration: method=platt_logistic coef=0.407977 intercept=-3.050875 threshold=0.071048 raw_prob_mean=0.685086 calibrated_prob_mean=0.075936 calibrated_auroc=0.7080
+2026-07-20 10:16:33 | INFO    | train_lstm | Validation threshold (Youden): threshold=0.071048 tpr=0.6667 fpr=0.3014
+2026-07-20 10:16:39 | INFO    | train_lstm | Test raw-logit ranking: AUROC=0.8374, TPR@5%=0.4286
+2026-07-20 10:16:39 | INFO    | train_lstm | Model saved to /database/home/gaohaojie/workspace/python-example-2026/reports/milestones/output/seed_results/seed_7/model/lstm_model.pt
+Running unchanged trainer: /database/home/gaohaojie/.conda/envs/sleepfm_env/bin/python /database/home/gaohaojie/workspace/python-example-2026/train_lstm.py
