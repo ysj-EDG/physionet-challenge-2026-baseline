@@ -1,5 +1,5 @@
 numpy>=1.24
 scipy>=1.10
 pandas>=2.0
-neurokit2>=0.2
+neurokit2==0.2.13
 edfio>=0.4

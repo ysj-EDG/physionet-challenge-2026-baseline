@@ -56,7 +56,10 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
 
     def __init__(self, csv_path=None):
         if csv_path is None:
-            csv_path = os.path.join(_SCRIPT_DIR, "channel_table.csv")
+            # Use the official, repository-root channel table.  The package-local
+            # historical copy can lag behind new-site aliases (for example
+            # EKG-L/EKG-R and ECG1/ECG2 in the supplementary hidden-site data).
+            csv_path = os.path.join(os.path.dirname(_SCRIPT_DIR), "channel_table.csv")
         self.csv_path = os.path.abspath(csv_path)
         self._rename_rules_cache = None
 
@@ -389,14 +392,26 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
         from .eeg_sleep_features import eeg_segment_coherence, N_PAIRS, N_FFT_BINS
 
         EEG_CH = ['f3-m2', 'f4-m1', 'c3-m2', 'c4-m1', 'o1-m2', 'o2-m1']
+        # Determine the recording length from an EEG channel that actually
+        # exists before creating zero placeholders. If the first expected
+        # channel (typically F3-M2) is absent, using a fixed 6000-sample
+        # placeholder would make the later minimum-length alignment truncate
+        # an otherwise complete overnight recording to one epoch.
+        available_eeg = [
+            np.asarray(std_data[ch], dtype=float)
+            for ch in EEG_CH
+            if ch in std_data
+            and std_data[ch] is not None
+            and len(std_data[ch]) > 1
+        ]
+        ref_len = len(available_eeg[0]) if available_eeg else 6000
+
         eeg_signals = []
-        ref_len = None
         for ch in EEG_CH:
             if ch in std_data and std_data[ch] is not None and len(std_data[ch]) > 1:
                 eeg_signals.append(np.asarray(std_data[ch], dtype=float))
-                ref_len = len(std_data[ch])
             else:
-                eeg_signals.append(np.zeros(ref_len or 6000, dtype=float))
+                eeg_signals.append(np.zeros(ref_len, dtype=float))
 
         # Handle rare case where EEG channels have mismatched lengths.
         lengths = set(len(s) for s in eeg_signals)

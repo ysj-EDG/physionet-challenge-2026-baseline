@@ -14,6 +14,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import warnings
 from contextlib import contextmanager
 from pathlib import Path
 from collections import Counter
@@ -163,6 +164,8 @@ def _record_identifiers(record):
 
 def _normalise_arrays(X_seq, X_ecg, x_static, mask):
     """验证特征形状、转换 dtype，并替换非有限值。"""
+    if X_seq is None:
+        raise ValueError("X_seq is None")
     X_seq = np.asarray(X_seq, dtype=np.float32)
     if X_seq.ndim != 2 or len(X_seq) == 0 or X_seq.shape[1] != SEQ_FEATURE_DIM:
         raise ValueError(f"invalid X_seq shape {X_seq.shape}")
@@ -174,6 +177,8 @@ def _normalise_arrays(X_seq, X_ecg, x_static, mask):
     if X_ecg.ndim != 2 or X_ecg.shape[1] != ECG_DIM:
         raise ValueError(f"invalid X_ecg shape {X_ecg.shape}")
 
+    if x_static is None:
+        raise ValueError("x_static is None")
     x_static = np.asarray(x_static, dtype=np.float32)
     if x_static.shape != (STATIC_DIM,):
         raise ValueError(f"invalid x_static shape {x_static.shape}")
@@ -206,15 +211,77 @@ def _label_optional_extraction():
         extractor_module.load_diagnoses = original
 
 
-def _extract_features(record, data_folder):
-    """NPZ 缓存不存在时，从 Challenge 原始文件提取单条记录。"""
+def _fallback_arrays(record, x_static, reason):
+    """Return a model-safe static-only sample for one failed record."""
+    key = _record_key(record)
+    static = np.zeros(STATIC_DIM, dtype=np.float32)
+    if x_static is not None:
+        try:
+            candidate = np.asarray(x_static, dtype=np.float32)
+            if candidate.shape == (STATIC_DIM,):
+                static = np.nan_to_num(candidate, nan=0.0, posinf=0.0, neginf=0.0)
+        except (TypeError, ValueError):
+            pass
+    warnings.warn(
+        f"Feature fallback for {key}: {reason}. "
+        "Using one zero sequence epoch and available static features.",
+        RuntimeWarning,
+        stacklevel=2,
+    )
+    return (
+        np.zeros((1, SEQ_FEATURE_DIM), dtype=np.float32),
+        np.zeros((0, ECG_DIM), dtype=np.float32),
+        static,
+        np.zeros(1, dtype=bool),
+    )
+
+
+def _is_fallback_arrays(arrays):
+    """Identify the sentinel sample so transient failures are not cached."""
+    X_seq, X_ecg, _x_static, mask = arrays
+    return (
+        X_seq.shape == (1, SEQ_FEATURE_DIM)
+        and not np.any(X_seq)
+        and X_ecg.shape == (0, ECG_DIM)
+        and mask.shape == (1,)
+        and not np.any(mask)
+    )
+
+
+def _extract_features(record, data_folder, allow_fallback=False):
+    """Extract one record, optionally degrading failed records to static data."""
     from per_epoch_features.per_epoch_extractor import PerEpochExtractor
 
-    with _label_optional_extraction():
-        X_seq, X_ecg, x_static, _unused_y, mask = PerEpochExtractor().extract_all(
-            record, str(data_folder)
-        )
-    return _normalise_arrays(X_seq, X_ecg, x_static, mask)
+    try:
+        with _label_optional_extraction():
+            result = PerEpochExtractor().extract_all(record, str(data_folder))
+    except Exception as exc:
+        reason = f"extractor raised {type(exc).__name__}: {exc}"
+        if allow_fallback:
+            return _fallback_arrays(record, None, reason)
+        raise RuntimeError(
+            f"Feature extraction failed for {_record_key(record)}: {reason}"
+        ) from exc
+
+    try:
+        X_seq, X_ecg, x_static, _unused_y, mask = result
+    except (TypeError, ValueError) as exc:
+        reason = f"extractor returned an invalid result: {exc}"
+        if allow_fallback:
+            return _fallback_arrays(record, None, reason)
+        raise RuntimeError(
+            f"Feature extraction failed for {_record_key(record)}: {reason}"
+        ) from exc
+
+    try:
+        return _normalise_arrays(X_seq, X_ecg, x_static, mask)
+    except (TypeError, ValueError) as exc:
+        reason = str(exc)
+        if allow_fallback:
+            return _fallback_arrays(record, x_static, reason)
+        raise RuntimeError(
+            f"Feature extraction failed for {_record_key(record)}: {reason}"
+        ) from exc
 
 # ============================================================================
 # Official Training Preparation
@@ -389,16 +456,26 @@ def _link_cached_feature(source, target):
             shutil.copy2(source, target)
 
 
-def _prepare_records(records, rows_by_key, split, cache_root, data_folder, feature_pool):
+def _prepare_records(
+    records, rows_by_key, split, cache_root, data_folder, feature_pool, verbose=False,
+):
     """优先从特征池重组一个新划分，仅为缺失记录提取特征。"""
     split_dir = cache_root / split
     split_dir.mkdir(parents=True, exist_ok=True)
     reused = extracted = 0
-    for record in records:
+    total = len(records)
+    width = len(str(total))
+    for index, record in enumerate(records, start=1):
         key = _record_key(record)
         output_path = split_dir / f"{key}.npz"
         source = feature_pool.get(output_path.name)
         if source is not None:
+            if verbose:
+                print(
+                    f"- {index:>{width}}/{total} [{split}] {key}: "
+                    f"reusing {source}",
+                    flush=True,
+                )
             with np.load(source, allow_pickle=False) as cached:
                 missing = REQUIRED_NPZ_KEYS - set(cached.files)
                 if missing: raise ValueError(f"NPZ {source} missing keys: {sorted(missing)}")
@@ -410,7 +487,14 @@ def _prepare_records(records, rows_by_key, split, cache_root, data_folder, featu
             continue
 
         row = rows_by_key[key]
-        X_seq, X_ecg, x_static, mask = _extract_features(record, data_folder)
+        if verbose:
+            print(
+                f"- {index:>{width}}/{total} [{split}] {key}: extracting...",
+                flush=True,
+            )
+        X_seq, X_ecg, x_static, mask = _extract_features(
+            record, data_folder, allow_fallback=True,
+        )
         np.savez_compressed(
             output_path,
             X_seq=X_seq,
@@ -419,6 +503,12 @@ def _prepare_records(records, rows_by_key, split, cache_root, data_folder, featu
             y=np.asarray(load_label(row), dtype=np.int64),
             mask=mask,
         )
+        if verbose:
+            print(
+                f"  saved {output_path} X_seq={X_seq.shape} "
+                f"X_ecg={X_ecg.shape}",
+                flush=True,
+            )
         extracted += 1
     return reused, extracted
 
@@ -484,10 +574,12 @@ def train_model(data_folder, model_folder, verbose):
             (splits_dir / "val_records.json").read_text(encoding="utf-8"), encoding="utf-8"
         )
         train_reused, train_extracted = _prepare_records(
-            train_records, rows_by_key, "train", cache_root, data_folder, feature_pool
+            train_records, rows_by_key, "train", cache_root, data_folder, feature_pool,
+            verbose,
         )
         val_reused, val_extracted = _prepare_records(
-            val_records, rows_by_key, "val", cache_root, data_folder, feature_pool
+            val_records, rows_by_key, "val", cache_root, data_folder, feature_pool,
+            verbose,
         )
         _link_validation_as_test(cache_root, val_records)
         if verbose:
@@ -549,11 +641,18 @@ def _cached_sample(record, cache_roots):
         for path in candidates:
             if not path.is_file():
                 continue
-            with np.load(path, allow_pickle=False) as data:
-                X_seq, X_ecg, x_static, mask = _normalise_arrays(
-                    data["X_seq"], data["X_ecg"], data["x_static"], data["mask"]
+            try:
+                with np.load(path, allow_pickle=False) as data:
+                    X_seq, X_ecg, x_static, mask = _normalise_arrays(
+                        data["X_seq"], data["X_ecg"], data["x_static"], data["mask"]
+                    )
+                return X_seq, X_ecg, x_static, mask
+            except Exception as exc:
+                warnings.warn(
+                    f"Ignoring invalid inference cache {path}: {type(exc).__name__}: {exc}",
+                    RuntimeWarning,
+                    stacklevel=2,
                 )
-            return X_seq, X_ecg, x_static, mask
     return None
 
 
@@ -561,17 +660,19 @@ def _sample(record, data_folder, cache_roots):
     """构建 _infer_one 使用的标准化样本字典。"""
     arrays = _cached_sample(record, cache_roots)
     if arrays is None:
-        arrays = _extract_features(record, data_folder)
-        target = cache_roots[-1] / f"{_record_key(record)}.npz"
-        try:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            np.savez_compressed(
-                target,
-                X_seq=arrays[0], X_ecg=arrays[1], x_static=arrays[2],
-                y=np.asarray(-1, dtype=np.int64), mask=arrays[3],
-            )
-        except OSError:
-            pass
+        arrays = _extract_features(
+            record, data_folder, allow_fallback=True,
+        )
+        if not _is_fallback_arrays(arrays):
+            target = cache_roots[-1] / f"{_record_key(record)}.npz"
+            try:
+                target.parent.mkdir(parents=True, exist_ok=True)
+                np.savez_compressed(
+                    target, X_seq=arrays[0], X_ecg=arrays[1], x_static=arrays[2],
+                    y=np.asarray(-1, dtype=np.int64), mask=arrays[3],
+                )
+            except OSError:
+                pass
     X_seq, X_ecg, x_static, mask = arrays
     return {
         "X_seq": np.clip(X_seq, -50.0, 50.0),
