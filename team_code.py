@@ -211,19 +211,9 @@ def _extract_features(record, data_folder):
 # ============================================================================
 # Official Training Preparation
 # ============================================================================
-# 本地实验复用固定 split 和 npz_full；官方环境没有缓存时，则从输入原始
-# 数据确定性地生成 train/validation 划分和临时 NPZ。
-
-def _has_fixed_local_cache(data_folder):
-    """检查仓库内固定 split 和 NPZ 缓存是否可直接复用。"""
-    try:
-        is_local_data = Path(data_folder).resolve() == (ROOT / "data").resolve()
-    except OSError:
-        return False
-    return is_local_data and all(
-        (ROOT / "npz_full" / split).is_dir() and (ROOT / "split" / f"{split}_records.json").is_file()
-        for split in SPLIT_NAMES
-    )
+# 本地和官方训练始终从 -d 指定的 demographics 走同一套稳定哈希划分。
+# 仓库内旧 split JSON 不再参与训练；npz_full 的四个子目录只作为按记录名
+# 查询的特征池，命中后链接到本次训练所需的新目录结构。
 
 
 def _stable_train_val_split(frame, validation_fraction=0.20):
@@ -250,13 +240,43 @@ def _write_records(frame, path):
     return records
 
 
-def _cache_records(records, rows_by_key, split, cache_root, data_folder):
-    """为一个训练划分提取并缓存全部记录。"""
+def _index_feature_pool(pool_root):
+    """按文件名索引旧四份 NPZ；原目录名不再具有划分语义。"""
+    index = {}
+    for old_split in SPLIT_NAMES:
+        split_dir = pool_root / old_split
+        if not split_dir.is_dir():
+            continue
+        for path in split_dir.glob("*.npz"):
+            index.setdefault(path.name, path)
+    return index
+
+
+def _link_cached_feature(source, target):
+    """将已有 NPZ 无复制地放入本次训练的临时划分目录。"""
+    try:
+        target.symlink_to(source.resolve())
+    except OSError:
+        try:
+            os.link(source, target)
+        except OSError:
+            shutil.copy2(source, target)
+
+
+def _prepare_records(records, rows_by_key, split, cache_root, data_folder, feature_pool):
+    """优先从特征池重组一个新划分，仅为缺失记录提取特征。"""
     split_dir = cache_root / split
     split_dir.mkdir(parents=True, exist_ok=True)
+    reused = extracted = 0
     for record in records:
         key = _record_key(record)
         output_path = split_dir / f"{key}.npz"
+        source = feature_pool.get(output_path.name)
+        if source is not None:
+            _link_cached_feature(source, output_path)
+            reused += 1
+            continue
+
         row = rows_by_key[key]
         X_seq, X_ecg, x_static, mask = _extract_features(record, data_folder)
         np.savez_compressed(
@@ -267,6 +287,8 @@ def _cache_records(records, rows_by_key, split, cache_root, data_folder):
             y=np.asarray(load_label(row), dtype=np.int64),
             mask=mask,
         )
+        extracted += 1
+    return reused, extracted
 
 
 def _link_validation_as_test(cache_root, validation_records):
@@ -276,10 +298,7 @@ def _link_validation_as_test(cache_root, validation_records):
     for record in validation_records:
         name = f"{_record_key(record)}.npz"
         source, target = cache_root / "val" / name, test_dir / name
-        try:
-            os.link(source, target)
-        except OSError:
-            shutil.copy2(source, target)
+        _link_cached_feature(source, target)
 
 
 def _run_unchanged_trainer(data_folder, model_folder, splits_dir, cache_dir, verbose):
@@ -308,14 +327,11 @@ def train_model(data_folder, model_folder, verbose):
     model_folder = Path(model_folder).resolve()
     model_folder.mkdir(parents=True, exist_ok=True)
 
-    if _has_fixed_local_cache(data_folder):
-        _run_unchanged_trainer(data_folder, model_folder, ROOT / "split", ROOT / "npz_full", verbose)
-        return
-
     demographics_path = data_folder / DEMOGRAPHICS_FILE
     frame = pd.read_csv(demographics_path)
     train_frame, val_frame = _stable_train_val_split(frame)
     rows_by_key = {_record_key(row): row for row in frame.to_dict("records")}
+    feature_pool = _index_feature_pool(ROOT / "npz_full")
 
     with tempfile.TemporaryDirectory(prefix="challenge2026_train_") as temp_name:
         temp_root = Path(temp_name)
@@ -326,9 +342,20 @@ def train_model(data_folder, model_folder, verbose):
         (splits_dir / "test_records.json").write_text(
             (splits_dir / "val_records.json").read_text(encoding="utf-8"), encoding="utf-8"
         )
-        _cache_records(train_records, rows_by_key, "train", cache_root, data_folder)
-        _cache_records(val_records, rows_by_key, "val", cache_root, data_folder)
+        train_reused, train_extracted = _prepare_records(
+            train_records, rows_by_key, "train", cache_root, data_folder, feature_pool
+        )
+        val_reused, val_extracted = _prepare_records(
+            val_records, rows_by_key, "val", cache_root, data_folder, feature_pool
+        )
         _link_validation_as_test(cache_root, val_records)
+        if verbose:
+            print(
+                "Prepared stable 80/20 split: "
+                f"train={len(train_records)}, validation={len(val_records)}; "
+                f"reused NPZ={train_reused + val_reused}, "
+                f"extracted NPZ={train_extracted + val_extracted}"
+            )
         _run_unchanged_trainer(data_folder, model_folder, splits_dir, cache_root, verbose)
 
 # ============================================================================

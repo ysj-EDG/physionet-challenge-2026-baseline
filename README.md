@@ -504,22 +504,23 @@ ECG 原始信号 (200 Hz)
 ### 5.0 数据准备
 
 训练入口接收包含标签的 Challenge 数据目录，目录中至少包括 `demographics.csv`、
-`physiological_data/` 和 `algorithmic_annotations/`。本地实验区与官方环境采用相同特征定义，
-但数据准备路径不同：
+`physiological_data/` 和 `algorithmic_annotations/`。本地实验与官方环境均从
+`-d` 指定的 demographics 出发，执行相同的确定性 SHA256 标签分层 80/20 划分：
 
 ```text
-实验区
-split/*.json + npz_full/{train,val,test,external}/*.npz
-    → 按固定划分直接加载缓存
-    → 不重复读取 EDF 和提取特征
-
-官方环境
 带标签的 demographics.csv + 原始 PSG/CAISR EDF
     → team_code.py 按标签执行确定性 SHA256 分层划分
-    → PerEpochExtractor 逐患者提取特征
-    → 临时生成 train/val/test NPZ
+    → 临时生成全新的 train/val/test JSON
+    → 按记录名查询 npz_full/{train,val,test,external} 特征池
+        ├── 命中：链接已有 NPZ，不重复提取
+        └── 未命中：PerEpochExtractor 从原始数据提取
+    → 临时重组 train/val/test NPZ 目录
     → 训练结束后仅保留 model 目录中的模型文件
 ```
+
+仓库内旧的 `split/*.json` 仅保留为历史实验资料，不参与 `train_model.py`
+的数据划分。旧 NPZ 所在的四个子目录同样不再表示当前数据集划分，只是特征池；
+因此新 train/val 可以跨四个旧目录自由组合。
 
 单条 NPZ 包含：
 
@@ -544,8 +545,8 @@ python train_model.py -d /path/to/training_data -m output/model -v
 ```text
 train_model.py
     → team_code.train_model(data_folder, model_folder, verbose)
-        ├── 实验区：验证固定 split 与 npz_full 后直接调用训练后端
-        ├── 官方环境：确定性分层划分并逐条提取临时 NPZ
+        ├── 对 -d 数据执行确定性 SHA256 标签分层 80/20 划分
+        ├── 从旧四目录按记录名重组已有 NPZ，缺失时才提取
         └── train_lstm.py
             ├── 训练 2-Layer LSTM
             ├── 按 validation AUROC 选择 checkpoint
