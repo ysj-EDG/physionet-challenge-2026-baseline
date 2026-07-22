@@ -16,6 +16,7 @@ import sys
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
+from collections import Counter
 
 import numpy as np
 import pandas as pd
@@ -132,6 +133,13 @@ def _infer_one(network, sample):
 
 ROOT = Path(__file__).resolve().parent
 SPLIT_NAMES = ("train", "val", "test", "external")
+SUBMISSION_SPLITS_DIR = ROOT / "submission_split"
+FIXED_TRAIN_RECORDS = 733
+FIXED_VALIDATION_RECORDS = 158
+FIXED_SELECTED_RECORDS = FIXED_TRAIN_RECORDS + FIXED_VALIDATION_RECORDS
+FIXED_INPUT_RECORDS = 1103
+FIXED_EXCLUDED_RECORDS = FIXED_INPUT_RECORDS - FIXED_SELECTED_RECORDS
+REQUIRED_NPZ_KEYS = frozenset({"X_seq", "X_ecg", "x_static", "y", "mask"})
 
 
 def _record_key(record):
@@ -211,13 +219,13 @@ def _extract_features(record, data_folder):
 # ============================================================================
 # Official Training Preparation
 # ============================================================================
-# 本地和官方训练始终从 -d 指定的 demographics 走同一套稳定哈希划分。
-# 仓库内旧 split JSON 不再参与训练；npz_full 的四个子目录只作为按记录名
-# 查询的特征池，命中后链接到本次训练所需的新目录结构。
+# 正式提交默认读取仓库内 submission_split 的历史固定成员清单。划分只决定
+# 记录成员关系；本地 npz_full 的旧目录名不具有当前划分语义。官方环境没有
+# 特征池时，也会先确定成员，再仅为选中的记录现场提取。
 
 
 def _stable_train_val_split(frame, validation_fraction=0.20):
-    """对官方训练数据执行确定性的标签分层划分。"""
+    """实验兼容模式：对输入数据执行确定性的标签分层划分。"""
     train_indices, val_indices = [], []
     labels = frame.apply(lambda row: load_label(row.to_dict()), axis=1)
     for label in sorted(labels.unique()):
@@ -233,6 +241,117 @@ def _stable_train_val_split(frame, validation_fraction=0.20):
     return frame.loc[train_indices], frame.loc[val_indices]
 
 
+def _load_submission_manifest(path, expected_count):
+    """读取并严格校验只含记录标识的提交 manifest。"""
+    try:
+        records = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"Unable to read submission manifest {path}: {exc}") from exc
+    if not isinstance(records, list):
+        raise ValueError(f"Submission manifest must contain a JSON list: {path}")
+    if len(records) != expected_count:
+        raise ValueError(
+            f"Submission manifest {path} has {len(records)} records; "
+            f"expected {expected_count}"
+        )
+
+    identifier_fields = {
+        HEADERS["bids_folder"], HEADERS["site_id"], HEADERS["session_id"]
+    }
+    for index, record in enumerate(records):
+        if not isinstance(record, dict) or set(record) != identifier_fields:
+            raise ValueError(
+                f"Submission manifest {path} record {index} must contain exactly "
+                f"{sorted(identifier_fields)}"
+            )
+    keys = [_record_key(record) for record in records]
+    duplicates = sorted(key for key, count in Counter(keys).items() if count > 1)
+    if duplicates:
+        raise ValueError(
+            f"Submission manifest {path} contains duplicate record keys: "
+            f"{duplicates[:5]}"
+        )
+    return records
+
+
+def _fixed_submission_split(frame):
+    """按历史 manifest 精确选择 733/158，并返回被排除的其余记录。"""
+    if len(frame) != FIXED_INPUT_RECORDS:
+        raise ValueError(
+            f"Fixed submission split requires {FIXED_INPUT_RECORDS} input records; "
+            f"found {len(frame)}"
+        )
+
+    rows = frame.to_dict("records")
+    input_keys = [_record_key(row) for row in rows]
+    duplicate_input_keys = sorted(
+        key for key, count in Counter(input_keys).items() if count > 1
+    )
+    if duplicate_input_keys:
+        raise ValueError(
+            "demographics.csv contains duplicate record keys: "
+            f"{duplicate_input_keys[:5]}"
+        )
+    rows_by_key = dict(zip(input_keys, rows))
+
+    train_records = _load_submission_manifest(
+        SUBMISSION_SPLITS_DIR / "train_records.json", FIXED_TRAIN_RECORDS
+    )
+    val_records = _load_submission_manifest(
+        SUBMISSION_SPLITS_DIR / "val_records.json", FIXED_VALIDATION_RECORDS
+    )
+    train_keys = [_record_key(record) for record in train_records]
+    val_keys = [_record_key(record) for record in val_records]
+    overlap = sorted(set(train_keys) & set(val_keys))
+    if overlap:
+        raise ValueError(
+            f"Submission train/validation manifests overlap: {overlap[:5]}"
+        )
+
+    selected_keys = train_keys + val_keys
+    if len(selected_keys) != FIXED_SELECTED_RECORDS:
+        raise ValueError(
+            f"Submission manifests select {len(selected_keys)} records; "
+            f"expected {FIXED_SELECTED_RECORDS}"
+        )
+    missing = sorted(set(selected_keys) - set(rows_by_key))
+    if missing:
+        raise ValueError(
+            "Submission manifest records are missing from demographics.csv: "
+            f"{missing[:5]} (total={len(missing)})"
+        )
+
+    # SiteID is not part of the filename key, so verify it separately rather than
+    # silently accepting a mismatched manifest row.
+    for manifest_record in train_records + val_records:
+        key = _record_key(manifest_record)
+        input_record = rows_by_key[key]
+        if str(input_record[HEADERS["site_id"]]) != str(
+            manifest_record[HEADERS["site_id"]]
+        ):
+            raise ValueError(
+                f"SiteID mismatch for {key}: manifest="
+                f"{manifest_record[HEADERS['site_id']]!r}, demographics="
+                f"{input_record[HEADERS['site_id']]!r}"
+            )
+
+    selected_key_set = set(selected_keys)
+    excluded_keys = [key for key in input_keys if key not in selected_key_set]
+    if len(excluded_keys) != FIXED_EXCLUDED_RECORDS:
+        raise ValueError(
+            f"Fixed submission split excluded {len(excluded_keys)} records; "
+            f"expected {FIXED_EXCLUDED_RECORDS}"
+        )
+    train_frame = pd.DataFrame(
+        [rows_by_key[key] for key in train_keys], columns=frame.columns
+    )
+    val_frame = pd.DataFrame(
+        [rows_by_key[key] for key in val_keys], columns=frame.columns
+    )
+    return train_frame, val_frame, excluded_keys, rows_by_key
+
+
+
 def _write_records(frame, path):
     """将官方记录标识写入 split JSON。"""
     records = [_record_identifiers(row) for row in frame.to_dict("records")]
@@ -241,14 +360,21 @@ def _write_records(frame, path):
 
 
 def _index_feature_pool(pool_root):
-    """按文件名索引旧四份 NPZ；原目录名不再具有划分语义。"""
+    """按文件名索引旧四份 NPZ，并拒绝跨目录重复记录。"""
     index = {}
+    if pool_root is None:
+        return index
     for old_split in SPLIT_NAMES:
         split_dir = pool_root / old_split
         if not split_dir.is_dir():
             continue
         for path in split_dir.glob("*.npz"):
-            index.setdefault(path.name, path)
+            previous = index.get(path.name)
+            if previous is not None:
+                raise ValueError(
+                    f"Duplicate training NPZ for {path.name}: {previous} and {path}"
+                )
+            index[path.name] = path
     return index
 
 
@@ -273,6 +399,12 @@ def _prepare_records(records, rows_by_key, split, cache_root, data_folder, featu
         output_path = split_dir / f"{key}.npz"
         source = feature_pool.get(output_path.name)
         if source is not None:
+            with np.load(source, allow_pickle=False) as cached:
+                missing = REQUIRED_NPZ_KEYS - set(cached.files)
+                if missing: raise ValueError(f"NPZ {source} missing keys: {sorted(missing)}")
+                _normalise_arrays(cached["X_seq"], cached["X_ecg"], cached["x_static"], cached["mask"])
+                if int(np.asarray(cached["y"]).reshape(-1)[0]) != int(load_label(rows_by_key[key])):
+                    raise ValueError(f"NPZ label mismatch for {key}")
             _link_cached_feature(source, output_path)
             reused += 1
             continue
@@ -329,9 +461,18 @@ def train_model(data_folder, model_folder, verbose):
 
     demographics_path = data_folder / DEMOGRAPHICS_FILE
     frame = pd.read_csv(demographics_path)
-    train_frame, val_frame = _stable_train_val_split(frame)
-    rows_by_key = {_record_key(row): row for row in frame.to_dict("records")}
-    feature_pool = _index_feature_pool(ROOT / "npz_full")
+    split_mode = os.environ.get("LSTM_SPLIT_MODE", "fixed_submission")
+    if split_mode == "fixed_submission":
+        train_frame, val_frame, excluded_keys, rows_by_key = _fixed_submission_split(frame)
+    elif split_mode == "stable_80_20":
+        train_frame, val_frame = _stable_train_val_split(frame)
+        rows_by_key = {_record_key(row): row for row in frame.to_dict("records")}; excluded_keys = []
+    else: raise ValueError(f"Unsupported LSTM_SPLIT_MODE: {split_mode}")
+    configured_pool = os.environ.get("LSTM_TRAIN_NPZ_CACHE")
+    feature_pool_root = Path(configured_pool).resolve() if configured_pool else None
+    feature_pool = _index_feature_pool(feature_pool_root)
+    if os.environ.get("LSTM_REQUIRE_TRAIN_NPZ") == "1" and (feature_pool_root is None or not feature_pool):
+        raise RuntimeError("LSTM_REQUIRE_TRAIN_NPZ=1 requires a non-empty LSTM_TRAIN_NPZ_CACHE")
 
     with tempfile.TemporaryDirectory(prefix="challenge2026_train_") as temp_name:
         temp_root = Path(temp_name)
@@ -350,12 +491,9 @@ def train_model(data_folder, model_folder, verbose):
         )
         _link_validation_as_test(cache_root, val_records)
         if verbose:
-            print(
-                "Prepared stable 80/20 split: "
-                f"train={len(train_records)}, validation={len(val_records)}; "
-                f"reused NPZ={train_reused + val_reused}, "
-                f"extracted NPZ={train_extracted + val_extracted}"
-            )
+            train_labels = [load_label(r) for r in train_frame.to_dict("records")]
+            val_labels = [load_label(r) for r in val_frame.to_dict("records")]
+            print(f"Split mode: {split_mode}\nInput records: {len(frame)}\nTrain records: {len(train_records)}\nValidation records: {len(val_records)}\nExcluded records: {len(excluded_keys)}\nTrain labels: negative={train_labels.count(0)}, positive={train_labels.count(1)}\nValidation labels: negative={val_labels.count(0)}, positive={val_labels.count(1)}\nTrain/validation overlap: 0\nNPZ source pool: {feature_pool_root if feature_pool_root else 'none'}\nTrain NPZ: reused={train_reused}, extracted={train_extracted}\nValidation NPZ: reused={val_reused}, extracted={val_extracted}\nInternal test aliases validation: true")
         _run_unchanged_trainer(data_folder, model_folder, splits_dir, cache_root, verbose)
 
 # ============================================================================

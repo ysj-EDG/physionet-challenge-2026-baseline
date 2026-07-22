@@ -207,11 +207,37 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
         # ---- Per-epoch OneHot ----
         X_onehot = self._extract_per_epoch_onehot(algo_data)
 
+        # Hidden sites can omit EMG entirely. Keep the fixed 24-dimensional
+        # EMG block and align it to the available physiological modalities
+        # instead of dropping the whole patient.
+        if X_emg is None and X_eeg is not None:
+            n_emg_epochs = len(X_eeg)
+            if X_resp is not None:
+                n_emg_epochs = min(n_emg_epochs, len(X_resp))
+            X_emg = np.zeros(
+                (n_emg_epochs, EMG_PER_EPOCH_DIM), dtype=np.float32,
+            )
+            logger.warning(
+                "No usable EMG channels for %s; using zeros %s",
+                rec_key, X_emg.shape,
+            )
+
         if X_resp is None and X_eeg is not None and X_emg is not None:
             n_resp_epochs = min(len(X_eeg), len(X_emg))
             X_resp = np.zeros((n_resp_epochs, RESP_PER_EPOCH_DIM), dtype=np.float32)
+            logger.warning(
+                "No usable respiratory channels for %s; using zeros %s",
+                rec_key, X_resp.shape,
+            )
 
         if X_eeg is None or X_emg is None or X_resp is None:
+            logger.warning(
+                "Required sequence modality unavailable for %s: eeg=%s emg=%s resp=%s",
+                rec_key,
+                None if X_eeg is None else X_eeg.shape,
+                None if X_emg is None else X_emg.shape,
+                None if X_resp is None else X_resp.shape,
+            )
             return None, None, x_static, y, None
         if X_onehot is None:
             fallback_epochs = min(X_eeg.shape[0], X_emg.shape[0], X_resp.shape[0])
@@ -332,6 +358,25 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
                         std_data['chin1-chin2'] = derived
                         std_fs['chin1-chin2'] = TARGET_FS
                         break
+
+        # ---- Step 5: 双极 Leg EMG 推导 (I0004: upper - lower electrode) ----
+        # Some hidden-site recordings expose the two electrodes for each leg
+        # instead of an already-derived LAT/RAT channel. Preserve the same
+        # polarity as the training montage and expose the names consumed by
+        # the per-epoch EMG extractor.
+        for target, positive, negative in [
+            ('lat', 'lleg+', 'lleg-'),
+            ('rat', 'rleg+', 'rleg-'),
+        ]:
+            if target in std_data:
+                continue
+            if positive in std_data and negative in std_data:
+                derived = self._derive_bipolar_signal(
+                    std_data[positive], std_data[negative],
+                )
+                if derived is not None:
+                    std_data[target] = derived
+                    std_fs[target] = TARGET_FS
 
         return std_data, std_fs
 

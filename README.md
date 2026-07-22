@@ -504,8 +504,9 @@ ECG 原始信号 (200 Hz)
 ### 5.0 数据准备
 
 训练入口接收包含标签的 Challenge 数据目录，目录中至少包括 `demographics.csv`、
-`physiological_data/` 和 `algorithmic_annotations/`。本地实验与官方环境均从
-`-d` 指定的 demographics 出发，执行相同的确定性 SHA256 标签分层 80/20 划分：
+`physiological_data/` 和 `algorithmic_annotations/`。正式提交默认使用仓库内 `submission_split/train_records.json`（733 条）和
+`submission_split/val_records.json`（158 条）的历史固定成员关系；其余 212 条明确排除。
+可通过 `LSTM_SPLIT_MODE=stable_80_20` 仅为后续实验启用 SHA256 标签分层划分：
 
 ```text
 带标签的 demographics.csv + 原始 PSG/CAISR EDF
@@ -517,6 +518,9 @@ ECG 原始信号 (200 Hz)
     → 临时重组 train/val/test NPZ 目录
     → 训练结束后仅保留 model 目录中的模型文件
 ```
+
+提交 manifest 与 NPZ 来源解耦：本地可设置 `LSTM_TRAIN_NPZ_CACHE` 复用四目录特征池；官方无缓存时仅对选中的 733+158 条记录现场提取。
+临时 `test` split 只是 validation 的别名，用于满足未修改训练器的诊断接口，不是独立测试集；真正独立评估由官方隐藏 validation/test 完成。
 
 仓库内旧的 `split/*.json` 仅保留为历史实验资料，不参与 `train_model.py`
 的数据划分。旧 NPZ 所在的四个子目录同样不再表示当前数据集划分，只是特征池；
