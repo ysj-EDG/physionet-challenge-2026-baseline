@@ -543,15 +543,11 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
             return None
 
         raw_stages = np.asarray(algo_data['stage_caisr'], dtype=float).reshape(-1)
-        n_epochs = len(raw_stages)
+        valid = np.isin(raw_stages, [1, 2, 3, 4, 5])
+        stages = raw_stages[valid].astype(int)
+        n_epochs = len(stages)
         if n_epochs == 0:
             return None
-
-        # Preserve the original 30-second timeline. Unavailable stage values
-        # (for example code 9) receive an all-zero stage one-hot row instead of
-        # being removed, which would shorten X_seq and shift every later epoch.
-        valid = np.isin(raw_stages, [1, 2, 3, 4, 5])
-        stages = np.where(valid, raw_stages, 0).astype(int)
 
         trt_sec = n_epochs * EPOCH_SEC
 
