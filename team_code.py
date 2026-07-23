@@ -513,16 +513,6 @@ def _prepare_records(
     return reused, extracted
 
 
-def _link_validation_as_test(cache_root, validation_records):
-    """将 validation NPZ 复用为训练器内部诊断 test split。"""
-    test_dir = cache_root / "test"
-    test_dir.mkdir(parents=True, exist_ok=True)
-    for record in validation_records:
-        name = f"{_record_key(record)}.npz"
-        source, target = cache_root / "val" / name, test_dir / name
-        _link_cached_feature(source, target)
-
-
 def _run_unchanged_trainer(data_folder, model_folder, splits_dir, cache_dir, verbose):
     """使用官方封装传入的路径和随机种子启动 train_lstm.py。"""
     env = os.environ.copy()
@@ -570,9 +560,6 @@ def train_model(data_folder, model_folder, verbose):
         splits_dir.mkdir(parents=True)
         train_records = _write_records(train_frame, splits_dir / "train_records.json")
         val_records = _write_records(val_frame, splits_dir / "val_records.json")
-        (splits_dir / "test_records.json").write_text(
-            (splits_dir / "val_records.json").read_text(encoding="utf-8"), encoding="utf-8"
-        )
         train_reused, train_extracted = _prepare_records(
             train_records, rows_by_key, "train", cache_root, data_folder, feature_pool,
             verbose,
@@ -581,11 +568,10 @@ def train_model(data_folder, model_folder, verbose):
             val_records, rows_by_key, "val", cache_root, data_folder, feature_pool,
             verbose,
         )
-        _link_validation_as_test(cache_root, val_records)
         if verbose:
             train_labels = [load_label(r) for r in train_frame.to_dict("records")]
             val_labels = [load_label(r) for r in val_frame.to_dict("records")]
-            print(f"Split mode: {split_mode}\nInput records: {len(frame)}\nTrain records: {len(train_records)}\nValidation records: {len(val_records)}\nExcluded records: {len(excluded_keys)}\nTrain labels: negative={train_labels.count(0)}, positive={train_labels.count(1)}\nValidation labels: negative={val_labels.count(0)}, positive={val_labels.count(1)}\nTrain/validation overlap: 0\nNPZ source pool: {feature_pool_root if feature_pool_root else 'none'}\nTrain NPZ: reused={train_reused}, extracted={train_extracted}\nValidation NPZ: reused={val_reused}, extracted={val_extracted}\nInternal test aliases validation: true")
+            print(f"Split mode: {split_mode}\nInput records: {len(frame)}\nTrain records: {len(train_records)}\nValidation records: {len(val_records)}\nExcluded records: {len(excluded_keys)}\nTrain labels: negative={train_labels.count(0)}, positive={train_labels.count(1)}\nValidation labels: negative={val_labels.count(0)}, positive={val_labels.count(1)}\nTrain/validation overlap: 0\nNPZ source pool: {feature_pool_root if feature_pool_root else 'none'}\nTrain NPZ: reused={train_reused}, extracted={train_extracted}\nValidation NPZ: reused={val_reused}, extracted={val_extracted}\nInternal test: not used")
         _run_unchanged_trainer(data_folder, model_folder, splits_dir, cache_root, verbose)
 
 # ============================================================================

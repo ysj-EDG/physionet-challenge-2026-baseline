@@ -45,6 +45,7 @@ import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score, roc_curve
+from evaluate_model import compute_auroc_age
 
 SEQ_DIM = 483
 ECG_DIM = 12
@@ -110,6 +111,9 @@ class PSGDataset(Dataset):
             X_ecg = np.zeros((0, ECG_DIM), dtype=np.float32)
         if mask is None:
             mask = np.zeros(len(X_seq), dtype=bool)
+        # Keep the original age for the official age-conditioned AUROC. The
+        # model still receives the clipped 196-dimensional static vector below.
+        age = float(np.asarray(x_static, dtype=float)[0])
         # Clip extreme values to prevent NaN gradients
         X_seq = np.clip(np.nan_to_num(X_seq, nan=0.0, posinf=0.0, neginf=0.0), -50.0, 50.0)
         X_ecg = np.clip(np.nan_to_num(X_ecg, nan=0.0, posinf=0.0, neginf=0.0), -50.0, 50.0)
@@ -118,6 +122,7 @@ class PSGDataset(Dataset):
             "X_seq": torch.FloatTensor(X_seq),
             "X_ecg": torch.FloatTensor(X_ecg),
             "x_static": torch.FloatTensor(x_static),
+            "age": torch.tensor(age, dtype=torch.float32),
             "y": torch.FloatTensor([float(y)]),
             "mask": torch.BoolTensor(mask),
             "length": len(X_seq),
@@ -137,6 +142,7 @@ def collate_fn(batch):
     X_seq = torch.zeros(bs, max_len, SEQ_DIM)
     X_ecg = torch.zeros(bs, max_len, ECG_DIM)
     x_static = torch.stack([b["x_static"] for b in batch])
+    ages = torch.stack([b["age"] for b in batch])
     y = torch.stack([b["y"] for b in batch])
     mask_ecg = torch.zeros(bs, max_len, dtype=torch.bool)
     lengths = torch.LongTensor([b["length"] for b in batch])
@@ -150,7 +156,7 @@ def collate_fn(batch):
             X_ecg[i, 10:10 + ecg_len] = b["X_ecg"][:ecg_len]
             mask_ecg[i, 10:10 + ecg_len] = True
 
-    return X_seq, X_ecg, mask_ecg, x_static, y, lengths
+    return X_seq, X_ecg, mask_ecg, x_static, ages, y, lengths
 
 
 # ============================================================================
@@ -213,7 +219,7 @@ def train_epoch(model, loader, optimizer, criterion):
     for batch in loader:
         if batch is None:
             continue
-        X_seq, X_ecg, mask_ecg, x_static, y, lengths = batch
+        X_seq, X_ecg, mask_ecg, x_static, _ages, y, lengths = batch
         X_seq, X_ecg, x_static, y = [t.to(device) for t in
             [X_seq, X_ecg, x_static, y]]
         lengths = lengths.to(device)
@@ -232,11 +238,12 @@ def train_epoch(model, loader, optimizer, criterion):
 @torch.no_grad()
 def collect_outputs(model, loader):
     model.eval()
-    all_y, all_pred = [], []
+    all_y, all_pred, all_age = [], [], []
     for batch in loader:
         if batch is None:
             continue
-        X_seq, X_ecg, mask_ecg, x_static, y, lengths = batch
+        X_seq, X_ecg, mask_ecg, x_static, ages, y, lengths = batch
+        all_age.extend(ages.cpu().numpy().tolist())
         X_seq, X_ecg, x_static = [t.to(device) for t in [X_seq, X_ecg, x_static]]
         pred = model(X_seq, X_ecg, mask_ecg.to(device), x_static, lengths.to(device))
         all_y.extend(y.cpu().numpy().tolist())
@@ -247,14 +254,19 @@ def collect_outputs(model, loader):
         n_nan = int(np.sum(~np.isfinite(p)))
         logger.error("Predictions contain %d non-finite values (NaN/Inf). Check input features.", n_nan)
         p = np.nan_to_num(p, nan=0.0, posinf=0.0, neginf=0.0)
-    return y, p
+    ages = np.asarray(all_age, dtype=float).ravel()
+    return y, p, ages
 
 
 @torch.no_grad()
 def evaluate(model, loader):
-    y, p = collect_outputs(model, loader)
+    y, p, ages = collect_outputs(model, loader)
     if len(y) == 0:
-        return 0.5, 0.0
+        return 0.5, 0.5, 0.0
+    try:
+        age_auroc = float(compute_auroc_age(y, p, ages, gap=2))
+    except (ValueError, ZeroDivisionError):
+        age_auroc = 0.5
     try:
         auroc = roc_auc_score(y, p)
     except ValueError:
@@ -263,7 +275,7 @@ def evaluate(model, loader):
     cap = max(1, int(0.05 * n))
     idx = np.argsort(p)[::-1]
     tpr5 = float(np.mean(y[idx[:cap]] == 1))
-    return auroc, tpr5
+    return age_auroc, auroc, tpr5
 
 
 def count_cached_labels(records, cache_dir):
@@ -393,15 +405,27 @@ def main():
 
     train_recs = load_records("train")
     val_recs = load_records("val")
-    test_recs = load_records("test")
-    logger.info("Total: Train=%d, Val=%d, Test=%d", len(train_recs), len(val_recs), len(test_recs))
+    external_path = os.path.join(SPLITS_DIR, "external_records.json")
+    external_recs = load_records("external") if os.path.exists(external_path) else None
+    logger.info(
+        "Total: Train=%d, Val=%d, External=%s (internal test is not used)",
+        len(train_recs), len(val_recs),
+        len(external_recs) if external_recs is not None else "not provided",
+    )
 
     # Datasets
     logger.info("Building datasets (cache dir: %s)...", CACHE_DIR)
     train_ds = PSGDataset(train_recs, os.path.join(CACHE_DIR, "train"), extractor)
     val_ds = PSGDataset(val_recs, os.path.join(CACHE_DIR, "val"), extractor)
-    test_ds = PSGDataset(test_recs, os.path.join(CACHE_DIR, "test"), extractor)
-    logger.info("Dataset sizes: Train=%d, Val=%d, Test=%d", len(train_ds), len(val_ds), len(test_ds))
+    external_ds = (
+        PSGDataset(external_recs, os.path.join(CACHE_DIR, "external"), extractor)
+        if external_recs is not None else None
+    )
+    logger.info(
+        "Dataset sizes: Train=%d, Val=%d, External=%s",
+        len(train_ds), len(val_ds),
+        len(external_ds) if external_ds is not None else "not provided",
+    )
 
     loader_generator = torch.Generator()
     loader_generator.manual_seed(SEED)
@@ -416,14 +440,17 @@ def main():
                               generator=loader_generator)
     val_loader = DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=False,
                             collate_fn=collate_fn, num_workers=0)
-    test_loader = DataLoader(test_ds, batch_size=BATCH_SIZE, shuffle=False,
-                             collate_fn=collate_fn, num_workers=0)
+    external_loader = (
+        DataLoader(external_ds, batch_size=BATCH_SIZE, shuffle=False,
+                   collate_fn=collate_fn, num_workers=0)
+        if external_ds is not None else None
+    )
 
     # ---- Feature diagnostic on first batch ----
     logger.info("Running feature diagnostic on first training batch...")
     first_batch = next(iter(train_loader))
     if first_batch is not None:
-        X_seq, X_ecg, mask_ecg, x_static, y, lengths = first_batch
+        X_seq, X_ecg, mask_ecg, x_static, ages, y, lengths = first_batch
         for name, t in [("X_seq", X_seq), ("X_ecg", X_ecg), ("x_static", x_static)]:
             t_flat = t.reshape(-1)
             n_nan = torch.isnan(t_flat).sum().item()
@@ -437,6 +464,10 @@ def main():
             else:
                 logger.warning("  %s: shape=%s, ALL NON-FINITE!", name, tuple(t.shape))
         logger.info("  y: %d positives out of %d", int(y.sum().item()), len(y))
+        logger.info(
+            "  age (unclipped metric input): min=%.1f, max=%.1f",
+            ages.min().item(), ages.max().item(),
+        )
     else:
         logger.warning("First batch is empty — all records in train_loader skipped!")
 
@@ -465,26 +496,29 @@ def main():
     )
 
     best_score = -float("inf")
+    best_age_auroc = 0.0
     best_auroc = 0.0
     best_tpr5 = 0.0
     best_epoch = 0
     best_state = None
     patience_counter = 0
-    logger.info("Checkpoint selection: score = val_auroc")
+    logger.info("Checkpoint selection: score = val_age_conditioned_auroc (gap=2)")
 
     for epoch in range(1, EPOCHS + 1):
         t0 = time.time()
         train_loss = train_epoch(model, train_loader, optimizer, criterion)
-        val_auroc, val_tpr5 = evaluate(model, val_loader)
-        selection_score = float(val_auroc)
-        scheduler.step(val_auroc)
+        val_age_auroc, val_auroc, val_tpr5 = evaluate(model, val_loader)
+        selection_score = float(val_age_auroc)
+        scheduler.step(selection_score)
         elapsed = time.time() - t0
 
-        logger.info("Epoch %3d | loss=%.4f | val_auroc=%.4f | val_tpr5=%.4f | select_score=%.4f | time=%.0fs",
-                    epoch, train_loss, val_auroc, val_tpr5, selection_score, elapsed)
+        logger.info("Epoch %3d | loss=%.4f | val_age_auroc=%.4f | val_auroc=%.4f | val_tpr5=%.4f | select_score=%.4f | time=%.0fs",
+                    epoch, train_loss, val_age_auroc, val_auroc, val_tpr5,
+                    selection_score, elapsed)
 
         if best_state is None or selection_score > best_score:
             best_score = selection_score
+            best_age_auroc = val_age_auroc
             best_auroc = val_auroc
             best_tpr5 = val_tpr5
             best_epoch = epoch
@@ -493,13 +527,13 @@ def main():
         else:
             patience_counter += 1
             if patience_counter >= PATIENCE:
-                logger.info("Early stopping at epoch %d (best epoch=%d score=%.4f AUROC=%.4f TPR@5%%=%.4f)",
-                            epoch, best_epoch, best_score, best_auroc, best_tpr5)
+                logger.info("Early stopping at epoch %d (best epoch=%d age-AUROC=%.4f AUROC=%.4f TPR@5%%=%.4f)",
+                            epoch, best_epoch, best_age_auroc, best_auroc, best_tpr5)
                 break
 
-    # Load best, calibrate on validation logits, and evaluate test ranking.
+    # Load best, calibrate on validation logits, and optionally evaluate external ranking.
     model.load_state_dict(best_state)
-    val_y, val_logits = collect_outputs(model, val_loader)
+    val_y, val_logits, _val_ages = collect_outputs(model, val_loader)
     calibrator = fit_platt_calibrator(val_logits, val_y)
     val_prob_calibrated = apply_calibrator(val_logits, calibrator)
     val_threshold, val_threshold_tpr, val_threshold_fpr = select_youden_threshold(val_y, val_prob_calibrated)
@@ -521,8 +555,12 @@ def main():
         val_threshold, val_threshold_tpr, val_threshold_fpr,
     )
 
-    test_auroc, test_tpr5 = evaluate(model, test_loader)
-    logger.info("Test raw-logit ranking: AUROC=%.4f, TPR@5%%=%.4f", test_auroc, test_tpr5)
+    if external_loader is not None:
+        external_age_auroc, external_auroc, external_tpr5 = evaluate(model, external_loader)
+        logger.info(
+            "External raw-logit ranking: age-AUROC=%.4f, AUROC=%.4f, TPR@5%%=%.4f",
+            external_age_auroc, external_auroc, external_tpr5,
+        )
 
     # Save
     os.makedirs(MODEL_DIR, exist_ok=True)
@@ -531,8 +569,9 @@ def main():
         "state_dict": best_state,
         "seed": SEED,
         "auroc": best_auroc,
+        "age_conditioned_auroc": best_age_auroc,
         "selection_score": best_score,
-        "selection_metric": "val_auroc",
+        "selection_metric": "val_age_conditioned_auroc_gap2",
         "best_epoch": best_epoch,
         "best_tpr5": best_tpr5,
         "pos_weight": pos_weight_value,
@@ -541,9 +580,10 @@ def main():
         "threshold_source": "validation_youden_calibrated_probability",
         "validation": {
             "raw_auroc": best_auroc,
+            "age_conditioned_auroc": best_age_auroc,
             "raw_tpr5": best_tpr5,
             "selection_score": best_score,
-            "selection_metric": "val_auroc",
+            "selection_metric": "val_age_conditioned_auroc_gap2",
             "best_epoch": best_epoch,
             "calibrated_auroc": val_calibrated_auroc,
             "threshold_tpr": val_threshold_tpr,
