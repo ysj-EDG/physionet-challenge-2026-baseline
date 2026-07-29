@@ -6,6 +6,10 @@ ECG HRV 特征提取器 — 基于 neurokit2 + Kubios 风格间期校正 + 5 分
     原始 ECG → 5min 分段 → ecg_clean → ecg_peaks
     → signal_fixpeaks(Kubios) → hrv_time/freq/nonlinear/symbolic
     → 每段 11 维 → 跨段 mean+std → 22 维
+
+输出:
+    window_features: (11,) — 单个有效窗口的 HRV 特征
+    features: (22,)        — 11 个特征的跨窗口 mean + std
 """
 
 import logging
@@ -52,6 +56,7 @@ ECG_NEUROKIT_FEATURE_DIM = len(MODEL_COLUMNS) * 2  # mean + std = 22
 # ============================================================================
 
 def _value(df: pd.DataFrame, column: str) -> float:
+    """安全读取 NeuroKit 单行结果中的指定指标。"""
     if not isinstance(df, pd.DataFrame) or df.empty or column not in df.columns:
         return np.nan
     v = df.iloc[0][column]
@@ -61,6 +66,7 @@ def _value(df: pd.DataFrame, column: str) -> float:
 
 
 def _artifact_count(artifacts: dict) -> int:
+    """统计伪迹字典中记录的事件总数。"""
     if not isinstance(artifacts, dict):
         return 0
     count = 0
@@ -73,11 +79,10 @@ def _artifact_count(artifacts: dict) -> int:
 
 
 def _sd1sd2_from_rpeaks(rpeaks, sampling_rate) -> float:
-    """Compute only the Poincare SD1/SD2 ratio used by the model.
+    """仅计算模型使用的 Poincaré SD1/SD2 比值。
 
-    This is equivalent to NeuroKit's private Poincare calculation inside
-    ``nk.hrv_nonlinear``.  Calling the public function also calculates DFA,
-    several entropy families, fractal dimensions and other unused metrics.
+    该计算等价于 ``nk.hrv_nonlinear`` 内部的 Poincaré 部分，避免额外计算
+    模型未使用的 DFA、熵和分形维度等指标。
     """
     rpeaks = np.asarray(rpeaks, dtype=float).reshape(-1)
     if len(rpeaks) < 3 or sampling_rate <= 0:
@@ -100,9 +105,19 @@ def extract_5min_hrv(ecg_1d, sampling_rate, apply_artifact_correction=True):
     """
     从 5 分钟 ECG 波形提取 11 维 HRV 特征。
 
+    Parameters
+    ----------
+    ecg_1d : array-like
+        单通道 ECG 窗口。
+    sampling_rate : float
+        采样率（Hz）。
+    apply_artifact_correction : bool, default=True
+        是否执行 Kubios 风格的 R 峰间期校正。
+
     Returns
     -------
-    (features_36, qc_dict) or (None, None)
+    (features_11, qc_dict) or (None, None)
+        窗口无效或有效 R 峰不足时返回 ``(None, None)``。
     """
     ecg_1d = np.asarray(ecg_1d, dtype=float).reshape(-1)
     if len(ecg_1d) < int(sampling_rate * 30):
@@ -110,9 +125,9 @@ def extract_5min_hrv(ecg_1d, sampling_rate, apply_artifact_correction=True):
 
     warnings.filterwarnings("ignore")
 
-    # A malformed or near-flat ECG window must not invalidate the full record.
-    # NeuroKit may raise before it can return an empty peak vector, so treat the
-    # window as unavailable and let the caller keep the record without ECG HRV.
+    # 异常或近似平坦的 ECG 窗口不应导致整条记录失效。
+    # NeuroKit 可能在返回空峰值前抛出异常，因此将该窗口视为不可用，
+    # 由调用方跳过该窗口并继续处理整夜记录。
     try:
         ecg_clean = nk.ecg_clean(ecg_1d, sampling_rate=sampling_rate, method="neurokit")
         _, peak_info = nk.ecg_peaks(
@@ -201,12 +216,23 @@ def extract_5min_hrv(ecg_1d, sampling_rate, apply_artifact_correction=True):
 
 class ECGNeurokitMixin:
     """
-    使用 neurokit2 + Kubios 校正从 ECG 提取 HRV 特征 (5 分钟分段)。
+    使用 neurokit2 和 Kubios 风格校正提取 5 分钟 ECG HRV 特征。
     """
+
+    # ========================================================================
+    # 公有 API
+    # ========================================================================
 
     def extract_ecg_neurokit(self, ecg_sig, fs):
         """
         从整夜 ECG 提取聚合 HRV 特征 (22 维)。
+
+        Parameters
+        ----------
+        ecg_sig : array-like
+            单通道整夜 ECG 信号。
+        fs : float
+            采样率（Hz）。
 
         Returns
         -------
@@ -251,6 +277,7 @@ class ECGNeurokitMixin:
 
     @staticmethod
     def ecg_neurokit_feature_names():
+        """返回与 22 维 mean/std 输出顺序一致的特征名称列表。"""
         names = []
         for stat in ["mean", "std"]:
             for col in MODEL_COLUMNS:

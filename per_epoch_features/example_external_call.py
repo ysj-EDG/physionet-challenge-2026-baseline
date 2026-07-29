@@ -4,8 +4,8 @@ from per_epoch_features import extract_features, save_features
 
 
 features = extract_features(
-    data_folder=r"D:\physionet2026\training_set",
-    bids_folder="sub-I0002150005420",
+    data_folder="../data_docker",
+    bids_folder="sub-I0002150000076",
     site_id="I0002",
     session_id=1,
 )

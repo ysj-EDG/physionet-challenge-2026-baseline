@@ -3,9 +3,17 @@
 呼吸特征提取器 — 基于 Hilbert 包络 + 局部基线 + 30s epoch 分析。
 
 管道路径:
-    气流/胸带/腹带 → 25Hz重采样 → 0.05-1Hz带通 → Hilbert包络
-    → 120s滚动80%分位数基线 → 30s分段 → 周期检测+幅度特征
-    → 胸腹联合(相关/时滞/反常运动) → 跨epoch mean+std → 28维
+    气流/胸带/腹带 → 25 Hz 重采样 → 0.05–1 Hz 带通 → Hilbert 包络
+    → 120 秒滚动 80% 分位数基线 → 30 秒分段 → 周期与幅度特征
+    → 胸腹联合（相关性/时滞/反常运动）→ 跨 epoch mean+std
+
+输出:
+    features: (28,) — 每个 epoch 14 维，再分别计算全夜均值和标准差
+    14 维组成: airflow (7) + thorax (2) + abdomen (2) + thorax/abdomen (3)
+
+通道缺失:
+    至少存在一个呼吸通道时，缺失通道对应的逐 epoch 特征使用零值；
+    三类通道均缺失或没有完整 30 秒 epoch 时返回 28 维零向量。
 """
 
 import logging
@@ -20,7 +28,11 @@ logger = logging.getLogger("resp")
 
 EPS = 1e-12
 
-# 14 个模型特征 (per epoch)
+# ============================================================================
+# 模型特征定义
+# ============================================================================
+
+# 14 个逐 30 秒 epoch 特征，顺序与最终 mean/std 两组输出保持一致。
 MODEL_COLS = [
     "airflow_rate_bpm",
     "airflow_cycle_cv",
@@ -41,11 +53,16 @@ MODEL_COLS = [
 RESP_FEATURE_DIM = len(MODEL_COLS) * 2  # mean + std = 28
 
 
-# ============================================================
+# ============================================================================
 # 基础函数
-# ============================================================
+# ============================================================================
 
 def _fill_nan_linear(x):
+    """
+    对呼吸信号中的 NaN 和无穷值进行线性插值。
+
+    有效采样点少于 10 个时抛出 ValueError。
+    """
     x = np.asarray(x, dtype=float).copy()
     nan_mask = ~np.isfinite(x)
     if not nan_mask.any():
@@ -59,6 +76,7 @@ def _fill_nan_linear(x):
 
 
 def _resample_to(x, old_fs, new_fs):
+    """使用有理数近似的多相滤波将信号重采样至目标采样率。"""
     x = np.asarray(x, dtype=float)
     if np.isclose(old_fs, new_fs):
         return x
@@ -67,6 +85,7 @@ def _resample_to(x, old_fs, new_fs):
 
 
 def _bandpass(x, fs, lowcut=0.05, highcut=1.0, order=4):
+    """使用零相位 Butterworth 带通滤波器保留呼吸频段。"""
     nyquist = fs / 2.0
     highcut = min(highcut, 0.45 * fs)
     sos = butter(order, [lowcut / nyquist, highcut / nyquist],
@@ -75,6 +94,7 @@ def _bandpass(x, fs, lowcut=0.05, highcut=1.0, order=4):
 
 
 def _lowpass(x, fs, highcut=0.4, order=3):
+    """使用零相位 Butterworth 低通滤波器平滑呼吸包络。"""
     nyquist = fs / 2.0
     highcut = min(highcut, 0.45 * fs)
     sos = butter(order, highcut / nyquist, btype="lowpass", output="sos")
@@ -82,6 +102,11 @@ def _lowpass(x, fs, highcut=0.4, order=3):
 
 
 def _rolling_quantile(x, fs, window_sec=120, q=0.80):
+    """
+    计算居中的滚动分位数基线，并使用正值的低分位数限制其下界。
+
+    序列边缘通过向后、向前填充补齐。
+    """
     import pandas as pd
     window_samples = max(3, int(round(window_sec * fs)))
     baseline = (
@@ -96,6 +121,7 @@ def _rolling_quantile(x, fs, window_sec=120, q=0.80):
 
 
 def _find_runs(mask):
+    """查找布尔掩码中连续 True 区间，返回左闭右开的索引对。"""
     mask = np.asarray(mask, dtype=bool)
     padded = np.r_[False, mask, False].astype(np.int8)
     changes = np.diff(padded)
@@ -105,6 +131,7 @@ def _find_runs(mask):
 
 
 def _longest_run_sec(mask, fs):
+    """返回布尔掩码中最长连续 True 区间的持续时间（秒）。"""
     runs = _find_runs(mask)
     if len(runs) == 0:
         return 0.0
@@ -112,6 +139,7 @@ def _longest_run_sec(mask, fs):
 
 
 def _safe_cv(values):
+    """计算有限值的样本变异系数；有效值不足两个时返回 NaN。"""
     values = np.asarray(values, dtype=float)
     values = values[np.isfinite(values)]
     if len(values) < 2:
@@ -120,6 +148,7 @@ def _safe_cv(values):
 
 
 def _safe_corr(x, y):
+    """计算 Pearson 相关系数；样本过少或近似常量时返回 NaN。"""
     x, y = np.asarray(x, dtype=float), np.asarray(y, dtype=float)
     if len(x) < 5 or np.std(x) < EPS or np.std(y) < EPS:
         return np.nan
@@ -127,6 +156,7 @@ def _safe_corr(x, y):
 
 
 def _lag_at_max_corr(x, y, fs, max_lag_sec=2.0):
+    """在指定最大时滞范围内返回互相关峰值对应的时滞（秒）。"""
     x, y = np.asarray(x, dtype=float), np.asarray(y, dtype=float)
     if len(x) < 5 or np.std(x) < EPS or np.std(y) < EPS:
         return np.nan
@@ -140,11 +170,24 @@ def _lag_at_max_corr(x, y, fs, max_lag_sec=2.0):
     return float(lags[keep][best_idx] / fs)
 
 
-# ============================================================
+# ============================================================================
 # 整夜预处理: 单通道
-# ============================================================
+# ============================================================================
 
 def _preprocess_resp_channel(signal, fs, target_fs=25):
+    """
+    预处理单个整夜呼吸通道并生成周期、包络与低幅事件信息。
+
+    信号重采样至 ``target_fs`` 后进行去中心、带通、Hilbert 包络和平滑；
+    呼吸周期仅保留 1.5–12 秒的峰间期，低幅段定义为相对幅度低于 0.70
+    且连续至少 10 秒的区间。
+
+    Returns
+    -------
+    processed : dict
+        包含滤波信号、包络、局部基线、相对幅度、峰位置、有效峰间期，
+        以及全夜低幅区间等逐样本或逐周期结果。
+    """
     signal = _fill_nan_linear(signal)
     signal = _resample_to(signal, fs, target_fs)
     signal = detrend(signal, type="constant")
@@ -179,11 +222,21 @@ def _preprocess_resp_channel(signal, fs, target_fs=25):
     }
 
 
-# ============================================================
+# ============================================================================
 # 单 epoch 提取
-# ============================================================
+# ============================================================================
 
 def _extract_resp_epoch(proc, start_s, end_s, fs, prefix, global_runs):
+    """
+    从单个呼吸通道的 30 秒区间提取周期与相对幅度特征。
+
+    Returns
+    -------
+    features : (8,) ndarray
+        呼吸率、周期变异系数、局部归一化幅度、幅度 IQR/中位数、
+        30% 幅度下降比例、近消失比例、最长下降时长及全夜低幅段重叠数。
+        模型根据通道类型选用其中相应字段。
+    """
     rel_amp = proc["relative_amp"][start_s:end_s]
     interval_mask = (proc["interval_centers"] >= start_s) & (proc["interval_centers"] < end_s)
     intervals = proc["intervals_sec"][interval_mask]
@@ -205,6 +258,17 @@ def _extract_resp_epoch(proc, start_s, end_s, fs, prefix, global_runs):
 
 
 def _extract_thorax_abd_epoch(thorax_proc, abdomen_proc, start_s, end_s, fs):
+    """
+    提取单个 epoch 的胸腹联合特征。
+
+    反常运动比例由 5 秒小段中相关系数低于 -0.25 的比例定义。
+
+    Returns
+    -------
+    features : (4,) ndarray
+        胸腹相关性、最大互相关时滞、反常运动比例和对数幅度差；
+        当前模型使用前三项。
+    """
     thorax = thorax_proc["clean"][start_s:end_s]
     abdomen = abdomen_proc["clean"][start_s:end_s]
     mini_samples = int(round(5.0 * fs))
@@ -225,17 +289,37 @@ def _extract_thorax_abd_epoch(thorax_proc, abdomen_proc, start_s, end_s, fs):
     ], dtype=np.float32)
 
 
-# ============================================================
-# EMGMixin — 集成到 FeatureExtractor
-# ============================================================
+# ============================================================================
+# RespMixin — 集成到 FeatureExtractor
+# ============================================================================
 
 class RespMixin:
     """
-    呼吸特征提取器 (28 维): 气流(7) + 胸带(2) + 腹带(2) + 胸腹联合(3), mean+std.
+    从气流、胸带和腹带信号提取 28 维全夜呼吸特征。
+
+    每个 30 秒 epoch 生成 14 维特征，最终连接跨 epoch 的均值与标准差。
     """
 
+    # ========================================================================
+    # 公有 API
+    # ========================================================================
+
     def extract_resp_features(self, phys_data, phys_fs):
-        """从原始通道字典提取呼吸特征 (28 维)."""
+        """
+        从原始通道字典提取 28 维呼吸特征。
+
+        Parameters
+        ----------
+        phys_data : dict {channel_label: signal}
+            原始生理信号字典。
+        phys_fs : dict {channel_label: fs}
+            各通道对应的采样率字典。
+
+        Returns
+        -------
+        features : (28,) ndarray
+            14 个逐 epoch 特征的全夜均值和标准差，数据类型为 float32。
+        """
         def _pick(candidates):
             for c in candidates:
                 if c in phys_data and phys_data[c] is not None and len(phys_data[c]) > 1:
@@ -260,7 +344,7 @@ class RespMixin:
         logger.debug("Resp channels found: airflow=%s, thorax=%s, abdomen=%s",
                      airflow_sig is not None, thorax_sig is not None, abdomen_sig is not None)
 
-        # 预处理各通道
+        # ---- 对实际存在的呼吸通道分别进行整夜预处理 ----
         processed = {}
         if airflow_sig is not None:
             processed["airflow"] = _preprocess_resp_channel(airflow_sig, airflow_fs)
@@ -272,7 +356,7 @@ class RespMixin:
         if not processed:
             return np.zeros(RESP_FEATURE_DIM, dtype=np.float32)
 
-        # 胸腹方向校正
+        # ---- 胸腹方向校正：全夜负相关时翻转腹带滤波信号 ----
         if "thorax" in processed and "abdomen" in processed:
             whole_corr = _safe_corr(
                 processed["thorax"]["clean"], processed["abdomen"]["clean"])
@@ -295,9 +379,10 @@ class RespMixin:
                     f8 = _extract_resp_epoch(p, start_s, end_s, target_fs, ch,
                                              p.get("global_lowflow_runs", []))
                     if ch == "airflow":
-                        row.extend(f8[:7])   # 7 model features
+                        row.extend(f8[:7])   # 气流使用前 7 个模型特征
                     else:
-                        row.extend([f8[2], f8[4]])  # amp_local_norm, reduction30_fraction
+                        # 胸带和腹带仅使用局部归一化幅度与 30% 下降比例。
+                        row.extend([f8[2], f8[4]])
                 else:
                     if ch == "airflow":
                         row.extend([0.0] * 7)
@@ -308,7 +393,7 @@ class RespMixin:
                 ta = _extract_thorax_abd_epoch(
                     processed["thorax"], processed["abdomen"],
                     start_s, end_s, target_fs)
-                row.extend(ta[:3])  # corr, lag, paradox
+                row.extend(ta[:3])  # 胸腹相关性、时滞与反常运动比例
             else:
                 row.extend([0.0, 0.0, 0.0])
 
@@ -325,6 +410,7 @@ class RespMixin:
 
     @staticmethod
     def resp_feature_names():
+        """返回与 28 维呼吸输出顺序一致的特征名称列表。"""
         names = []
         for stat in ["mean", "std"]:
             for c in MODEL_COLS:

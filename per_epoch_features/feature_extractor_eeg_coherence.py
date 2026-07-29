@@ -3,11 +3,12 @@
 EEG 相干特征提取器。
 
 基于包内 eeg_sleep_features.py 的 eeg_segment_coherence()，
-从 15 对导联的幅度平方相干谱中提取 24 个标量特征，共 360 维。
+提取 54 维通道 PSD 特征，并从 15 对导联的幅度平方相干谱中提取
+每对 24 个标量特征（360 维），最终共 414 维。
 
 管道路径:
     原始 EEG → 重采样 100Hz → 30s 分段 → PSD + 相干谱
-    → 每导联对每 epoch 提取 24 特征 → 跨 epoch 取均值 → 360 维
+    → 每导联对每 epoch 提取 24 特征 → 跨 epoch 取均值 → 414 维
 """
 
 import numpy as np
@@ -42,7 +43,7 @@ PAIR_NAMES = [
 
 # 每导联对特征数
 FEATURES_PER_PAIR = 24
-# 总维度
+# 输出维度: 54 维 PSD + 360 维相干特征 = 414 维
 COHERENCE_FEATURE_DIM = N_PAIRS * FEATURES_PER_PAIR  # 360
 SPECTRAL_FEATURE_DIM = MAX_CHANNELS * 9               # 54 (6通道 × 9 PSD特征)
 EEG_FEATURE_DIM = SPECTRAL_FEATURE_DIM + COHERENCE_FEATURE_DIM  # 414
@@ -50,7 +51,7 @@ EEG_FEATURE_DIM = SPECTRAL_FEATURE_DIM + COHERENCE_FEATURE_DIM  # 414
 
 class EEGCoherenceMixin:
     """
-    从 EEG 信号中提取导联间相干特征。
+    从 EEG 信号中提取通道 PSD 与导联间相干特征。
 
     依赖包内 eeg_sleep_features.py 提供 eeg_segment_coherence()。
     """
@@ -156,7 +157,7 @@ class EEGCoherenceMixin:
 
     @classmethod
     def _extract_coh_features_batch(cls, coherence_spectra):
-        """Vectorized equivalent of ``_extract_coh_features_from_spectrum``."""
+        """批量版本，与 ``_extract_coh_features_from_spectrum`` 等价。"""
         coh = np.asarray(coherence_spectra, dtype=float)
         if coh.shape[-1] != N_FFT_BINS:
             raise ValueError(
@@ -239,12 +240,12 @@ class EEGCoherenceMixin:
 
     def extract_eeg_coherence(self, eeg_data, fs, thr=100.0, dthr=45.0):
         """
-        从原始 EEG 提取相干特征 (360 维)。
+        从原始 EEG 提取 PSD 与相干特征（414 维）。
 
         Parameters
         ----------
         eeg_data : ndarray (n_channels, n_samples) or (n_samples,)
-            原始 EEG 信号。支持任意通道数，自动选取最佳 6 导联。
+            原始 EEG 信号；底层最多使用输入中的前 6 个通道。
         fs : float or int
             原始采样率 (Hz)。
         thr : float
@@ -254,10 +255,10 @@ class EEGCoherenceMixin:
 
         Returns
         -------
-        features : (360,) ndarray
-            15 导联对 × 24 特征，跨 epoch 均值。
+        features : (414,) ndarray
+            54 维 PSD + 15 导联对 × 24 维相干特征，跨 epoch 取均值。
         """
-        # 使用 ref 中的 eeg_segment_coherence 获取每 epoch 相干谱
+        # 使用包内 eeg_segment_coherence 获取每个 epoch 的 PSD 与相干谱。
         epoch_features, pvalues = eeg_segment_coherence(
             eeg_data, fs, n_seg=None, thr=thr, dthr=dthr,
         )
@@ -291,7 +292,7 @@ class EEGCoherenceMixin:
 
     def extract_eeg_coherence_from_processed(self, processed_channels, processed_fs):
         """
-        从已标准化的通道字典中提取 EEG 相干特征。
+        从已标准化的通道字典中提取 EEG PSD 与相干特征。
 
         Parameters
         ----------
@@ -302,7 +303,9 @@ class EEGCoherenceMixin:
 
         Returns
         -------
-        features : (360,) ndarray
+        features : (414,) ndarray
+            正常提取路径返回 414 维；当前实现中少于 2 个有效通道时，
+            回退分支返回 360 维相干特征零向量。
         """
         EEG_CH_ORDER = ['f3-m2', 'f4-m1', 'c3-m2', 'c4-m1', 'o1-m2', 'o2-m1']
         eeg_signals = []
@@ -325,7 +328,7 @@ class EEGCoherenceMixin:
 
     @staticmethod
     def coherence_feature_names():
-        """返回 360 维特征的名称列表。"""
+        """返回 360 维相干特征的名称列表（不含前 54 维 PSD）。"""
         stat_names = [
             "mean_delta", "mean_theta", "mean_alpha", "mean_sigma", "mean_beta",
             "auc_delta", "auc_theta", "auc_alpha", "auc_sigma", "auc_beta",

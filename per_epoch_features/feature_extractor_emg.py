@@ -2,10 +2,19 @@
 """
 EMG 特征提取器 — 基于全夜包络基线 + 30s epoch burst/tonic 分析。
 
-参考: AASM 下颏/胫前肌 EMG 分析方法。
 管道路径:
-    原始 EMG → 全夜带通(10-90Hz)+包络 → 20%分位数基线
-    → 30s 分段 → burst检测 + 频谱 → 每段8维 → 跨段 mean → 3通道 + 双侧
+    原始 EMG → NaN 插值与去中心 → 10–90 Hz 带通 → 整流与低通包络
+    → 全夜包络 20% 分位数基线 → 30s 分段 → burst/tonic + 频谱特征
+    → 按全夜或睡眠阶段跨 epoch 聚合
+
+输出:
+    features: (42,) — chin overall/REM/Wake (24)
+    + left leg overall (8) + right leg overall (8)
+    + 双侧腿相关性与不对称性 (2)
+
+通道缺失:
+    缺失或不足 30 秒的通道使用对应维度的零值；双侧腿任一通道缺失时，
+    相关性与不对称性均置零。
 """
 
 import logging
@@ -16,11 +25,16 @@ logger = logging.getLogger("emg")
 
 EPS = 1e-12
 
-# ============================================================
+# ============================================================================
 # 基础工具
-# ============================================================
+# ============================================================================
 
 def _fill_nan_linear(x):
+    """
+    对 EMG 中的 NaN 和无穷值进行线性插值。
+
+    有效采样点少于 10 个时抛出 ValueError，避免由过少数据构造信号。
+    """
     x = np.asarray(x, dtype=float).copy()
     nan_mask = ~np.isfinite(x)
     if not nan_mask.any():
@@ -34,6 +48,7 @@ def _fill_nan_linear(x):
 
 
 def _butter_filter(x, fs, lowcut=None, highcut=None, order=4):
+    """使用零相位 Butterworth 滤波器执行带通、高通或低通滤波。"""
     nyq = fs / 2.0
     if lowcut is not None and highcut is not None:
         sos = butter(order, [lowcut / nyq, highcut / nyq], btype="bandpass", output="sos")
@@ -47,6 +62,7 @@ def _butter_filter(x, fs, lowcut=None, highcut=None, order=4):
 
 
 def _apply_notch(x, fs, line_freq=None, quality_factor=30.0):
+    """对指定工频执行零相位陷波；频率不可用时返回信号副本。"""
     if line_freq is None:
         return x.copy()
     nyq = fs / 2.0
@@ -57,6 +73,7 @@ def _apply_notch(x, fs, line_freq=None, quality_factor=30.0):
 
 
 def _find_runs(mask):
+    """查找布尔掩码中连续 True 区间，返回左闭右开的索引对。"""
     mask = np.asarray(mask, dtype=bool)
     padded = np.r_[False, mask, False].astype(np.int8)
     changes = np.diff(padded)
@@ -66,6 +83,7 @@ def _find_runs(mask):
 
 
 def _merge_runs(runs, max_gap_samples):
+    """合并间隔不超过指定采样点数的相邻活动区间。"""
     if len(runs) == 0:
         return []
     merged = [list(runs[0])]
@@ -78,10 +96,12 @@ def _merge_runs(runs, max_gap_samples):
 
 
 def _select_duration_runs(runs, fs, min_sec, max_sec):
+    """保留持续时间位于闭区间 ``[min_sec, max_sec]`` 内的活动段。"""
     return [(s, e) for s, e in runs if min_sec <= (e - s) / fs <= max_sec]
 
 
 def _bandpower(signal, fs, f_low, f_high):
+    """使用 Welch 功率谱计算指定闭合频带内的积分功率。"""
     signal = np.asarray(signal, dtype=float)
     if len(signal) < int(fs * 2):
         return np.nan
@@ -94,11 +114,17 @@ def _bandpower(signal, fs, f_low, f_high):
     return float(np.trapz(psd[keep], freqs[keep]))
 
 
-# ============================================================
+# ============================================================================
 # 全夜预处理
-# ============================================================
+# ============================================================================
 
 def _preprocess_emg(emg, fs, lowcut=10.0, highcut=90.0, baseline_quantile=0.20):
+    """
+    对单通道全夜 EMG 进行滤波、整流和包络基线估计。
+
+    返回带通信号、非负低通包络，以及包络指定分位数对应的全夜基线。
+    高频截止频率根据采样率自适应限制为 ``0.45 * fs``。
+    """
     emg = _fill_nan_linear(emg)
     emg_centered = emg - np.median(emg)
     usable_highcut = min(highcut, 0.45 * fs)
@@ -114,13 +140,25 @@ def _preprocess_emg(emg, fs, lowcut=10.0, highcut=90.0, baseline_quantile=0.20):
     return emg_filtered, emg_envelope, baseline
 
 
-# ============================================================
+# ============================================================================
 # 单 epoch 特征提取
-# ============================================================
+# ============================================================================
 
 def _extract_emg_epoch(emg_filt, envelope, fs, baseline, mode="chin",
                        activity_mult=2.0, merge_gap_sec=0.10):
-    """提取一个 30s epoch 的 8 维特征。"""
+    """
+    从一个 30 秒 EMG epoch 提取 8 维活动、爆发和频谱特征。
+
+    下颏模式保留 0.10–5.00 秒的爆发，腿部模式保留 0.50–10.00 秒
+    的爆发；间隔不超过 ``merge_gap_sec`` 的活动段会先合并。
+
+    Returns
+    -------
+    features : (8,) ndarray
+        依次为归一化 log RMS、包络 IQR、活动比例、tonic 比例、
+        每分钟 burst 数、burst 占空比、3 秒 mini-epoch phasic 比例，
+        以及 20 Hz 上下频带功率比的对数。
+    """
     envelope = np.asarray(envelope, dtype=float)
     emg_filt = np.asarray(emg_filt, dtype=float)
     duration_sec = len(envelope) / fs
@@ -141,15 +179,14 @@ def _extract_emg_epoch(emg_filt, envelope, fs, baseline, mode="chin",
     tonic_sec = float(sum((e - s) / fs for s, e in tonic_runs))
     burst_sec = float(burst_durations.sum())
 
-    # 频谱
+    # ---- 频谱功率比 ----
     low_power = _bandpower(emg_filt, fs, 10.0, 20.0)
     high_upper = min(55.0, 0.40 * fs)
     high_power = _bandpower(emg_filt, fs, 20.0, high_upper)
     log_hf_lf = float(np.log((high_power + EPS) / (low_power + EPS))
                       if low_power > 0 else 0.0)
 
-    # 3s mini-epoch burst fraction for chin and both leg channels.
-    # Previously leg values were unconditionally converted to zero.
+    # ---- 3 秒 mini-epoch phasic 比例（下颏和双侧腿统一计算）----
     phasic_fraction = np.nan
     if abs(duration_sec - 30.0) < 1.0:
         mini_samples = int(round(3.0 * fs))
@@ -176,15 +213,29 @@ def _extract_emg_epoch(emg_filt, envelope, fs, baseline, mode="chin",
     ], dtype=np.float32)
 
 
-# ============================================================
+# ============================================================================
 # 全夜提取 + 聚合
-# ============================================================
+# ============================================================================
 
 def _extract_emg_channel(emg_sig, fs, stages, mode="chin"):
     """
-    单通道全夜 EMG → 8 维特征 (跨 epoch 均值)。
+    提取单通道全夜 EMG，并按 epoch 聚合 8 维特征。
 
-    stages: 睡眠分期数组 (1=N3,2=N2,3=N1,4=REM,5=Wake)，长度 = n_epochs
+    Parameters
+    ----------
+    emg_sig : ndarray
+        单通道连续 EMG 信号。
+    fs : float
+        采样率（Hz）。
+    stages : array-like or None
+        睡眠分期数组（1=N3、2=N2、3=N1、4=REM、5=Wake）。
+    mode : {"chin", "leg"}, default="chin"
+        控制 burst 持续时间筛选范围。
+
+    Returns
+    -------
+    overall, rem_mean, wake_mean : tuple of (8,) ndarray
+        全部、REM 和 Wake epoch 的均值；阶段无有效 epoch 时回退到全夜均值。
     """
     sig = _fill_nan_linear(emg_sig)
     emg_filt, envelope, baseline = _preprocess_emg(sig, fs)
@@ -232,20 +283,21 @@ EMG_FEATURE_NAMES = [
     "burst_rate_per_min", "burst_duty_cycle", "phasic_mini_epoch_fraction", "log_hf_lf_ratio",
 ]
 
-# 总维度: chin(8+8+8) + lleg(8) + rleg(8) + leg_corr(1) + leg_asymmetry(1) = 34
-EMG_FEATURE_DIM = 8 * 3 + 8 + 8 + 2  # 42, wait let me recount
-
-# chin: overall(8) + rem(8) + wake(8) = 24
-# lleg: overall(8)
-# rleg: overall(8)
-# bilateral: 2
-# total: 24 + 8 + 8 + 2 = 42
+# 总维度: chin overall/REM/Wake (24) + lleg (8) + rleg (8)
+#          + leg correlation/asymmetry (2) = 42。
+EMG_FEATURE_DIM = 8 * 3 + 8 + 8 + 2  # 42
 
 
 class EMGMixin:
     """
-    基于全夜包络基线的 EMG 特征提取器。
+    从下颏与双侧胫前肌 EMG 提取全夜及分睡眠阶段特征。
+
+    单通道活动阈值基于全夜包络基线，最终输出 42 维固定长度向量。
     """
+
+    # ========================================================================
+    # 公有 API
+    # ========================================================================
 
     def extract_emg_features(self, phys_data, phys_fs, stages=None):
         """
@@ -254,14 +306,16 @@ class EMGMixin:
         Parameters
         ----------
         phys_data : dict {channel_label: signal}
+            原始生理信号字典。
         phys_fs : dict {channel_label: fs}
+            各通道对应的采样率字典。
         stages : ndarray or None
-            CAISR 睡眠分期 (1=N3,2=N2,3=N1,4=REM,5=Wake)
+            CAISR 睡眠分期（1=N3、2=N2、3=N1、4=REM、5=Wake）。
 
         Returns
         -------
         features : (42,) ndarray
-            chin(24) + lleg(8) + rleg(8) + bilateral(2)
+            chin (24) + left leg (8) + right leg (8) + bilateral (2)。
         """
         from scipy.stats import pearsonr
 
@@ -269,7 +323,7 @@ class EMGMixin:
             for c in candidates:
                 if c in phys_data and phys_data[c] is not None and len(phys_data[c]) > 1:
                     return phys_data[c], float(phys_fs.get(c, 200.0))
-            # fallback: fuzzy match on lowercased keys
+            # 回退：对去除首尾空格并转为小写的通道名进行匹配。
             c_lower = {k.lower().strip(): k for k in phys_data}
             for c in candidates:
                 key = c_lower.get(c)
@@ -312,7 +366,7 @@ class EMGMixin:
             else:
                 features.extend(overall.tolist())
 
-        # 双侧腿 EMG 相关性
+        # ---- 双侧腿 EMG 的 epoch 功率相关性与归一化不对称性 ----
         if lleg_sig is not None and rleg_sig is not None:
             l_sig, l_fs = lleg_sig, lleg_fs
             r_sig, r_fs = rleg_sig, rleg_fs
@@ -333,6 +387,7 @@ class EMGMixin:
 
     @staticmethod
     def emg_feature_names():
+        """返回与 42 维 EMG 输出顺序一致的特征名称列表。"""
         names = []
         for ch in ["chin", "lleg", "rleg"]:
             if ch == "chin":
@@ -347,8 +402,16 @@ class EMGMixin:
         return names
 
 
+# ============================================================================
+# 双侧腿辅助特征
+# ============================================================================
+
 def _emg_epoch_power_series(emg_sig, fs):
-    """计算整夜 EMG 的每 epoch 总功率序列（用于双侧相关）。"""
+    """
+    计算整夜 EMG 的逐 30 秒 epoch 方差序列，用于双侧腿相关性分析。
+
+    仅使用完整的 30 秒 epoch。
+    """
     sig = _fill_nan_linear(emg_sig)
     epoch_samples = int(round(30 * fs))
     n_epochs = len(sig) // epoch_samples

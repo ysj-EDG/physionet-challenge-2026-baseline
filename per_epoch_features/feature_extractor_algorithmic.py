@@ -1,16 +1,59 @@
 #!/usr/bin/env python
-"""AlgorithmicMixin for FeatureExtractor."""
+"""
+CAISR 算法标注特征提取器。
+
+从睡眠分期、阶段后验概率、觉醒、呼吸事件和肢体运动标注中提取全夜
+睡眠结构、片段化、周期性、模型不确定性及事件负担/耦合特征。
+
+输出:
+    sleep_architecture: (84,) — 睡眠结构、bout、动态、周期与不确定性
+    arousal_events: (30,)     — 觉醒负担、阶段分布、概率与事件耦合
+    respiratory_events: (42,) — 呼吸事件负担、亚型、阶段分布与觉醒耦合
+    limb_events: (30,)        — 肢体运动负担、周期性及其他事件耦合
+    all_features: (186,)       — 上述四组特征按顺序拼接
+
+时间基准:
+    睡眠分期以 30 秒 epoch 表示；高分辨率事件信号的实际时间步长由有效
+    分期对应的总记录时长和标注数组长度推算。
+
+缺失输入:
+    ``algo_data`` 为空时，各公开接口返回对应维度的 float32 零向量。
+"""
 
 import numpy as np
 from typing import Dict, List, Tuple, Optional, Union
 from collections import defaultdict
 
+
+# ============================================================================
+# AlgorithmicMixin — 集成到 FeatureExtractor
+# ============================================================================
+
 class AlgorithmicMixin:
+    """从 CAISR 算法输出提取四组固定长度的全夜标注特征。"""
+
+    # ========================================================================
+    # 睡眠结构与分期动态（84 维）
+    # ========================================================================
+
     def extract_algorithmic_annotations_features(self, algo_data):
         """
-        Extract sleep architecture, fragmentation, bout, dynamics, periodicity,
-        stability, uncertainty, and composite features from CAISR outputs.
-        Output vector length: 84.
+        从 CAISR 分期及阶段概率提取 84 维睡眠结构特征。
+
+        特征涵盖记录/睡眠时长、睡眠效率与潜伏期、阶段构成、片段化、
+        各阶段 bout 分布、前后半夜动态、NREM→REM 周期、连续睡眠稳定性、
+        阶段后验不确定性和三个复合指数。
+
+        Parameters
+        ----------
+        algo_data : dict
+            CAISR 算法标注字典。主要使用 ``stage_caisr`` 及五类睡眠阶段
+            后验概率；分期编码为 1=N3、2=N2、3=N1、4=REM、5=Wake。
+
+        Returns
+        -------
+        features : (84,) ndarray
+            固定顺序的全夜睡眠结构与分期动态特征，数据类型为 float32。
         """
         if not algo_data:
             return np.zeros(84, dtype=np.float32)
@@ -38,7 +81,7 @@ class AlgorithmicMixin:
             return int(np.count_nonzero(arr == stage_code))
 
         def _build_bouts(stage_arr):
-            """Return starts, ends, stage values and lengths in epochs."""
+            """返回连续同阶段 bout 的起点、终点、阶段编码及 epoch 长度。"""
             n = len(stage_arr)
             if n == 0:
                 return (
@@ -53,10 +96,10 @@ class AlgorithmicMixin:
             bout_lengths = (ends - starts).astype(int)
             return starts, ends, bout_stages, bout_lengths
 
-        # ------------------------------------------------------------------
-        # Stage sequence and primary architecture features.
-        # CAISR coding: 1=N3, 2=N2, 3=N1, 4=REM, 5=Wake, 9=Unavailable.
-        # ------------------------------------------------------------------
+        # --------------------------------------------------------------------
+        # 分期序列与基础睡眠结构
+        # CAISR 编码: 1=N3、2=N2、3=N1、4=REM、5=Wake、9=Unavailable。
+        # --------------------------------------------------------------------
         raw_stages = _as_float_1d(algo_data.get('stage_caisr', np.array([])))
         stage_mask = np.isin(raw_stages, list(VALID_STAGES))
         stages = raw_stages[stage_mask].astype(int)
@@ -116,9 +159,9 @@ class AlgorithmicMixin:
         n3_n1n2_ratio = _safe_div(n_n3, n_n1 + n_n2)
         rem_nrem_ratio = _safe_div(dur_rem_sec, nrem_sec)
 
-        # ------------------------------------------------------------------
-        # Fragmentation and bout statistics.
-        # ------------------------------------------------------------------
+        # --------------------------------------------------------------------
+        # 睡眠片段化与 bout 统计
+        # --------------------------------------------------------------------
         if n_epochs > 1:
             stage_transition_count = int(np.count_nonzero(np.diff(stages) != 0))
         else:
@@ -182,9 +225,9 @@ class AlgorithmicMixin:
             p90_bout.append(float(np.quantile(lengths, 0.90)))
             p95_bout.append(float(np.quantile(lengths, 0.95)))
 
-        # ------------------------------------------------------------------
-        # Early/late night dynamics.
-        # ------------------------------------------------------------------
+        # --------------------------------------------------------------------
+        # 前半夜与后半夜的阶段动态
+        # --------------------------------------------------------------------
         split_idx = n_epochs // 2
         early = stages[:split_idx]
         late = stages[split_idx:]
@@ -204,9 +247,9 @@ class AlgorithmicMixin:
         delta_rem = late_rem_pct - early_rem_pct
         delta_w = late_w_half_pct - early_w_half_pct
 
-        # ------------------------------------------------------------------
-        # Sleep periodicity features (coarse NREM->REM cycles).
-        # ------------------------------------------------------------------
+        # --------------------------------------------------------------------
+        # 睡眠周期性（粗粒度 NREM→REM 周期）
+        # --------------------------------------------------------------------
         sleep_cycle_count = 0
         mean_cycle_duration_sec = 0.0
         first_cycle_nrem_duration_sec = 0.0
@@ -243,9 +286,9 @@ class AlgorithmicMixin:
                     * EPOCH_SEC
                 )
 
-        # ------------------------------------------------------------------
-        # Stability features.
-        # ------------------------------------------------------------------
+        # --------------------------------------------------------------------
+        # 连续睡眠与阶段稳定性
+        # --------------------------------------------------------------------
         sleep_binary = np.isin(stages, list(SLEEP_STAGES)).astype(int)
         if len(sleep_binary) > 0:
             diff_sleep = np.diff(sleep_binary, prepend=0, append=0)
@@ -261,9 +304,9 @@ class AlgorithmicMixin:
         longest_n3_bout_sec = float(np.max(bout_lengths_sec_by_stage[N3])) if len(bout_lengths_sec_by_stage[N3]) > 0 else 0.0
         longest_rem_bout_sec = float(np.max(bout_lengths_sec_by_stage[REM])) if len(bout_lengths_sec_by_stage[REM]) > 0 else 0.0
 
-        # ------------------------------------------------------------------
-        # Stage posterior uncertainty features from softmax probabilities.
-        # ------------------------------------------------------------------
+        # --------------------------------------------------------------------
+        # 基于 softmax 阶段后验概率的不确定性
+        # --------------------------------------------------------------------
         def _first_available_prob(keys):
             for k in keys:
                 arr = algo_data.get(k, None)
@@ -319,9 +362,9 @@ class AlgorithmicMixin:
                     np.mean(np.linalg.norm(np.diff(post, axis=0), ord=1, axis=1))
                 )
 
-        # ------------------------------------------------------------------
-        # Composite indices.
-        # ------------------------------------------------------------------
+        # --------------------------------------------------------------------
+        # 睡眠片段化、深睡保留与 REM 完整性复合指数
+        # --------------------------------------------------------------------
         sleep_fragmentation_index = transition_rate + (waso_sec / 3600.0) + short_bout_ratio
 
         n3_duration_hours = dur_n3_sec / 3600.0
@@ -365,27 +408,30 @@ class AlgorithmicMixin:
             )
 
         return np.asarray(features, dtype=np.float32)
-
+    # ========================================================================
+    # 觉醒事件负担与耦合（30 维）
+    # ========================================================================
 
     def extract_algorithmic_arousal_event_features(self, algo_data):
         """
-        Extract arousal-burden and co-occurrence features from CAISR annotations.
+        从 CAISR 标注提取 30 维觉醒负担与共现特征。
 
-        Inputs expected from the official algorithmic annotations:
-            - stage_caisr: 30 s epochs, 1=N3, 2=N2, 3=N1, 4=REM, 5=Wake, 9=Unavailable
-            - arousal_caisr: 0.5 s labels, 0=No arousal, 1=Arousal
-            - caisr_prob_arousal: 0.5 s arousal probability
-            - resp_caisr: 1 s labels, 0=No event, 1=OA, 2=CA, 3=MA, 4=HY, 5=RERA
-            - limb_caisr: 1 s labels, 0=No event, 1=Isolated, 2=Periodic
+        输入键:
+            - ``stage_caisr``: 30 秒睡眠分期
+            - ``arousal_caisr``: 二值觉醒标签
+            - ``caisr_prob_arousal``/``caisr_prob_arous``: 觉醒概率
+            - ``resp_caisr``: 呼吸事件标签
+            - ``limb_caisr``: 肢体运动标签
 
-        Heuristic thresholds:
-            - burst interval threshold: 30 s
-            - transition-linked window: +/-15 s
-            - respiratory-linked window: +/-10 s
-            - limb-linked window: +/-10 s
-            - high-probability arousal threshold: 0.5
+        启发式阈值:
+            burst 间隔 <30 秒；分期转换关联窗口 ±15 秒；呼吸和肢体事件
+            关联窗口 ±10 秒；高觉醒概率阈值为 0.5。
 
-        Output vector length: 30.
+        Returns
+        -------
+        features : (30,) ndarray
+            觉醒次数/时长/指数、持续时间与间隔分布、分阶段及前后半夜指数、
+            概率统计，以及与分期转换、呼吸和肢体事件的关联比例。
         """
         AROUSAL_EVENT_FEATURE_DIM = 30
 
@@ -645,25 +691,28 @@ class AlgorithmicMixin:
         ]
 
         return np.asarray(features, dtype=np.float32)
-
+    # ========================================================================
+    # 呼吸事件负担与耦合（42 维）
+    # ========================================================================
 
     def extract_algorithmic_respiratory_event_features(self, algo_data):
         """
-        Extract respiratory-burden and respiratory-arousal coupling features from
-        CAISR annotations.
+        从 CAISR 标注提取 42 维呼吸事件负担与觉醒耦合特征。
 
-        Inputs expected from the official algorithmic annotations:
-            - stage_caisr: 30 s epochs, 1=N3, 2=N2, 3=N1, 4=REM, 5=Wake, 9=Unavailable
-            - resp_caisr: 1 s labels, 0=No event, 1=OA, 2=CA, 3=MA, 4=HY, 5=RERA
-            - arousal_caisr: 0.5 s labels, 0=No arousal, 1=Arousal
+        输入键:
+            - ``stage_caisr``: 30 秒睡眠分期
+            - ``resp_caisr``: 0=无事件、1=OA、2=CA、3=MA、4=HY、5=RERA
+            - ``arousal_caisr``: 二值觉醒标签
 
-        Heuristic thresholds:
-            - burst interval threshold: 30 s
-            - post-event arousal window: 30 s
-            - transition-linked window: +/-15 s
-            - HY weight in obstructive dominance: 0.5
+        启发式阈值:
+            事件簇间隔 <30 秒；事件后觉醒窗口为 30 秒；分期转换关联窗口
+            为 ±15 秒；计算阻塞性优势时 HY 权重为 0.5。
 
-        Output vector length: 42.
+        Returns
+        -------
+        features : (42,) ndarray
+            呼吸事件总负担、五种亚型的次数/指数/比例、持续时间分布、事件簇、
+            分阶段及前后半夜指数、觉醒/分期转换耦合和三个复合负担指标。
         """
         RESP_EVENT_FEATURE_DIM = 42
 
@@ -994,26 +1043,29 @@ class AlgorithmicMixin:
         ]
 
         return np.asarray(features, dtype=np.float32)
-
+    # ========================================================================
+    # 肢体运动负担与耦合（30 维）
+    # ========================================================================
 
     def extract_algorithmic_limb_event_features(self, algo_data):
         """
-        Extract limb-movement burden and coupling features from CAISR annotations.
+        从 CAISR 标注提取 30 维肢体运动负担与耦合特征。
 
-        Inputs expected from the official algorithmic annotations:
-            - stage_caisr: 30 s epochs, 1=N3, 2=N2, 3=N1, 4=REM, 5=Wake, 9=Unavailable
-            - limb_caisr: 1 s labels, 0=No event, 1=Isolated, 2=Periodic
-            - arousal_caisr: 0.5 s labels, 0=No arousal, 1=Arousal
-            - resp_caisr: 1 s labels, 0=No event, 1=OA, 2=CA, 3=MA, 4=HY, 5=RERA
+        输入键:
+            - ``stage_caisr``: 30 秒睡眠分期
+            - ``limb_caisr``: 0=无事件、1=isolated、2=periodic
+            - ``arousal_caisr``: 二值觉醒标签
+            - ``resp_caisr``: 呼吸事件标签
 
-        Heuristic thresholds:
-            - burst interval threshold: 30 s
-            - limb-linked arousal window: +/-10 s
-            - arousal-followed-by-limb window: 30 s
-            - respiratory-linked limb window: +/-10 s
-            - transition-linked window: +/-15 s
+        启发式阈值:
+            burst 间隔 <30 秒；肢体-觉醒和肢体-呼吸关联窗口为 ±10 秒；
+            觉醒后肢体运动窗口为 30 秒；分期转换关联窗口为 ±15 秒。
 
-        Output vector length: 30.
+        Returns
+        -------
+        features : (30,) ndarray
+            肢体运动总负担、isolated/PLM 次数与指数、持续时间和间隔分布、
+            分阶段及前后半夜指数、觉醒/呼吸/分期转换耦合和复合负担指标。
         """
         LIMB_EVENT_FEATURE_DIM = 30
 
@@ -1316,11 +1368,24 @@ class AlgorithmicMixin:
         ]
 
         return np.asarray(features, dtype=np.float32)
-
+    # ========================================================================
+    # 全部算法标注特征（186 维）
+    # ========================================================================
 
     def extract_all_algorithmic_features(self, algo_data):
         """
-        Concatenate all algorithmic annotation features into one vector.
+        按固定顺序拼接全部算法标注特征。
+
+        Parameters
+        ----------
+        algo_data : dict
+            CAISR 睡眠分期、概率及事件标注字典。
+
+        Returns
+        -------
+        features : (186,) ndarray
+            睡眠结构 (84) + 觉醒事件 (30) + 呼吸事件 (42)
+            + 肢体事件 (30)，数据类型为 float32。
         """
         if not algo_data:
             return np.zeros(186, dtype=np.float32)

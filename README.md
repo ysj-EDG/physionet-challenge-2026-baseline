@@ -688,7 +688,6 @@ reports/weekly/2026-W30.md
 │   ├── per_epoch_extractor.py      # 统一提取 X_seq、X_ecg、x_static 和 mask
 │   ├── per_epoch_api.py            # 可复用 Python API 与命令行实现
 │   ├── helper_code.py              # EDF、demographics 和通道数据读取
-│   ├── channel_table.csv           # 特征包内部通道名称映射
 │   ├── feature_extractor_demographic.py       # 10 维人口学静态特征
 │   ├── feature_extractor_algorithmic.py       # 186 维 CAISR 静态特征
 │   ├── feature_extractor_eeg_coherence.py     # EEG 频谱与相干时序特征
