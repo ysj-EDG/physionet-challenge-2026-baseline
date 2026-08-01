@@ -104,8 +104,31 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
         """通道名标准化 + 去重."""
         if rename_rules is None:
             rename_rules = self._rename_rules
+
+        # Preserve pair candidates for pair-aware construction later.  The
+        # official channel table remains unchanged; without this reservation
+        # its broad ECG/Chin groups collapse these channels too early.
+        independent_keys = {
+            "ekg-l": "ekg-l",
+            "ekg-r": "ekg-r",
+            "ecg1": "ecg1",
+            "ecg2": "ecg2",
+            "chin-a": "chin-a",
+        }
+        independent_rename_map = {}
+        reserved_columns = set()
+        for raw_col in columns_original:
+            independent_key = independent_keys.get(
+                self._get_cleaned_name(raw_col),
+            )
+            if independent_key is not None:
+                independent_rename_map[raw_col] = independent_key
+                reserved_columns.add(raw_col)
+
         cleaned_to_original = {
-            self._get_cleaned_name(col): col for col in columns_original
+            self._get_cleaned_name(col): col
+            for col in columns_original
+            if col not in reserved_columns
         }
         channel_map = {}
         for std_name, aliases in rename_rules.items():
@@ -115,12 +138,14 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
                     channel_map[std_name] = cleaned_to_original[alias_cleaned]
                     break
         rename_map = {orig_raw: std_name for std_name, orig_raw in channel_map.items()}
+        rename_map.update(independent_rename_map)
         cols_to_drop = []
         for std_name, matched_raw in channel_map.items():
             aliases_cleaned = {self._get_cleaned_name(a)
                                for a in rename_rules.get(std_name, [])}
             for raw_col in columns_original:
                 if (self._get_cleaned_name(raw_col) in aliases_cleaned
+                        and raw_col not in reserved_columns
                         and raw_col != matched_raw):
                     cols_to_drop.append(raw_col)
         cols_to_drop = sorted(set(cols_to_drop))
@@ -350,7 +375,34 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
                     std_data[target] = derived
                     std_fs[target] = TARGET_FS
 
-        # ---- Step 4: 双极 Chin EMG 推导 (I0006: chinl - chinr) ----
+        # ---- Step 4: ECG pair construction / single-lead fallback ----
+        # An explicitly standardized ECG/EKG keeps historical priority.
+        # Otherwise prefer a complete pair over any single candidate.
+        if 'ecg' not in std_data:
+            for positive, negative in [
+                ('ekg-l', 'ekg-r'),
+                ('ecg1', 'ecg2'),
+            ]:
+                if positive in std_data and negative in std_data:
+                    derived = self._derive_bipolar_signal(
+                        std_data[positive], std_data[negative],
+                    )
+                    if derived is not None:
+                        std_data['ecg'] = derived
+                        std_fs['ecg'] = TARGET_FS
+                        break
+
+        if 'ecg' not in std_data:
+            # Preserve the previous alias preference for incomplete pairs.
+            for fallback in ['ekg-r', 'ekg-l', 'ecg1', 'ecg2']:
+                if fallback in std_data:
+                    std_data['ecg'] = np.asarray(
+                        std_data[fallback], dtype=float,
+                    ).copy()
+                    std_fs['ecg'] = TARGET_FS
+                    break
+
+        # ---- Step 5: 双极 Chin EMG 推导 / Chin-A fallback ----
         if 'chin1-chin2' not in std_data:
             for pair in [('chinl', 'chinr'), ('chin1', 'chin2'),
                           ('chin 1', 'chin 2')]:
@@ -362,7 +414,13 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
                         std_fs['chin1-chin2'] = TARGET_FS
                         break
 
-        # ---- Step 5: 双极 Leg EMG 推导 (I0004: upper - lower electrode) ----
+        if 'chin1-chin2' not in std_data and 'chin-a' in std_data:
+            std_data['chin1-chin2'] = np.asarray(
+                std_data['chin-a'], dtype=float,
+            ).copy()
+            std_fs['chin1-chin2'] = TARGET_FS
+
+        # ---- Step 6: 双极 Leg EMG 推导 (I0004: upper - lower electrode) ----
         # Some hidden-site recordings expose the two electrodes for each leg
         # instead of an already-derived LAT/RAT channel. Preserve the same
         # polarity as the training montage and expose the names consumed by
@@ -392,6 +450,15 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
         from .eeg_sleep_features import eeg_segment_coherence, N_PAIRS, N_FFT_BINS
 
         EEG_CH = ['f3-m2', 'f4-m1', 'c3-m2', 'c4-m1', 'o1-m2', 'o2-m1']
+        channel_available = np.asarray(
+            [
+                ch in std_data
+                and std_data[ch] is not None
+                and len(std_data[ch]) > 1
+                for ch in EEG_CH
+            ],
+            dtype=bool,
+        )
         # Determine the recording length from an EEG channel that actually
         # exists before creating zero placeholders. If the first expected
         # channel (typically F3-M2) is absent, using a fixed 6000-sample
@@ -407,8 +474,8 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
         ref_len = len(available_eeg[0]) if available_eeg else 6000
 
         eeg_signals = []
-        for ch in EEG_CH:
-            if ch in std_data and std_data[ch] is not None and len(std_data[ch]) > 1:
+        for ch, available in zip(EEG_CH, channel_available):
+            if available:
                 eeg_signals.append(np.asarray(std_data[ch], dtype=float))
             else:
                 eeg_signals.append(np.zeros(ref_len, dtype=float))
@@ -420,7 +487,11 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
             eeg_signals = [s[:min_len] for s in eeg_signals]
 
         eeg_data = np.stack(eeg_signals, axis=0)
-        epoch_features, _ = eeg_segment_coherence(eeg_data, 200.0)  # (N_ep, 1554)
+        epoch_features, _ = eeg_segment_coherence(
+            eeg_data,
+            200.0,
+            channel_available=channel_available,
+        )  # (N_ep, 1554)
         n_epochs = epoch_features.shape[0]
         if n_epochs == 0:
             return None
@@ -433,7 +504,12 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
 
         spectral = epoch_features[:, :54]  # (N_ep, 54)
         coherence = coh_all.reshape(n_epochs, -1)  # (N_ep, 360)
-        bsr_features = extract_bsr_30s(eeg_data, n_epochs, fs=200.0)
+        bsr_features = extract_bsr_30s(
+            eeg_data,
+            n_epochs,
+            fs=200.0,
+            channel_available=channel_available,
+        )
         result = np.concatenate([spectral, coherence, bsr_features], axis=1).astype(np.float32)
         return np.nan_to_num(result, nan=0.0)
 

@@ -67,7 +67,12 @@ def eeg_bsr(epochs, thresholds=(5, 10, 20)):
 # 公有 API
 # ============================================================================
 
-def extract_bsr_30s(eeg_data, n_epochs, fs=200.0):
+def extract_bsr_30s(
+    eeg_data,
+    n_epochs,
+    fs=200.0,
+    channel_available=None,
+):
     """
     提取与 30 秒 EEG epoch 对齐的 18 维 BSR 特征。
 
@@ -87,6 +92,32 @@ def extract_bsr_30s(eeg_data, n_epochs, fs=200.0):
         无完整 2 秒子段的 epoch 返回全零特征。
     """
     eeg_data = np.asarray(eeg_data, dtype=float)
+
+    if eeg_data.ndim != 2:
+        raise ValueError(
+            f"eeg_data must be 2D, got shape {eeg_data.shape}"
+        )
+
+    n_channels = eeg_data.shape[0]
+
+    if channel_available is None:
+        channel_available = np.ones(
+            n_channels,
+            dtype=bool,
+        )
+    else:
+        channel_available = np.asarray(
+            channel_available,
+            dtype=bool,
+        ).reshape(-1)
+
+        if channel_available.shape != (n_channels,):
+            raise ValueError(
+                "channel_available shape "
+                f"{channel_available.shape}; "
+                f"expected ({n_channels},)"
+            )
+
     epoch_samples = int(round(EPOCH_SEC * fs))
     subepoch_samples = int(round(2.0 * fs))
 
@@ -104,6 +135,7 @@ def extract_bsr_30s(eeg_data, n_epochs, fs=200.0):
             segment.shape[0], n_subepochs, subepoch_samples,
         ).transpose(1, 0, 2)
         bsr = eeg_bsr(epochs_2s, thresholds=BSR_THRESHOLDS)
+        bsr[~channel_available, :] = 0.0
         # 转置后按“阈值优先、通道其次”的顺序展平。
         rows.append(np.asarray(bsr, dtype=np.float32).T.ravel())
 

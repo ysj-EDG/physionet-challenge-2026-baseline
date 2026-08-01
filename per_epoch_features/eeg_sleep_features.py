@@ -512,7 +512,13 @@ N_FFT_BINS = 100                                       # 0–50 Hz at 0.5 Hz res
 FEATURE_VECTOR_LEN = MAX_CHANNELS * 9 + N_PAIRS * N_FFT_BINS
 
 
-def eeg_epoch_coherence(eeg_30s, fs=100, thr=100.0, dthr=45.0):
+def eeg_epoch_coherence(
+    eeg_30s,
+    fs=100,
+    thr=100.0,
+    dthr=45.0,
+    channel_available=None,
+):
     """
     Per-channel PSD features + inter-channel coherence for a single 30-s epoch.
 
@@ -538,6 +544,23 @@ def eeg_epoch_coherence(eeg_30s, fs=100, thr=100.0, dthr=45.0):
     eeg_30s = np.atleast_2d(eeg_30s)
     n_chan_orig = min(eeg_30s.shape[0], MAX_CHANNELS)
     n_chan_orig = max(n_chan_orig, 0)
+    if channel_available is None:
+        channel_available = np.ones(
+            n_chan_orig,
+            dtype=bool,
+        )
+    else:
+        channel_available = np.asarray(
+            channel_available,
+            dtype=bool,
+        ).reshape(-1)
+
+        if channel_available.shape != (n_chan_orig,):
+            raise ValueError(
+                "channel_available shape "
+                f"{channel_available.shape}; "
+                f"expected ({n_chan_orig},)"
+            )
 
     eeg_30s = eeg_30s[:n_chan_orig]
 
@@ -590,15 +613,28 @@ def eeg_epoch_coherence(eeg_30s, fs=100, thr=100.0, dthr=45.0):
             where=clean_counts[:, None] > 0,
         )
 
-    # Sub-segments clean in ALL original channels
-    if n_chan_orig > 0:
-        clean_mask = ~np.any(art_flags[:n_chan_orig], axis=0)
+    # Sub-segments clean in all available original channels.
+    available_indices = np.flatnonzero(
+        channel_available
+    )
+
+    if available_indices.size > 0:
+        clean_mask = ~np.any(
+            art_flags[available_indices],
+            axis=0,
+        )
     else:
-        clean_mask = np.zeros(n_sub, dtype=bool)
+        clean_mask = np.zeros(
+            n_sub,
+            dtype=bool,
+        )
 
     # --- PSD features per channel (9 × 6 = 54) ---
     psd_features = np.zeros((MAX_CHANNELS, 9))
     for ch in range(n_chan_orig):
+        if not channel_available[ch]:
+            continue
+
         ft = eeg_sleep_psd_feature_single(PSD_all[ch], fs)
         psd_features[ch] = np.nan_to_num(ft, nan=0.0)
 
@@ -607,7 +643,12 @@ def eeg_epoch_coherence(eeg_30s, fs=100, thr=100.0, dthr=45.0):
 
     if clean_mask.any() and n_chan_orig > 1:
         pair_ch1, pair_ch2 = np.triu_indices(MAX_CHANNELS, k=1)
-        valid_pairs = (pair_ch1 < n_chan_orig) & (pair_ch2 < n_chan_orig)
+        valid_pairs = (
+            (pair_ch1 < n_chan_orig)
+            & (pair_ch2 < n_chan_orig)
+            & channel_available[pair_ch1]
+            & channel_available[pair_ch2]
+        )
         Fxx = FXX_all[pair_ch1[valid_pairs]][:, clean_mask, :]
         Fyy = FXX_all[pair_ch2[valid_pairs]][:, clean_mask, :]
         Pxx = (Fxx * Fxx.conj()).mean(axis=1).real
@@ -619,7 +660,14 @@ def eeg_epoch_coherence(eeg_30s, fs=100, thr=100.0, dthr=45.0):
     return np.concatenate([psd_features.ravel(), coherence_features])
 
 
-def eeg_segment_coherence(data, fs, n_seg=None, thr=100.0, dthr=45.0):
+def eeg_segment_coherence(
+    data,
+    fs,
+    n_seg=None,
+    thr=100.0,
+    dthr=45.0,
+    channel_available=None,
+):
     """
     Batch version: process all 30-s epochs of a recording.
 
@@ -638,8 +686,25 @@ def eeg_segment_coherence(data, fs, n_seg=None, thr=100.0, dthr=45.0):
     pvalues : (N_seg,) ndarray
         Mean fraction of clean sub-segments across channels per epoch.
     """
-    x, _ = _select_best_channel(np.atleast_2d(data))
     data_2d = np.atleast_2d(data)
+    n_channels = min(data_2d.shape[0], MAX_CHANNELS)
+
+    if channel_available is None:
+        channel_available = np.ones(n_channels, dtype=bool)
+    else:
+        channel_available = np.asarray(
+            channel_available,
+            dtype=bool,
+        ).reshape(-1)
+
+        if channel_available.shape != (n_channels,):
+            raise ValueError(
+                "channel_available shape "
+                f"{channel_available.shape}; "
+                f"expected ({n_channels},)"
+            )
+
+    x, _ = _select_best_channel(data_2d)
 
     target_fs = 100
     if fs != target_fs:
@@ -658,6 +723,12 @@ def eeg_segment_coherence(data, fs, n_seg=None, thr=100.0, dthr=45.0):
     for i in range(n_seg):
         start = i * seg_len_samples
         epoch_data = resampled[:, start:start + seg_len_samples]
-        features[i] = eeg_epoch_coherence(epoch_data, fs=target_fs, thr=thr, dthr=dthr)
+        features[i] = eeg_epoch_coherence(
+            epoch_data,
+            fs=target_fs,
+            thr=thr,
+            dthr=dthr,
+            channel_available=channel_available,
+        )
 
     return features, pvalues

@@ -200,10 +200,18 @@ def _extract_emg_epoch(emg_filt, envelope, fs, baseline, mode="chin",
     rms = float(np.sqrt(np.mean(emg_filt ** 2)))
     env_median = float(np.median(envelope))
     env_iqr = float(np.percentile(envelope, 75) - np.percentile(envelope, 25))
+    baseline_scale = float(baseline)
+    if not np.isfinite(baseline_scale) or baseline_scale <= 0:
+        baseline_scale = EPS
+    if mode == "chin":
+        env_scale = max(float(env_median), baseline_scale, EPS)
+        envelope_iqr_norm = env_iqr / env_scale
+    else:
+        envelope_iqr_norm = env_iqr / (env_median + EPS)
 
     return np.array([
         float(np.log((rms + EPS) / (baseline + EPS))),   # log_rms_norm
-        float(env_iqr / (env_median + EPS)),              # envelope_iqr_norm
+        float(envelope_iqr_norm),                          # envelope_iqr_norm
         float(np.mean(activity_mask)),                    # active_fraction
         float(tonic_sec / duration_sec),                   # tonic_fraction
         float(len(bursts) / (duration_sec / 60.0)),        # burst_rate_per_min
