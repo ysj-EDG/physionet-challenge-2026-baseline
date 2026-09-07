@@ -1,0 +1,40 @@
+{
+  "cwd": "/database/home/gaohaojie/workspace/python-example-2026",
+  "git_commit": "0b8eccf4b9668d78d93e3882b0fb3b3f6e759e4f",
+  "git_status_before": [
+    "## official-submission...github-target/main",
+    "?? eeg_qc/",
+    "?? feat_input/"
+  ],
+  "python": "3.10.20 | packaged by conda-forge | (main, Mar  5 2026, 16:42:22) [GCC 14.3.0]",
+  "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.39",
+  "numpy": "2.2.6",
+  "pandas": "2.2.3",
+  "scipy": "1.15.3",
+  "scikit_learn": "1.7.2",
+  "torch": "2.5.1+cu121",
+  "neurokit2": "0.2.13",
+  "relevant_environment": {},
+  "cache_root": "/database/home/gaohaojie/workspace/python-example-2026/npz_new",
+  "split_root": "/database/home/gaohaojie/workspace/python-example-2026/split",
+  "sample_cap_per_record": 64,
+  "elapsed_seconds": 212.50615763664246,
+  "outputs": [
+    "AUDIT_REPORT.md",
+    "audit_feature_scaling.py",
+    "audit_stdout.log",
+    "cache_inventory.json",
+    "candidate_transform_summary.csv",
+    "clipping_damage_top.csv",
+    "codex_p0_feature_scaling_audit.md",
+    "feature_schema.json",
+    "feature_stats.csv",
+    "run_log.txt",
+    "test_audit_feature_scaling.py"
+  ],
+  "git_status_after": [
+    "## official-submission...github-target/main",
+    "?? eeg_qc/",
+    "?? feat_input/"
+  ]
+}

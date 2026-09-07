@@ -1,0 +1,131 @@
+{
+  "cache_root": "/database/home/gaohaojie/workspace/python-example-2026/npz_new",
+  "split_root": "/database/home/gaohaojie/workspace/python-example-2026/split",
+  "manifest_sha256": {
+    "train": "5d5be75ff4d66684fdc7f5600cf82dfaceca22cee2b3f2c7f66bcdc2c2c0261e",
+    "val": "9ee4e400fe389a9cad09aba9c523a93462f0edc341f413af08c48a8f74d27bcd",
+    "test": "bfc237e3ba13d2f19ce69e9a6eff36c0ffa8c403bb874a6935aa5cea47935c31",
+    "external": "52c10b1b21f0f21dc23ba787dde3bb91e3424c9a3eeadf9d3b5c0c242c5748de"
+  },
+  "expected_dimensions": {
+    "X_seq": 483,
+    "X_ecg": 12,
+    "x_static": 196
+  },
+  "records_by_split": {
+    "train": 733,
+    "val": 158,
+    "test": 158,
+    "external": 54
+  },
+  "records_by_site": {
+    "S0001": 857,
+    "I0006": 192,
+    "I0002": 54
+  },
+  "key_sets": {
+    "X_ecg|X_seq|mask|x_static|y": 1103
+  },
+  "dtype_sets": {
+    "X_seq": {
+      "float32": 1103
+    },
+    "X_ecg": {
+      "float32": 1103
+    },
+    "x_static": {
+      "float32": 1103
+    }
+  },
+  "shape_ranges": {
+    "X_seq": {
+      "examples": [
+        [
+          1020,
+          483
+        ],
+        [
+          828,
+          483
+        ],
+        [
+          861,
+          483
+        ]
+      ],
+      "first_axis_min": 1,
+      "first_axis_max": 1363
+    },
+    "X_ecg": {
+      "examples": [
+        [
+          1017,
+          12
+        ],
+        [
+          825,
+          12
+        ],
+        [
+          858,
+          12
+        ]
+      ],
+      "first_axis_min": 0,
+      "first_axis_max": 1360
+    },
+    "x_static": {
+      "examples": [
+        [
+          196
+        ],
+        [
+          196
+        ],
+        [
+          196
+        ]
+      ],
+      "first_axis_min": 196,
+      "first_axis_max": 196
+    }
+  },
+  "errors": [],
+  "duplicate_record_keys": [],
+  "missing_cache": [],
+  "unexpected_cache": [],
+  "label_counts_by_split": {
+    "external": {
+      "-1": 54
+    },
+    "train": {
+      "0": 680,
+      "1": 53
+    },
+    "val": {
+      "0": 146,
+      "1": 12
+    },
+    "test": {
+      "-1": 158
+    }
+  },
+  "mask_semantics": "True marks ECG alignment only; it is not EEG quality or HRV-success",
+  "heuristics": {
+    "all_zero_block_record_counts": {
+      "StageEvent_all_zero": 13,
+      "CAISR_static_all_zero": 13,
+      "BSR_all_zero": 20,
+      "Resp_all_zero": 1
+    },
+    "empty_ecg_records": 6,
+    "hrv_first11_all_zero_windows": 9170,
+    "ecg_windows": 978740,
+    "hrv_zero_window_fraction": 0.009369188957230726,
+    "mask_total_epochs": 983796,
+    "mask_true_epochs": 971103
+  },
+  "cache_version_assessment": "No extractor/schema version field was found; directory timestamps cannot prove a uniform version.",
+  "records_read": 1103,
+  "manifest_records": 1103
+}
