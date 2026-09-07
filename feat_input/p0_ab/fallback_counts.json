@@ -1,0 +1,78 @@
+{
+  "fit_impact_conclusion": "No training fallback_sequence records exist; the known fit/offline fallback omission does not affect the current typed_v1 fit. No preprocessing code was changed.",
+  "generated_at_utc": "2026-09-07T13:15:39.867151+00:00",
+  "production_condition": {
+    "X_ecg_shape": [
+      0,
+      12
+    ],
+    "X_seq_all_zero": true,
+    "X_seq_shape": [
+      1,
+      483
+    ],
+    "mask_all_false": true
+  },
+  "schema_version": 1,
+  "splits": {
+    "external": {
+      "fallback_count": 0,
+      "fallback_record_ids": [],
+      "individual_condition_counts": {
+        "ecg_empty": 1,
+        "mask_all_false": 1,
+        "seq_all_zero": 0,
+        "seq_shape_1x483": 0
+      },
+      "label_counts": {
+        "-1": 54
+      },
+      "record_count": 54
+    },
+    "test": {
+      "fallback_count": 0,
+      "fallback_record_ids": [],
+      "individual_condition_counts": {
+        "ecg_empty": 0,
+        "mask_all_false": 0,
+        "seq_all_zero": 0,
+        "seq_shape_1x483": 0
+      },
+      "label_counts": {
+        "-1": 158
+      },
+      "record_count": 158
+    },
+    "train": {
+      "fallback_count": 0,
+      "fallback_record_ids": [],
+      "individual_condition_counts": {
+        "ecg_empty": 4,
+        "mask_all_false": 4,
+        "seq_all_zero": 0,
+        "seq_shape_1x483": 1
+      },
+      "label_counts": {
+        "0": 680,
+        "1": 53
+      },
+      "record_count": 733
+    },
+    "val": {
+      "fallback_count": 0,
+      "fallback_record_ids": [],
+      "individual_condition_counts": {
+        "ecg_empty": 1,
+        "mask_all_false": 1,
+        "seq_all_zero": 0,
+        "seq_shape_1x483": 0
+      },
+      "label_counts": {
+        "0": 146,
+        "1": 12
+      },
+      "record_count": 158
+    }
+  },
+  "train_fallback_count": 0
+}

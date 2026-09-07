@@ -1,0 +1,106 @@
+{
+  "allowed_arm_differences": [
+    "LSTM_INPUT_PREPROCESSING",
+    "LSTM_MODEL_DIR"
+  ],
+  "common_training_environment": {
+    "CUBLAS_WORKSPACE_CONFIG": ":4096:8",
+    "CUDA_VISIBLE_DEVICES": "0",
+    "LSTM_CACHE_DIR": "/database/home/gaohaojie/workspace/python-example-2026/npz_new",
+    "LSTM_FEATURE_RULES": "/database/home/gaohaojie/workspace/python-example-2026/feat_input/feature_rules_v1.json",
+    "LSTM_SEED": "7",
+    "LSTM_SPLITS_DIR": "/database/home/gaohaojie/workspace/python-example-2026/split",
+    "PYTHONHASHSEED": "7"
+  },
+  "environment": {
+    "cuda_available": true,
+    "cuda_visible_devices": "0",
+    "gpus": [
+      {
+        "capability": [
+          6,
+          1
+        ],
+        "name": "Quadro P6000",
+        "total_memory": 25623265280,
+        "visible_index": 0
+      }
+    ],
+    "numpy": "2.2.6",
+    "pip_freeze_returncode": 0,
+    "pip_freeze_sha256": "509394a1b9a5bbf9afb67b7c76feed1277054bfc0a4ee0745308267071f5b234",
+    "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.39",
+    "python_executable": "/database/home/gaohaojie/.conda/envs/sleepfm_env/bin/python3.10",
+    "python_version": "3.10.20 | packaged by conda-forge | (main, Mar  5 2026, 16:42:22) [GCC 14.3.0]",
+    "sklearn": "1.7.2",
+    "torch": "2.5.1+cu121",
+    "torch_cuda": "12.1"
+  },
+  "evaluation_label_policy": "Only labels 0/1 are truth; exclude -1 in test/external from all metrics.",
+  "formal_training_started": false,
+  "frozen_training": {
+    "batch_size": 8,
+    "calibration": "validation Platt logistic",
+    "checkpoint_selection": "validation age-conditioned AUROC, gap=2",
+    "ecg_epoch_offset": 10,
+    "epochs": 80,
+    "gradient_clip_max_norm": 1.0,
+    "learning_rate": 0.001,
+    "old_weights_loaded": false,
+    "optimizer": "Adam",
+    "patience": 15,
+    "resume": false,
+    "scheduler": "ReduceLROnPlateau(mode=max,factor=0.5,patience=8)",
+    "threshold": "validation Youden threshold on calibrated probability"
+  },
+  "generated_at_utc": "2026-09-07T13:19:30.718200+00:00",
+  "git": {
+    "head": "0e6e7087e17af5df3f9438d440f45b2d47b06cf7",
+    "parent": "a4fe0b4dd914856993e67870801c9eb35b5311b2"
+  },
+  "gpu_policy": {
+    "cuda_visible_devices": "0",
+    "physical_gpu_index": 0,
+    "preflight_visible_device": {
+      "capability": [
+        6,
+        1
+      ],
+      "name": "Quadro P6000",
+      "total_memory": 25623265280,
+      "visible_index": 0
+    }
+  },
+  "inputs": {
+    "cache_root": "/database/home/gaohaojie/workspace/python-example-2026/npz_new",
+    "ordered_npz_content_sha256": "9b3d473ea2ec5810715859db099ff7da930b59d7f33cb6277d47ee22002e81ad",
+    "record_count": 1103,
+    "split_root": "/database/home/gaohaojie/workspace/python-example-2026/split"
+  },
+  "preflight_status": "BLOCKED",
+  "repository": "ysj-EDG/physionet-challenge-2026-baseline",
+  "rules": {
+    "absolute_path": "/database/home/gaohaojie/workspace/python-example-2026/feat_input/feature_rules_v1.json",
+    "canonical_sha256": "6c2abe4cdbda9c1ec552d53955b18ff74ba0b3807669d4d6f416f9f5cf69fce8",
+    "clip_z": null,
+    "file_sha256": "b8624092b12e5a2800d7627413d6d4c791fec8c7fb77552a007e1d43342c3c90",
+    "regenerated": false
+  },
+  "schema_version": 1,
+  "training_command": [
+    "/database/home/gaohaojie/.conda/envs/sleepfm_env/bin/python3.10",
+    "/database/home/gaohaojie/workspace/python-example-2026/train_lstm.py"
+  ],
+  "variants": [
+    {
+      "arm": "A",
+      "mode": "legacy_clip",
+      "model_dir": "/database/home/gaohaojie/workspace/python-example-2026/output/p0_ab/seed7/A_legacy_clip"
+    },
+    {
+      "arm": "B",
+      "mode": "typed_v1",
+      "model_dir": "/database/home/gaohaojie/workspace/python-example-2026/output/p0_ab/seed7/B_typed_v1"
+    }
+  ]
+}
