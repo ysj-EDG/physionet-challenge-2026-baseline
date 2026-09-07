@@ -13,7 +13,7 @@ ECG 输入: 滑动5分钟窗口 12 dims (11 HRV + circadian_cos, 从第5分钟�
      → FC(256+196→64) → ReLU → Dropout → FC(64→1) → sigmoid
 """
 
-import json, logging, os, random, warnings, time
+import json, logging, os, random, subprocess, warnings, time
 import numpy as np
 from tqdm import tqdm
 
@@ -46,6 +46,9 @@ from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score, roc_curve
 from evaluate_model import compute_auroc_age
+from feature_scaling import (
+    DEFAULT_RULES_PATH, LEGACY_MODE, SCALER_VERSION, FeatureScaler, FeatureScalingError,
+)
 
 SEQ_DIM = 483
 ECG_DIM = 12
@@ -60,6 +63,8 @@ LR = 1e-3
 EPOCHS = 80
 PATIENCE = 15
 SEED = int(os.environ.get("LSTM_SEED", "42"))
+INPUT_PREPROCESSING = os.environ.get("LSTM_INPUT_PREPROCESSING", SCALER_VERSION)
+FEATURE_RULES_PATH = os.environ.get("LSTM_FEATURE_RULES", str(DEFAULT_RULES_PATH))
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -81,10 +86,11 @@ def seed_everything(seed):
 # ============================================================================
 
 class PSGDataset(Dataset):
-    def __init__(self, records, cache_dir, extractor):
+    def __init__(self, records, cache_dir, extractor, preprocessor):
         self.records = records
         self.cache_dir = cache_dir
         self.extractor = extractor
+        self.preprocessor = preprocessor
         os.makedirs(cache_dir, exist_ok=True)
 
     def __len__(self):
@@ -104,20 +110,24 @@ class PSGDataset(Dataset):
         x_static = data["x_static"]
         y = int(data["y"])
         mask = data["mask"]
-        return self._build_tensors(X_seq, X_ecg, x_static, y, mask)
+        return self._build_tensors(X_seq, X_ecg, x_static, y, mask, rec_key)
 
-    def _build_tensors(self, X_seq, X_ecg, x_static, y, mask):
+    def _build_tensors(self, X_seq, X_ecg, x_static, y, mask, rec_key="unknown"):
         if X_ecg is None or len(X_ecg) == 0:
             X_ecg = np.zeros((0, ECG_DIM), dtype=np.float32)
         if mask is None:
             mask = np.zeros(len(X_seq), dtype=bool)
-        # Keep the original age for the official age-conditioned AUROC. The
-        # model still receives the clipped 196-dimensional static vector below.
         age = float(np.asarray(x_static, dtype=float)[0])
-        # Clip extreme values to prevent NaN gradients
-        X_seq = np.clip(np.nan_to_num(X_seq, nan=0.0, posinf=0.0, neginf=0.0), -50.0, 50.0)
-        X_ecg = np.clip(np.nan_to_num(X_ecg, nan=0.0, posinf=0.0, neginf=0.0), -50.0, 50.0)
-        x_static = np.clip(np.nan_to_num(x_static, nan=0.0, posinf=0.0, neginf=0.0), -50.0, 50.0)
+        fallback_sequence = (
+            np.asarray(X_seq).shape == (1, SEQ_DIM)
+            and np.all(np.asarray(X_seq) == 0)
+            and len(X_ecg) == 0
+            and not np.any(mask)
+        )
+        X_seq, X_ecg, x_static = self.preprocessor.transform_arrays(
+            X_seq, X_ecg, x_static, record_id=rec_key,
+            fallback_sequence=fallback_sequence,
+        )
         return {
             "X_seq": torch.FloatTensor(X_seq),
             "X_ecg": torch.FloatTensor(X_ecg),
@@ -413,12 +423,35 @@ def main():
         len(external_recs) if external_recs is not None else "not provided",
     )
 
+    # Fit once on unique raw training caches before weighted sampling.
+    train_cache_dir = os.path.join(CACHE_DIR, "train")
+    if INPUT_PREPROCESSING == SCALER_VERSION:
+        train_manifest_path = os.path.join(SPLITS_DIR, "train_records.json")
+        try:
+            code_head = subprocess.check_output(
+                ["git", "rev-parse", "HEAD"],
+                cwd=os.path.dirname(os.path.abspath(__file__)), text=True,
+            ).strip()
+        except (OSError, subprocess.SubprocessError):
+            code_head = None
+        logger.info("Fitting %s from %d train records; rules=%s", SCALER_VERSION, len(train_recs), FEATURE_RULES_PATH)
+        preprocessor = FeatureScaler.fit_from_cache(
+            train_recs, train_cache_dir, rules_path=FEATURE_RULES_PATH,
+            sample_cap=128, seed=SEED, manifest_path=train_manifest_path,
+            code_head=code_head,
+        )
+    elif INPUT_PREPROCESSING == LEGACY_MODE:
+        logger.warning("Using explicit legacy_clip input preprocessing")
+        preprocessor = FeatureScaler.legacy_clip()
+    else:
+        raise FeatureScalingError(f"Unsupported LSTM_INPUT_PREPROCESSING={INPUT_PREPROCESSING!r}")
+
     # Datasets
     logger.info("Building datasets (cache dir: %s)...", CACHE_DIR)
-    train_ds = PSGDataset(train_recs, os.path.join(CACHE_DIR, "train"), extractor)
-    val_ds = PSGDataset(val_recs, os.path.join(CACHE_DIR, "val"), extractor)
+    train_ds = PSGDataset(train_recs, train_cache_dir, extractor, preprocessor)
+    val_ds = PSGDataset(val_recs, os.path.join(CACHE_DIR, "val"), extractor, preprocessor)
     external_ds = (
-        PSGDataset(external_recs, os.path.join(CACHE_DIR, "external"), extractor)
+        PSGDataset(external_recs, os.path.join(CACHE_DIR, "external"), extractor, preprocessor)
         if external_recs is not None else None
     )
     logger.info(
@@ -596,6 +629,8 @@ def main():
             "negative": train_neg,
             "missing_cache": train_missing,
         },
+        "feature_dims": {"X_seq": SEQ_DIM, "X_ecg": ECG_DIM, "x_static": STATIC_DIM},
+        "input_preprocessing": preprocessor.state_dict(),
     }, model_path)
     logger.info("Model saved to %s", model_path)
 

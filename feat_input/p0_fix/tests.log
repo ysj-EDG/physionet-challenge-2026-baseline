@@ -1,0 +1,27 @@
+test_01_exact_691_mapping (__main__.FeatureScalingTests) ... ok
+test_02_age_order_and_raw_copy (__main__.FeatureScalingTests) ... ok
+test_03_fixed_units_and_bounded_features (__main__.FeatureScalingTests) ... ok
+test_04_legacy_clip_and_new_information (__main__.FeatureScalingTests) ... ok
+test_05_existing_log_and_unbounded_ratio (__main__.FeatureScalingTests) ... ok
+test_06_emg_extreme_is_finite (__main__.FeatureScalingTests) ... ok
+test_07_bmi_missing_and_legal_zero (__main__.FeatureScalingTests) ... ok
+test_08_sentinels_fallback_and_empty_ecg (__main__.FeatureScalingTests) ... ok
+test_09_state_round_trip_and_no_inplace (__main__.FeatureScalingTests) ... ok
+test_10_training_inference_path_and_alignment (__main__.FeatureScalingTests) ... ok
+test_11_transform_does_not_refit_and_backward_finite (__main__.FeatureScalingTests) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 6.299s
+
+OK
+test_12_iqr_zero_sparse_uses_safe_fallback_and_bmi_excludes_missing (__main__.FitAndCompatibilityTests) ... ok
+test_13_ecg_tail_not_consumed_by_fit (__main__.FitAndCompatibilityTests) ... ok
+test_14_nontraining_extremes_cannot_change_frozen_state (__main__.FitAndCompatibilityTests) ... ok
+test_15_old_checkpoint_requires_explicit_legacy_switch (__main__.FitAndCompatibilityTests) ... /database/home/gaohaojie/workspace/python-example-2026/feat_input/feat_mody/test_feature_scaling_fit_and_compat.py:107: RuntimeWarning: Explicit legacy checkpoint compatibility enabled: using raw nan_to_num + clip[-50,50].
+  loaded = team_code.load_model(folder, False)
+ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 3.698s
+
+OK

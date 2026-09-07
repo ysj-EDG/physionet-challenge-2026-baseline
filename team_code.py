@@ -25,6 +25,7 @@ import torch
 import torch.nn as nn
 
 from helper_code import DEMOGRAPHICS_FILE, HEADERS, load_label
+from feature_scaling import FeatureScaler, FeatureScalingError, SCALER_VERSION
 
 # ============================================================================
 # Configuration
@@ -159,11 +160,11 @@ def _record_identifiers(record):
 # ============================================================================
 # Feature Validation and Raw-Data Extraction
 # ============================================================================
-# 缓存样本和实时提取样本在进入网络前统一执行 dtype、shape、非有限值
-# 以及隐藏标签兼容处理。
+# 缓存样本和实时提取样本先统一执行 dtype 与 shape 验证；非有限值
+# 保留到共享 FeatureScaler 按列处理。
 
 def _normalise_arrays(X_seq, X_ecg, x_static, mask):
-    """验证特征形状、转换 dtype，并替换非有限值。"""
+    """只验证shape并转换dtype；保留非有限值给共享变换器处理。"""
     if X_seq is None:
         raise ValueError("X_seq is None")
     X_seq = np.asarray(X_seq, dtype=np.float32)
@@ -190,12 +191,7 @@ def _normalise_arrays(X_seq, X_ecg, x_static, mask):
     if mask.shape != (len(X_seq),):
         raise ValueError(f"invalid mask shape {mask.shape}")
 
-    return (
-        np.nan_to_num(X_seq, nan=0.0, posinf=0.0, neginf=0.0),
-        np.nan_to_num(X_ecg, nan=0.0, posinf=0.0, neginf=0.0),
-        np.nan_to_num(x_static, nan=0.0, posinf=0.0, neginf=0.0),
-        mask,
-    )
+    return X_seq.copy(), X_ecg.copy(), x_static.copy(), mask
 
 
 @contextmanager
@@ -219,7 +215,7 @@ def _fallback_arrays(record, x_static, reason):
         try:
             candidate = np.asarray(x_static, dtype=np.float32)
             if candidate.shape == (STATIC_DIM,):
-                static = np.nan_to_num(candidate, nan=0.0, posinf=0.0, neginf=0.0)
+                static = candidate.copy()
         except (TypeError, ValueError):
             pass
     warnings.warn(
@@ -525,6 +521,7 @@ def _run_unchanged_trainer(data_folder, model_folder, splits_dir, cache_dir, ver
             "LSTM_SEED": env.get("LSTM_SEED", "7"),
             "PYTHONHASHSEED": env.get("LSTM_SEED", "7"),
             "CUBLAS_WORKSPACE_CONFIG": ":4096:8",
+            "LSTM_INPUT_PREPROCESSING": env.get("LSTM_INPUT_PREPROCESSING", SCALER_VERSION),
         }
     )
     command = [sys.executable, str(ROOT / "train_lstm.py")]
@@ -593,6 +590,24 @@ def load_model(model_folder, verbose):
     if saved_dims is not None and saved_dims != expected_dims:
         raise RuntimeError(f"Checkpoint feature dimensions {saved_dims} do not match {expected_dims}")
 
+    preprocessing_state = checkpoint.get("input_preprocessing")
+    if preprocessing_state is None:
+        if os.environ.get("LSTM_ALLOW_LEGACY_INPUT") != "1":
+            raise RuntimeError(
+                "Checkpoint has no input_preprocessing state. Set "
+                "LSTM_ALLOW_LEGACY_INPUT=1 only for an explicitly legacy checkpoint."
+            )
+        warnings.warn(
+            "Explicit legacy checkpoint compatibility enabled: using raw nan_to_num + clip[-50,50].",
+            RuntimeWarning, stacklevel=2,
+        )
+        preprocessor = FeatureScaler.legacy_clip()
+    else:
+        try:
+            preprocessor = FeatureScaler.from_state_dict(preprocessing_state)
+        except FeatureScalingError as exc:
+            raise RuntimeError(f"Invalid checkpoint input preprocessing: {exc}") from exc
+
     network = LSTMModel().to(DEVICE)
     network.load_state_dict(checkpoint["state_dict"])
     network.eval()
@@ -611,6 +626,7 @@ def load_model(model_folder, verbose):
         "cache_roots": cache_roots,
         "calibrator": checkpoint.get("calibrator"),
         "threshold": float(checkpoint.get("threshold", 0.5)),
+        "preprocessor": preprocessor,
     }
 
 # ============================================================================
@@ -642,7 +658,7 @@ def _cached_sample(record, cache_roots):
     return None
 
 
-def _sample(record, data_folder, cache_roots):
+def _sample(record, data_folder, cache_roots, preprocessor):
     """构建 _infer_one 使用的标准化样本字典。"""
     arrays = _cached_sample(record, cache_roots)
     if arrays is None:
@@ -659,11 +675,16 @@ def _sample(record, data_folder, cache_roots):
                 )
             except OSError:
                 pass
+    fallback_sequence = _is_fallback_arrays(arrays)
     X_seq, X_ecg, x_static, mask = arrays
+    X_seq, X_ecg, x_static = preprocessor.transform_arrays(
+        X_seq, X_ecg, x_static, record_id=_record_key(record),
+        fallback_sequence=fallback_sequence,
+    )
     return {
-        "X_seq": np.clip(X_seq, -50.0, 50.0),
-        "X_ecg": np.clip(X_ecg, -50.0, 50.0),
-        "x_static": np.clip(x_static, -50.0, 50.0),
+        "X_seq": X_seq,
+        "X_ecg": X_ecg,
+        "x_static": x_static,
         "y": -1,
         "mask": mask,
         "length": len(X_seq),
@@ -678,7 +699,7 @@ def _sample(record, data_folder, cache_roots):
 
 def run_model(model, record, data_folder, verbose):
     """执行一条官方记录；异常直接抛出，不以 0.5 隐藏失败。"""
-    sample = _sample(record, data_folder, model["cache_roots"])
+    sample = _sample(record, data_folder, model["cache_roots"], model["preprocessor"])
     logit = _infer_one(model["network"], sample)
     probability = float(
         _apply_calibrator(np.asarray([logit]), model["calibrator"])[0]
