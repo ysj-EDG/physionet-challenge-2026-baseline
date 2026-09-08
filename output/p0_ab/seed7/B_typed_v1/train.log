@@ -1,0 +1,60 @@
+2026-09-07 14:22:43 | INFO    | train_lstm | Device: cuda
+2026-09-07 14:22:43 | INFO    | train_lstm | Random seed: 7 (deterministic algorithms enabled)
+2026-09-07 14:22:43 | INFO    | train_lstm | Data folder: data
+2026-09-07 14:22:43 | INFO    | train_lstm | Splits dir: /database/home/gaohaojie/workspace/python-example-2026/split
+2026-09-07 14:22:43 | INFO    | train_lstm | Cache dir: /database/home/gaohaojie/workspace/python-example-2026/npz_new
+2026-09-07 14:22:43 | INFO    | train_lstm | Model dir: /database/home/gaohaojie/workspace/python-example-2026/output/p0_ab/seed7/B_typed_v1
+2026-09-07 14:22:43 | INFO    | train_lstm | Loaded train split: 733 records from /database/home/gaohaojie/workspace/python-example-2026/split/train_records.json
+2026-09-07 14:22:43 | INFO    | train_lstm | Loaded val split: 158 records from /database/home/gaohaojie/workspace/python-example-2026/split/val_records.json
+2026-09-07 14:22:43 | INFO    | train_lstm | Loaded external split: 54 records from /database/home/gaohaojie/workspace/python-example-2026/split/external_records.json
+2026-09-07 14:22:43 | INFO    | train_lstm | Total: Train=733, Val=158, External=54 (internal test is not used)
+2026-09-07 14:22:43 | INFO    | train_lstm | Fitting typed_v1 from 733 train records; rules=/database/home/gaohaojie/workspace/python-example-2026/feat_input/feature_rules_v1.json
+2026-09-07 14:24:25 | INFO    | train_lstm | Building datasets (cache dir: /database/home/gaohaojie/workspace/python-example-2026/npz_new)...
+2026-09-07 14:24:25 | INFO    | train_lstm | Dataset sizes: Train=733, Val=158, External=54
+2026-09-07 14:24:25 | INFO    | train_lstm | Balanced train sampler enabled: class_counts={0: 680, 1: 53} missing=0 num_samples=733 replacement=True
+2026-09-07 14:24:25 | INFO    | train_lstm | Running feature diagnostic on first training batch...
+2026-09-07 14:24:27 | INFO    | train_lstm |   X_seq: shape=(8, 994, 483), nan=0, inf=0, min=-32.9466, max=106.5274, mean=0.0644, std=1.0244
+2026-09-07 14:24:27 | INFO    | train_lstm |   X_ecg: shape=(8, 994, 12), nan=0, inf=0, min=-2.8130, max=34.6421, mean=0.7697, std=1.4196
+2026-09-07 14:24:27 | INFO    | train_lstm |   x_static: shape=(8, 196), nan=0, inf=0, min=-8.4145, max=5.2699, mean=0.0509, std=0.8724
+2026-09-07 14:24:27 | INFO    | train_lstm |   y: 6 positives out of 8
+2026-09-07 14:24:27 | INFO    | train_lstm |   age (unclipped metric input): min=52.0, max=88.0
+2026-09-07 14:24:28 | INFO    | train_lstm | LSTM model created: LSTMModel
+2026-09-07 14:24:28 | INFO    | train_lstm | Trainable params: 481153
+2026-09-07 14:24:28 | INFO    | train_lstm | Train cached labels: pos=53 neg=680 missing=0 pos_weight=12.830189
+2026-09-07 14:24:30 | INFO    | train_lstm | Checkpoint selection: score = val_age_conditioned_auroc (gap=2)
+2026-09-07 14:27:23 | INFO    | train_lstm | Epoch   1 | loss=1.8698 | val_age_auroc=0.4310 | val_auroc=0.5331 | val_tpr5=0.1429 | select_score=0.4310 | time=173s
+2026-09-07 14:30:13 | INFO    | train_lstm | Epoch   2 | loss=0.9124 | val_age_auroc=0.4784 | val_auroc=0.5445 | val_tpr5=0.1429 | select_score=0.4784 | time=169s
+2026-09-07 14:32:45 | INFO    | train_lstm | Epoch   3 | loss=0.5099 | val_age_auroc=0.4526 | val_auroc=0.5548 | val_tpr5=0.0000 | select_score=0.4526 | time=152s
+2026-09-07 14:35:53 | INFO    | train_lstm | Epoch   4 | loss=0.2740 | val_age_auroc=0.4698 | val_auroc=0.5822 | val_tpr5=0.2857 | select_score=0.4698 | time=188s
+2026-09-07 14:39:05 | INFO    | train_lstm | Epoch   5 | loss=0.3546 | val_age_auroc=0.4353 | val_auroc=0.5091 | val_tpr5=0.0000 | select_score=0.4353 | time=192s
+2026-09-07 14:41:38 | INFO    | train_lstm | Epoch   6 | loss=0.3590 | val_age_auroc=0.4440 | val_auroc=0.5342 | val_tpr5=0.2857 | select_score=0.4440 | time=154s
+2026-09-07 14:44:48 | INFO    | train_lstm | Epoch   7 | loss=0.0279 | val_age_auroc=0.4267 | val_auroc=0.5137 | val_tpr5=0.1429 | select_score=0.4267 | time=190s
+2026-09-07 14:47:55 | INFO    | train_lstm | Epoch   8 | loss=0.0196 | val_age_auroc=0.5216 | val_auroc=0.5377 | val_tpr5=0.1429 | select_score=0.5216 | time=186s
+2026-09-07 14:50:34 | INFO    | train_lstm | Epoch   9 | loss=0.2285 | val_age_auroc=0.4612 | val_auroc=0.5525 | val_tpr5=0.1429 | select_score=0.4612 | time=159s
+2026-09-07 14:53:48 | INFO    | train_lstm | Epoch  10 | loss=0.1691 | val_age_auroc=0.4828 | val_auroc=0.5565 | val_tpr5=0.1429 | select_score=0.4828 | time=195s
+2026-09-07 14:56:53 | INFO    | train_lstm | Epoch  11 | loss=0.0164 | val_age_auroc=0.4224 | val_auroc=0.5217 | val_tpr5=0.1429 | select_score=0.4224 | time=185s
+2026-09-07 14:59:46 | INFO    | train_lstm | Epoch  12 | loss=0.0958 | val_age_auroc=0.4741 | val_auroc=0.5485 | val_tpr5=0.2857 | select_score=0.4741 | time=172s
+2026-09-07 15:03:00 | INFO    | train_lstm | Epoch  13 | loss=0.1128 | val_age_auroc=0.4526 | val_auroc=0.5417 | val_tpr5=0.1429 | select_score=0.4526 | time=194s
+2026-09-07 15:05:53 | INFO    | train_lstm | Epoch  14 | loss=0.0371 | val_age_auroc=0.4526 | val_auroc=0.5491 | val_tpr5=0.1429 | select_score=0.4526 | time=173s
+2026-09-07 15:08:34 | INFO    | train_lstm | Epoch  15 | loss=0.0031 | val_age_auroc=0.4828 | val_auroc=0.5462 | val_tpr5=0.0000 | select_score=0.4828 | time=161s
+2026-09-07 15:11:49 | INFO    | train_lstm | Epoch  16 | loss=0.0373 | val_age_auroc=0.5905 | val_auroc=0.6296 | val_tpr5=0.0000 | select_score=0.5905 | time=195s
+2026-09-07 15:14:42 | INFO    | train_lstm | Epoch  17 | loss=0.0120 | val_age_auroc=0.4871 | val_auroc=0.5599 | val_tpr5=0.0000 | select_score=0.4871 | time=173s
+2026-09-07 15:17:27 | INFO    | train_lstm | Epoch  18 | loss=0.0007 | val_age_auroc=0.4871 | val_auroc=0.5645 | val_tpr5=0.0000 | select_score=0.4871 | time=166s
+2026-09-07 15:20:32 | INFO    | train_lstm | Epoch  19 | loss=0.0001 | val_age_auroc=0.4871 | val_auroc=0.5622 | val_tpr5=0.0000 | select_score=0.4871 | time=185s
+2026-09-07 15:23:22 | INFO    | train_lstm | Epoch  20 | loss=0.0001 | val_age_auroc=0.4957 | val_auroc=0.5605 | val_tpr5=0.0000 | select_score=0.4957 | time=170s
+2026-09-07 15:26:01 | INFO    | train_lstm | Epoch  21 | loss=0.0001 | val_age_auroc=0.4741 | val_auroc=0.5554 | val_tpr5=0.0000 | select_score=0.4741 | time=159s
+2026-09-07 15:28:48 | INFO    | train_lstm | Epoch  22 | loss=0.0000 | val_age_auroc=0.4698 | val_auroc=0.5548 | val_tpr5=0.0000 | select_score=0.4698 | time=168s
+2026-09-07 15:31:30 | INFO    | train_lstm | Epoch  23 | loss=0.0000 | val_age_auroc=0.4741 | val_auroc=0.5537 | val_tpr5=0.0000 | select_score=0.4741 | time=162s
+2026-09-07 15:34:12 | INFO    | train_lstm | Epoch  24 | loss=0.0001 | val_age_auroc=0.4569 | val_auroc=0.5457 | val_tpr5=0.0000 | select_score=0.4569 | time=162s
+2026-09-07 15:37:24 | INFO    | train_lstm | Epoch  25 | loss=0.0002 | val_age_auroc=0.4655 | val_auroc=0.5514 | val_tpr5=0.0000 | select_score=0.4655 | time=192s
+2026-09-07 15:40:16 | INFO    | train_lstm | Epoch  26 | loss=0.0001 | val_age_auroc=0.4612 | val_auroc=0.5497 | val_tpr5=0.0000 | select_score=0.4612 | time=172s
+2026-09-07 15:42:47 | INFO    | train_lstm | Epoch  27 | loss=0.0001 | val_age_auroc=0.4698 | val_auroc=0.5434 | val_tpr5=0.0000 | select_score=0.4698 | time=152s
+2026-09-07 15:46:00 | INFO    | train_lstm | Epoch  28 | loss=0.0000 | val_age_auroc=0.4741 | val_auroc=0.5474 | val_tpr5=0.0000 | select_score=0.4741 | time=192s
+2026-09-07 15:49:03 | INFO    | train_lstm | Epoch  29 | loss=0.0000 | val_age_auroc=0.4741 | val_auroc=0.5474 | val_tpr5=0.0000 | select_score=0.4741 | time=184s
+2026-09-07 15:51:44 | INFO    | train_lstm | Epoch  30 | loss=0.0000 | val_age_auroc=0.4741 | val_auroc=0.5474 | val_tpr5=0.0000 | select_score=0.4741 | time=161s
+2026-09-07 15:54:48 | INFO    | train_lstm | Epoch  31 | loss=0.0000 | val_age_auroc=0.4612 | val_auroc=0.5445 | val_tpr5=0.0000 | select_score=0.4612 | time=184s
+2026-09-07 15:54:48 | INFO    | train_lstm | Early stopping at epoch 31 (best epoch=16 age-AUROC=0.5905 AUROC=0.6296 TPR@5%=0.0000)
+2026-09-07 15:55:24 | INFO    | train_lstm | Validation calibration: method=platt_logistic coef=0.028964 intercept=-1.994392 threshold=0.073785 raw_prob_mean=0.059718 calibrated_prob_mean=0.075949 calibrated_auroc=0.6296
+2026-09-07 15:55:24 | INFO    | train_lstm | Validation threshold (Youden): threshold=0.073785 tpr=0.7500 fpr=0.4247
+2026-09-07 15:55:24 | INFO    | train_lstm | External metrics skipped during training; evaluate saved checkpoint separately with true labels.
+2026-09-07 15:55:24 | INFO    | train_lstm | Model saved to /database/home/gaohaojie/workspace/python-example-2026/output/p0_ab/seed7/B_typed_v1/lstm_model.pt

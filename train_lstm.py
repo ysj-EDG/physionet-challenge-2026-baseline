@@ -589,10 +589,9 @@ def main():
     )
 
     if external_loader is not None:
-        external_age_auroc, external_auroc, external_tpr5 = evaluate(model, external_loader)
         logger.info(
-            "External raw-logit ranking: age-AUROC=%.4f, AUROC=%.4f, TPR@5%%=%.4f",
-            external_age_auroc, external_auroc, external_tpr5,
+            "External metrics skipped during training; "
+            "evaluate saved checkpoint separately with true labels."
         )
 
     # Save
