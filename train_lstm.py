@@ -48,6 +48,7 @@ from sklearn.metrics import roc_auc_score, roc_curve
 from evaluate_model import compute_auroc_age
 from feature_scaling import (
     DEFAULT_RULES_PATH, LEGACY_MODE, SCALER_VERSION, FeatureScaler, FeatureScalingError,
+    file_sha256, normalize_mask_config,
 )
 
 SEQ_DIM = 483
@@ -65,6 +66,15 @@ PATIENCE = 15
 SEED = int(os.environ.get("LSTM_SEED", "42"))
 INPUT_PREPROCESSING = os.environ.get("LSTM_INPUT_PREPROCESSING", SCALER_VERSION)
 FEATURE_RULES_PATH = os.environ.get("LSTM_FEATURE_RULES", str(DEFAULT_RULES_PATH))
+PREPROCESSOR_STATE_CHECKPOINT = os.environ.get("LSTM_PREPROCESSOR_STATE_CHECKPOINT")
+INPUT_CLIP_Z = os.environ.get("LSTM_INPUT_CLIP_Z")
+INPUT_CLIP_Z = None if INPUT_CLIP_Z in {None, "", "none", "None"} else float(INPUT_CLIP_Z)
+try:
+    INPUT_MASK_CONFIG = normalize_mask_config(
+        json.loads(os.environ.get("LSTM_INPUT_MASK_CONFIG", "{}"))
+    )
+except (json.JSONDecodeError, TypeError, ValueError) as exc:
+    raise FeatureScalingError(f"Invalid LSTM_INPUT_MASK_CONFIG: {exc}") from exc
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -423,22 +433,46 @@ def main():
         len(external_recs) if external_recs is not None else "not provided",
     )
 
-    # Fit once on unique raw training caches before weighted sampling.
+    # Fit once on unique raw training caches before weighted sampling, or reuse
+    # only a frozen preprocessing state for controlled input ablations.
     train_cache_dir = os.path.join(CACHE_DIR, "train")
     if INPUT_PREPROCESSING == SCALER_VERSION:
-        train_manifest_path = os.path.join(SPLITS_DIR, "train_records.json")
-        try:
-            code_head = subprocess.check_output(
-                ["git", "rev-parse", "HEAD"],
-                cwd=os.path.dirname(os.path.abspath(__file__)), text=True,
-            ).strip()
-        except (OSError, subprocess.SubprocessError):
-            code_head = None
-        logger.info("Fitting %s from %d train records; rules=%s", SCALER_VERSION, len(train_recs), FEATURE_RULES_PATH)
-        preprocessor = FeatureScaler.fit_from_cache(
-            train_recs, train_cache_dir, rules_path=FEATURE_RULES_PATH,
-            sample_cap=128, seed=SEED, manifest_path=train_manifest_path,
-            code_head=code_head,
+        if PREPROCESSOR_STATE_CHECKPOINT:
+            source_path = os.path.abspath(PREPROCESSOR_STATE_CHECKPOINT)
+            source_checkpoint = torch.load(source_path, map_location="cpu", weights_only=False)
+            source_state = source_checkpoint.get("input_preprocessing")
+            preprocessor = FeatureScaler.from_state_dict(source_state)
+            if preprocessor.mode != SCALER_VERSION:
+                raise FeatureScalingError(
+                    f"Preprocessing source must be {SCALER_VERSION}, got {preprocessor.mode}"
+                )
+            logger.info(
+                "Loaded frozen %s preprocessing state only from %s (sha256=%s); "
+                "network/calibrator/threshold were not loaded",
+                SCALER_VERSION, source_path, file_sha256(source_path),
+            )
+        else:
+            train_manifest_path = os.path.join(SPLITS_DIR, "train_records.json")
+            try:
+                code_head = subprocess.check_output(
+                    ["git", "rev-parse", "HEAD"],
+                    cwd=os.path.dirname(os.path.abspath(__file__)), text=True,
+                ).strip()
+            except (OSError, subprocess.SubprocessError):
+                code_head = None
+            logger.info("Fitting %s from %d train records; rules=%s", SCALER_VERSION, len(train_recs), FEATURE_RULES_PATH)
+            preprocessor = FeatureScaler.fit_from_cache(
+                train_recs, train_cache_dir, rules_path=FEATURE_RULES_PATH,
+                sample_cap=128, seed=SEED, manifest_path=train_manifest_path,
+                code_head=code_head,
+            )
+        preprocessor = preprocessor.with_runtime_config(
+            clip_z=INPUT_CLIP_Z,
+            mask_config=INPUT_MASK_CONFIG,
+        )
+        logger.info(
+            "Input runtime config: clip_z=%s mask_config=%s",
+            preprocessor.clip_z, json.dumps(preprocessor.mask_config, sort_keys=True),
         )
     elif INPUT_PREPROCESSING == LEGACY_MODE:
         logger.warning("Using explicit legacy_clip input preprocessing")
@@ -630,6 +664,10 @@ def main():
         },
         "feature_dims": {"X_seq": SEQ_DIM, "X_ecg": ECG_DIM, "x_static": STATIC_DIM},
         "input_preprocessing": preprocessor.state_dict(),
+        "input_preprocessing_source": {
+            "checkpoint": os.path.abspath(PREPROCESSOR_STATE_CHECKPOINT),
+            "sha256": file_sha256(PREPROCESSOR_STATE_CHECKPOINT),
+        } if PREPROCESSOR_STATE_CHECKPOINT else None,
     }, model_path)
     logger.info("Model saved to %s", model_path)
 

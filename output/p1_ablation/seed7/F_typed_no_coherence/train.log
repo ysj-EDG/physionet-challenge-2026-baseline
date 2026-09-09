@@ -1,0 +1,61 @@
+2026-09-08 07:48:09 | INFO    | train_lstm | Device: cuda
+2026-09-08 07:48:09 | INFO    | train_lstm | Random seed: 7 (deterministic algorithms enabled)
+2026-09-08 07:48:09 | INFO    | train_lstm | Data folder: data
+2026-09-08 07:48:09 | INFO    | train_lstm | Splits dir: /mnt/data5t-in-container/workspace/.medex_run_28bad4d425d84fe4aadc96979c3fa98c/python-example-2026/split
+2026-09-08 07:48:09 | INFO    | train_lstm | Cache dir: /mnt/data5t-in-container/workspace/.medex_run_28bad4d425d84fe4aadc96979c3fa98c/python-example-2026/npz_new
+2026-09-08 07:48:09 | INFO    | train_lstm | Model dir: /mnt/data5t-in-container/workspace/.medex_run_28bad4d425d84fe4aadc96979c3fa98c/python-example-2026/h100_results/seed7/F_typed_no_coherence
+2026-09-08 07:48:09 | INFO    | train_lstm | Loaded train split: 733 records from /mnt/data5t-in-container/workspace/.medex_run_28bad4d425d84fe4aadc96979c3fa98c/python-example-2026/split/train_records.json
+2026-09-08 07:48:09 | INFO    | train_lstm | Loaded val split: 158 records from /mnt/data5t-in-container/workspace/.medex_run_28bad4d425d84fe4aadc96979c3fa98c/python-example-2026/split/val_records.json
+2026-09-08 07:48:09 | INFO    | train_lstm | Loaded external split: 54 records from /mnt/data5t-in-container/workspace/.medex_run_28bad4d425d84fe4aadc96979c3fa98c/python-example-2026/split/external_records.json
+2026-09-08 07:48:09 | INFO    | train_lstm | Total: Train=733, Val=158, External=54 (internal test is not used)
+2026-09-08 07:48:09 | INFO    | train_lstm | Loaded frozen typed_v1 preprocessing state only from /mnt/data5t-in-container/workspace/.medex_run_28bad4d425d84fe4aadc96979c3fa98c/python-example-2026/p1_inputs/B_typed_v1/lstm_model.pt (sha256=b4fb534bc1310d4b7ae132fdcfd7f04d6664c04cecf06028cf108e6af5342125); network/calibrator/threshold were not loaded
+2026-09-08 07:48:09 | INFO    | train_lstm | Input runtime config: clip_z=None mask_config={"x_seq_zero_ranges": [[54, 414]], "x_static_zero_indices": []}
+2026-09-08 07:48:09 | INFO    | train_lstm | Building datasets (cache dir: /mnt/data5t-in-container/workspace/.medex_run_28bad4d425d84fe4aadc96979c3fa98c/python-example-2026/npz_new)...
+2026-09-08 07:48:09 | INFO    | train_lstm | Dataset sizes: Train=733, Val=158, External=54
+2026-09-08 07:48:09 | INFO    | train_lstm | Balanced train sampler enabled: class_counts={0: 680, 1: 53} missing=0 num_samples=733 replacement=True
+2026-09-08 07:48:09 | INFO    | train_lstm | Running feature diagnostic on first training batch...
+2026-09-08 07:48:10 | INFO    | train_lstm |   X_seq: shape=(8, 994, 483), nan=0, inf=0, min=-28.9076, max=106.5274, mean=0.0125, std=0.4752
+2026-09-08 07:48:10 | INFO    | train_lstm |   X_ecg: shape=(8, 994, 12), nan=0, inf=0, min=-2.8130, max=34.6421, mean=0.7697, std=1.4196
+2026-09-08 07:48:10 | INFO    | train_lstm |   x_static: shape=(8, 196), nan=0, inf=0, min=-8.4145, max=5.2699, mean=0.0509, std=0.8724
+2026-09-08 07:48:10 | INFO    | train_lstm |   y: 6 positives out of 8
+2026-09-08 07:48:10 | INFO    | train_lstm |   age (unclipped metric input): min=52.0, max=88.0
+2026-09-08 07:48:10 | INFO    | train_lstm | LSTM model created: LSTMModel
+2026-09-08 07:48:10 | INFO    | train_lstm | Trainable params: 481153
+2026-09-08 07:48:11 | INFO    | train_lstm | Train cached labels: pos=53 neg=680 missing=0 pos_weight=12.830189
+2026-09-08 07:48:11 | INFO    | train_lstm | Checkpoint selection: score = val_age_conditioned_auroc (gap=2)
+2026-09-08 07:49:03 | INFO    | train_lstm | Epoch   1 | loss=1.8985 | val_age_auroc=0.4612 | val_auroc=0.4789 | val_tpr5=0.1429 | select_score=0.4612 | time=52s
+2026-09-08 07:49:56 | INFO    | train_lstm | Epoch   2 | loss=0.7868 | val_age_auroc=0.4828 | val_auroc=0.5068 | val_tpr5=0.0000 | select_score=0.4828 | time=52s
+2026-09-08 07:50:48 | INFO    | train_lstm | Epoch   3 | loss=0.6827 | val_age_auroc=0.4784 | val_auroc=0.5211 | val_tpr5=0.1429 | select_score=0.4784 | time=53s
+2026-09-08 07:51:40 | INFO    | train_lstm | Epoch   4 | loss=0.4634 | val_age_auroc=0.4353 | val_auroc=0.5057 | val_tpr5=0.1429 | select_score=0.4353 | time=51s
+2026-09-08 07:52:32 | INFO    | train_lstm | Epoch   5 | loss=0.2923 | val_age_auroc=0.4483 | val_auroc=0.5034 | val_tpr5=0.1429 | select_score=0.4483 | time=53s
+2026-09-08 07:53:24 | INFO    | train_lstm | Epoch   6 | loss=0.4594 | val_age_auroc=0.4267 | val_auroc=0.5308 | val_tpr5=0.0000 | select_score=0.4267 | time=52s
+2026-09-08 07:54:17 | INFO    | train_lstm | Epoch   7 | loss=0.3234 | val_age_auroc=0.4698 | val_auroc=0.5257 | val_tpr5=0.1429 | select_score=0.4698 | time=53s
+2026-09-08 07:55:11 | INFO    | train_lstm | Epoch   8 | loss=0.0775 | val_age_auroc=0.4871 | val_auroc=0.5537 | val_tpr5=0.1429 | select_score=0.4871 | time=54s
+2026-09-08 07:56:07 | INFO    | train_lstm | Epoch   9 | loss=0.0781 | val_age_auroc=0.5129 | val_auroc=0.5548 | val_tpr5=0.1429 | select_score=0.5129 | time=56s
+2026-09-08 07:57:02 | INFO    | train_lstm | Epoch  10 | loss=0.3581 | val_age_auroc=0.4698 | val_auroc=0.5342 | val_tpr5=0.1429 | select_score=0.4698 | time=55s
+2026-09-08 07:57:53 | INFO    | train_lstm | Epoch  11 | loss=0.1228 | val_age_auroc=0.4698 | val_auroc=0.5211 | val_tpr5=0.0000 | select_score=0.4698 | time=50s
+2026-09-08 07:58:46 | INFO    | train_lstm | Epoch  12 | loss=0.1664 | val_age_auroc=0.5086 | val_auroc=0.5411 | val_tpr5=0.1429 | select_score=0.5086 | time=53s
+2026-09-08 07:59:38 | INFO    | train_lstm | Epoch  13 | loss=0.0627 | val_age_auroc=0.5129 | val_auroc=0.5936 | val_tpr5=0.0000 | select_score=0.5129 | time=52s
+2026-09-08 08:00:30 | INFO    | train_lstm | Epoch  14 | loss=0.0369 | val_age_auroc=0.4828 | val_auroc=0.5622 | val_tpr5=0.0000 | select_score=0.4828 | time=53s
+2026-09-08 08:01:21 | INFO    | train_lstm | Epoch  15 | loss=0.0020 | val_age_auroc=0.5043 | val_auroc=0.5548 | val_tpr5=0.0000 | select_score=0.5043 | time=51s
+2026-09-08 08:02:12 | INFO    | train_lstm | Epoch  16 | loss=0.1057 | val_age_auroc=0.5216 | val_auroc=0.5457 | val_tpr5=0.0000 | select_score=0.5216 | time=51s
+2026-09-08 08:03:07 | INFO    | train_lstm | Epoch  17 | loss=0.0139 | val_age_auroc=0.4741 | val_auroc=0.5154 | val_tpr5=0.0000 | select_score=0.4741 | time=54s
+2026-09-08 08:04:01 | INFO    | train_lstm | Epoch  18 | loss=0.0003 | val_age_auroc=0.4828 | val_auroc=0.5337 | val_tpr5=0.1429 | select_score=0.4828 | time=54s
+2026-09-08 08:04:56 | INFO    | train_lstm | Epoch  19 | loss=0.0000 | val_age_auroc=0.5043 | val_auroc=0.5371 | val_tpr5=0.1429 | select_score=0.5043 | time=55s
+2026-09-08 08:05:49 | INFO    | train_lstm | Epoch  20 | loss=0.0001 | val_age_auroc=0.4914 | val_auroc=0.5479 | val_tpr5=0.1429 | select_score=0.4914 | time=53s
+2026-09-08 08:06:44 | INFO    | train_lstm | Epoch  21 | loss=0.0000 | val_age_auroc=0.4957 | val_auroc=0.5491 | val_tpr5=0.1429 | select_score=0.4957 | time=55s
+2026-09-08 08:07:34 | INFO    | train_lstm | Epoch  22 | loss=0.0000 | val_age_auroc=0.4871 | val_auroc=0.5451 | val_tpr5=0.1429 | select_score=0.4871 | time=51s
+2026-09-08 08:08:26 | INFO    | train_lstm | Epoch  23 | loss=0.0000 | val_age_auroc=0.4914 | val_auroc=0.5439 | val_tpr5=0.1429 | select_score=0.4914 | time=52s
+2026-09-08 08:09:19 | INFO    | train_lstm | Epoch  24 | loss=0.0001 | val_age_auroc=0.4914 | val_auroc=0.5468 | val_tpr5=0.1429 | select_score=0.4914 | time=53s
+2026-09-08 08:10:12 | INFO    | train_lstm | Epoch  25 | loss=0.0000 | val_age_auroc=0.4957 | val_auroc=0.5485 | val_tpr5=0.1429 | select_score=0.4957 | time=53s
+2026-09-08 08:11:05 | INFO    | train_lstm | Epoch  26 | loss=0.0002 | val_age_auroc=0.4828 | val_auroc=0.5354 | val_tpr5=0.0000 | select_score=0.4828 | time=53s
+2026-09-08 08:12:01 | INFO    | train_lstm | Epoch  27 | loss=0.0000 | val_age_auroc=0.4828 | val_auroc=0.5354 | val_tpr5=0.0000 | select_score=0.4828 | time=56s
+2026-09-08 08:13:00 | INFO    | train_lstm | Epoch  28 | loss=0.0000 | val_age_auroc=0.4957 | val_auroc=0.5388 | val_tpr5=0.0000 | select_score=0.4957 | time=59s
+2026-09-08 08:13:55 | INFO    | train_lstm | Epoch  29 | loss=0.0000 | val_age_auroc=0.4957 | val_auroc=0.5388 | val_tpr5=0.0000 | select_score=0.4957 | time=55s
+2026-09-08 08:14:46 | INFO    | train_lstm | Epoch  30 | loss=0.0001 | val_age_auroc=0.5000 | val_auroc=0.5417 | val_tpr5=0.0000 | select_score=0.5000 | time=51s
+2026-09-08 08:15:38 | INFO    | train_lstm | Epoch  31 | loss=0.0000 | val_age_auroc=0.5000 | val_auroc=0.5428 | val_tpr5=0.0000 | select_score=0.5000 | time=52s
+2026-09-08 08:15:38 | INFO    | train_lstm | Early stopping at epoch 31 (best epoch=16 age-AUROC=0.5216 AUROC=0.5457 TPR@5%=0.0000)
+2026-09-08 08:15:46 | INFO    | train_lstm | Validation calibration: method=platt_logistic coef=0.002222 intercept=-2.455935 threshold=0.075556 raw_prob_mean=0.060860 calibrated_prob_mean=0.075949 calibrated_auroc=0.5457
+2026-09-08 08:15:46 | INFO    | train_lstm | Validation threshold (Youden): threshold=0.075556 tpr=0.6667 fpr=0.4658
+2026-09-08 08:15:46 | INFO    | train_lstm | External metrics skipped during training; evaluate saved checkpoint separately with true labels.
+2026-09-08 08:15:46 | INFO    | train_lstm | Model saved to /mnt/data5t-in-container/workspace/.medex_run_28bad4d425d84fe4aadc96979c3fa98c/python-example-2026/h100_results/seed7/F_typed_no_coherence/lstm_model.pt

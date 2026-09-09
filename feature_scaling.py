@@ -23,6 +23,10 @@ ECG_EPOCH_OFFSET = 10
 EXPECTED_DIMS = {"X_seq": SEQ_DIM, "X_ecg": ECG_DIM, "x_static": STATIC_DIM}
 SCALER_VERSION = "typed_v1"
 LEGACY_MODE = "legacy_clip"
+DEFAULT_MASK_CONFIG = {
+    "x_static_zero_indices": [],
+    "x_seq_zero_ranges": [],
+}
 ROOT = Path(__file__).resolve().parent
 DEFAULT_RULES_PATH = ROOT / "feat_input" / "feature_rules_v1.json"
 
@@ -179,6 +183,37 @@ def _prepare_values(values: np.ndarray, rule: Mapping[str, Any]) -> tuple[np.nda
     return transformed, valid, diagnostics
 
 
+def normalize_mask_config(config: Mapping[str, Any] | None = None) -> dict:
+    """Validate and canonicalize post-transform feature masking."""
+    config = dict(config or {})
+    unknown = set(config).difference(DEFAULT_MASK_CONFIG)
+    if unknown:
+        raise FeatureScalingError(f"Unsupported input mask fields: {sorted(unknown)}")
+
+    static_indices = sorted({int(index) for index in config.get("x_static_zero_indices", [])})
+    for index in static_indices:
+        if index < 0 or index >= STATIC_DIM:
+            raise FeatureScalingError(f"x_static mask index out of range: {index}")
+
+    seq_ranges = []
+    for item in config.get("x_seq_zero_ranges", []):
+        if not isinstance(item, Sequence) or isinstance(item, (str, bytes)) or len(item) != 2:
+            raise FeatureScalingError(f"Invalid X_seq mask range: {item!r}")
+        start, stop = int(item[0]), int(item[1])
+        if start < 0 or stop > SEQ_DIM or start >= stop:
+            raise FeatureScalingError(f"X_seq mask range out of bounds: [{start}, {stop})")
+        seq_ranges.append([start, stop])
+    seq_ranges.sort()
+    for previous, current in zip(seq_ranges, seq_ranges[1:]):
+        if current[0] < previous[1]:
+            raise FeatureScalingError(f"Overlapping X_seq mask ranges: {previous}, {current}")
+
+    return {
+        "x_static_zero_indices": static_indices,
+        "x_seq_zero_ranges": seq_ranges,
+    }
+
+
 class FeatureScaler:
     """Frozen shared transformer for the three model input branches."""
 
@@ -189,6 +224,7 @@ class FeatureScaler:
         parameters: Sequence[Mapping[str, Any]] | None = None,
         metadata: Mapping[str, Any] | None = None,
         clip_z: float | None = None,
+        mask_config: Mapping[str, Any] | None = None,
     ):
         if mode not in {SCALER_VERSION, LEGACY_MODE}:
             raise FeatureScalingError(f"Unsupported input preprocessing mode: {mode}")
@@ -196,7 +232,12 @@ class FeatureScaler:
         self.rules = [dict(r) for r in (rules or [])]
         self.parameters = [dict(p) for p in (parameters or [])]
         self.metadata = dict(metadata or {})
-        self.clip_z = clip_z
+        self.clip_z = None if clip_z is None else float(clip_z)
+        if self.clip_z is not None and (not np.isfinite(self.clip_z) or self.clip_z <= 0):
+            raise FeatureScalingError(f"clip_z must be finite and positive, got {clip_z!r}")
+        self.mask_config = normalize_mask_config(mask_config)
+        if mode == LEGACY_MODE and any(self.mask_config.values()):
+            raise FeatureScalingError("Feature masking is supported only for typed_v1")
         if mode == SCALER_VERSION:
             validate_feature_rules(self.rules)
             if len(self.parameters) != len(self.rules):
@@ -217,6 +258,22 @@ class FeatureScaler:
         else:
             self._rule_map = {}
             self._parameter_map = {}
+
+    def with_runtime_config(
+        self,
+        *,
+        clip_z: float | None,
+        mask_config: Mapping[str, Any] | None = None,
+    ) -> "FeatureScaler":
+        """Clone frozen fitted state while changing only post-fit runtime options."""
+        return FeatureScaler(
+            self.mode,
+            self.rules,
+            self.parameters,
+            self.metadata,
+            clip_z=clip_z,
+            mask_config=mask_config,
+        )
 
     @classmethod
     def legacy_clip(cls) -> "FeatureScaler":
@@ -478,6 +535,12 @@ class FeatureScaler:
                 branch_diag["filled"] += int((~valid).sum())
             diagnostics["per_branch"][branch] = branch_diag
 
+        for index in self.mask_config["x_static_zero_indices"]:
+            outputs["x_static"][index] = 0.0
+        for start, stop in self.mask_config["x_seq_zero_ranges"]:
+            outputs["X_seq"][:, start:stop] = 0.0
+        diagnostics["mask_config"] = self.mask_config
+
         result = tuple(outputs[name].astype(np.float32, copy=False) for name in ("X_seq", "X_ecg", "x_static"))
         return (*result, diagnostics) if return_diagnostics else result
 
@@ -489,6 +552,7 @@ class FeatureScaler:
             "parameters": self.parameters,
             "metadata": self.metadata,
             "clip_z": self.clip_z,
+            "mask_config": self.mask_config,
             "rules_sha256": stable_hash(self.rules) if self.rules else None,
             "feature_order_sha256": feature_order_hash(self.rules) if self.rules else None,
         }
@@ -511,7 +575,11 @@ class FeatureScaler:
         metadata = state.get("metadata") or {}
         if metadata.get("rules_sha256") not in {None, stable_hash(rules)}:
             raise FeatureScalingError("Fitted metadata rule checksum mismatch")
-        return cls(mode, rules, parameters, metadata, state.get("clip_z"))
+        return cls(
+            mode, rules, parameters, metadata,
+            clip_z=state.get("clip_z"),
+            mask_config=state.get("mask_config"),
+        )
 
 
 def detect_fallback_sequence(X_seq: np.ndarray, X_ecg: np.ndarray, mask: np.ndarray | None) -> bool:

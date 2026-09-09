@@ -1,0 +1,41 @@
+{
+  "arms": [
+    {
+      "clip_z": null,
+      "mask_config": {
+        "x_static_zero_indices": [
+          0
+        ]
+      },
+      "name": "D_typed_no_age"
+    },
+    {
+      "clip_z": null,
+      "mask_config": {
+        "x_static_zero_indices": [
+          9
+        ]
+      },
+      "name": "E_typed_no_bmi"
+    },
+    {
+      "clip_z": null,
+      "mask_config": {
+        "x_seq_zero_ranges": [
+          [
+            54,
+            414
+          ]
+        ]
+      },
+      "name": "F_typed_no_coherence"
+    }
+  ],
+  "gpu": "NVIDIA H100 PCIe",
+  "npz_cache": "/mnt/data5t-in-container/workspace/.medex_run_28bad4d425d84fe4aadc96979c3fa98c/python-example-2026/npz_new",
+  "python": "/mnt/data5t-in-container/env/eeg_env/bin/python3",
+  "seed": 7,
+  "source_checkpoint": "/mnt/data5t-in-container/workspace/.medex_run_28bad4d425d84fe4aadc96979c3fa98c/python-example-2026/p1_inputs/B_typed_v1/lstm_model.pt",
+  "source_checkpoint_sha256": "b4fb534bc1310d4b7ae132fdcfd7f04d6664c04cecf06028cf108e6af5342125",
+  "split": "/mnt/data5t-in-container/workspace/.medex_run_28bad4d425d84fe4aadc96979c3fa98c/python-example-2026/split"
+}
