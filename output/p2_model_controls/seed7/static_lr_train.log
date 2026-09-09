@@ -1,0 +1,5 @@
+fatal: not a git repository (or any parent up to mount point /mnt)
+Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+2026-09-09 07:22:37,091 | INFO    | train_static_lr | I_LR_demo10 saved: dim=10 nonzero=7 n_iter=[10000] val_AC=0.4375 val_AUROC=0.6641
+2026-09-09 07:22:37,142 | INFO    | train_static_lr | J_LR_compact30 saved: dim=30 nonzero=14 n_iter=[43] val_AC=0.5388 val_AUROC=0.6889
+2026-09-09 07:22:37,446 | INFO    | train_static_lr | K_LR_static196 saved: dim=196 nonzero=34 n_iter=[195] val_AC=0.4483 val_AUROC=0.6233

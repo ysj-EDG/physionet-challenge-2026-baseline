@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/database/home/gaohaojie/workspace/python-example-2026/feat_input/feat_mody/run_p2_official_evaluation.py", line 197, in <module>
+    main()
+  File "/database/home/gaohaojie/workspace/python-example-2026/feat_input/feat_mody/run_p2_official_evaluation.py", line 106, in main
+    raise RuntimeError(f"Frozen cache is missing or has unexpected count: {CACHE}")
+RuntimeError: Frozen cache is missing or has unexpected count: /database/home/gaohaojie/workspace/python-example-2026/npz_new

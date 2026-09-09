@@ -1,0 +1,14 @@
+arm=I_LR_demo10
+model_type=static_logistic
+selected_dimension=10
+selected_indices=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+selected_names=['age', 'sex_Female', 'sex_Male', 'sex_OtherUnknown', 'race_Asian', 'race_Black', 'race_Others', 'race_Unavailable', 'race_White', 'BMI']
+train_records=733 val_records=158
+train_metrics={'auroc': 0.7920921198668146, 'age_conditioned_auroc': 0.6092922484352431, 'auprc': 0.2562374751415797}
+validation_metrics={'auroc': 0.6640981735159818, 'age_conditioned_auroc': 0.4375, 'auprc': 0.24148790884514293}
+calibrator={'method': 'platt_logistic', 'coef': 0.7163436479994303, 'intercept': -2.3573376036437717}
+threshold=0.07175983481621719 tpr=0.6666666666666666 fpr=0.3835616438356164
+n_iter=[10000] converged=False
+nonzero_coefficients=7
+convergence_warnings=['The max_iter was reached which means the coef_ did not converge']
+model_path=/mnt/data5t-in-container/workspace/.medex_run_4b99f022d3da475ca9e65add1b5fffa4/python-example-2026/p2_h100_results/seed7/I_LR_demo10/lstm_model.pt

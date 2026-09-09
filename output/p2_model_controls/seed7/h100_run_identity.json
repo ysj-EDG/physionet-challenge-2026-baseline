@@ -1,0 +1,34 @@
+{
+  "base_commit": "e048052f033a62e95ee911fab151faa773cfffde",
+  "g_initial_model_hash": "d743c45fef9d70b6333faaf70412fa7bd93e96ee573d89ffe3212e78bdf897d3",
+  "gpu": "NVIDIA H100 PCIe",
+  "h_initial_model_hash": "d743c45fef9d70b6333faaf70412fa7bd93e96ee573d89ffe3212e78bdf897d3",
+  "losses": {
+    "empirical": 2.719763994216919,
+    "unit": 0.391172856092453
+  },
+  "numpy_version": "2.2.6",
+  "pos_weights": {
+    "empirical": 12.830188679245284,
+    "unit": 1.0
+  },
+  "python": "/mnt/data5t-in-container/env/eeg_env/bin/python3",
+  "python_version": "3.10.12 (main, May 27 2025, 17:12:29) [GCC 11.4.0]",
+  "rules_sha256": "b8624092b12e5a2800d7627413d6d4c791fec8c7fb77552a007e1d43342c3c90",
+  "seed": 7,
+  "sklearn_version": "1.7.2",
+  "source_checkpoint_sha256": "b4fb534bc1310d4b7ae132fdcfd7f04d6664c04cecf06028cf108e6af5342125",
+  "source_files_sha256": {
+    "static_logistic.py": "3457c3c90c9ade85fd69ab47b50350b33f1c0695bf4a456d208ab26dfd57077a",
+    "team_code.py": "97c2eb5eb2e3ee0af0b28af9119996ee7b63bf86e3f6fae8cc7f3734588f4740",
+    "train_lstm.py": "229e1522136fd0f3316b4130238a1e4b87d7057bf6298574d2ad416d2dc8140b",
+    "train_static_lr.py": "31f87baefb3a774b3ec46091b363f84bdd91f2f9e94b0f70c401aac6eb41a7e8"
+  },
+  "split_sha256": {
+    "external": "52c10b1b21f0f21dc23ba787dde3bb91e3424c9a3eeadf9d3b5c0c242c5748de",
+    "test": "bfc237e3ba13d2f19ce69e9a6eff36c0ffa8c403bb874a6935aa5cea47935c31",
+    "train": "5d5be75ff4d66684fdc7f5600cf82dfaceca22cee2b3f2c7f66bcdc2c2c0261e",
+    "val": "9ee4e400fe389a9cad09aba9c523a93462f0edc341f413af08c48a8f74d27bcd"
+  },
+  "torch_version": "2.5.1+cu121"
+}

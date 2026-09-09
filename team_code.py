@@ -7,6 +7,7 @@ The LSTM architecture and inference implementation live in this module.
 
 from __future__ import annotations
 
+import csv
 import hashlib
 import json
 import os
@@ -26,6 +27,8 @@ import torch.nn as nn
 
 from helper_code import DEMOGRAPHICS_FILE, HEADERS, load_label
 from feature_scaling import FeatureScaler, FeatureScalingError, SCALER_VERSION
+from static_logistic import MODEL_TYPE as STATIC_LOGISTIC_MODEL_TYPE
+from static_logistic import StaticLogisticModel
 
 # ============================================================================
 # Configuration
@@ -608,8 +611,15 @@ def load_model(model_folder, verbose):
         except FeatureScalingError as exc:
             raise RuntimeError(f"Invalid checkpoint input preprocessing: {exc}") from exc
 
-    network = LSTMModel().to(DEVICE)
-    network.load_state_dict(checkpoint["state_dict"])
+    model_type = checkpoint.get("model_type", "lstm")
+    if model_type == "lstm":
+        network = LSTMModel()
+        network.load_state_dict(checkpoint["state_dict"])
+    elif model_type == STATIC_LOGISTIC_MODEL_TYPE:
+        network = StaticLogisticModel.from_checkpoint(checkpoint)
+    else:
+        raise RuntimeError(f"Unsupported checkpoint model_type: {model_type!r}")
+    network = network.to(DEVICE)
     network.eval()
 
     cache_roots = []
@@ -620,13 +630,34 @@ def load_model(model_folder, verbose):
         cache_roots.append(ROOT / "npz_full")
     cache_roots.append(model_folder / "inference_cache")
     if verbose:
-        print(f"Loaded {model_path}; cache search roots={cache_roots}")
+        print(
+            f"Loaded {model_path}; model_type={model_type}; "
+            f"cache search roots={cache_roots}"
+        )
+    decision_output_path = None
+    configured_decision_output = os.environ.get("LSTM_DECISION_OUTPUT")
+    if configured_decision_output:
+        decision_output_path = Path(configured_decision_output).resolve()
+        if decision_output_path.exists():
+            raise RuntimeError(
+                f"Refusing to overwrite decision output: {decision_output_path}"
+            )
+        decision_output_path.parent.mkdir(parents=True, exist_ok=True)
+        with decision_output_path.open("w", newline="", encoding="utf-8") as handle:
+            csv.writer(handle).writerow(
+                [
+                    "SiteID", "BidsFolder", "SessionID", "record_key",
+                    "decision_logit", "calibrated_probability", "binary_prediction",
+                ]
+            )
     return {
         "network": network,
+        "model_type": model_type,
         "cache_roots": cache_roots,
         "calibrator": checkpoint.get("calibrator"),
         "threshold": float(checkpoint.get("threshold", 0.5)),
         "preprocessor": preprocessor,
+        "decision_output_path": decision_output_path,
     }
 
 # ============================================================================
@@ -707,4 +738,19 @@ def run_model(model, record, data_folder, verbose):
     if not np.isfinite(probability):
         raise RuntimeError(f"Non-finite prediction for {_record_key(record)}")
     probability = float(np.clip(probability, 0.0, 1.0))
-    return bool(probability >= model["threshold"]), probability
+    binary_prediction = bool(probability >= model["threshold"])
+    decision_output_path = model.get("decision_output_path")
+    if decision_output_path is not None:
+        with decision_output_path.open("a", newline="", encoding="utf-8") as handle:
+            csv.writer(handle).writerow(
+                [
+                    record[HEADERS["site_id"]],
+                    record[HEADERS["bids_folder"]],
+                    record[HEADERS["session_id"]],
+                    _record_key(record),
+                    format(logit, ".17g"),
+                    format(probability, ".17g"),
+                    int(binary_prediction),
+                ]
+            )
+    return binary_prediction, probability

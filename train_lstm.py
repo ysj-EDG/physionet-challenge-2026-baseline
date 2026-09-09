@@ -69,6 +69,12 @@ FEATURE_RULES_PATH = os.environ.get("LSTM_FEATURE_RULES", str(DEFAULT_RULES_PATH
 PREPROCESSOR_STATE_CHECKPOINT = os.environ.get("LSTM_PREPROCESSOR_STATE_CHECKPOINT")
 INPUT_CLIP_Z = os.environ.get("LSTM_INPUT_CLIP_Z")
 INPUT_CLIP_Z = None if INPUT_CLIP_Z in {None, "", "none", "None"} else float(INPUT_CLIP_Z)
+POS_WEIGHT_MODE = os.environ.get("LSTM_POS_WEIGHT_MODE", "empirical")
+if POS_WEIGHT_MODE not in {"empirical", "unit"}:
+    raise ValueError(
+        "LSTM_POS_WEIGHT_MODE must be 'empirical' or 'unit', "
+        f"got {POS_WEIGHT_MODE!r}"
+    )
 try:
     INPUT_MASK_CONFIG = normalize_mask_config(
         json.loads(os.environ.get("LSTM_INPUT_MASK_CONFIG", "{}"))
@@ -77,6 +83,16 @@ except (json.JSONDecodeError, TypeError, ValueError) as exc:
     raise FeatureScalingError(f"Invalid LSTM_INPUT_MASK_CONFIG: {exc}") from exc
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+def resolve_pos_weight(mode, positive, negative):
+    if mode == "unit":
+        return 1.0
+    if mode != "empirical":
+        raise ValueError(f"Unsupported pos_weight mode: {mode!r}")
+    if positive <= 0:
+        return 1.0
+    return float(negative / positive)
 
 
 def seed_everything(seed):
@@ -545,14 +561,14 @@ def main():
     logger.info("Trainable params: %d", n_params)
 
     train_pos, train_neg, train_missing = count_cached_labels(train_recs, os.path.join(CACHE_DIR, "train"))
-    if train_pos <= 0:
+    if train_pos <= 0 and POS_WEIGHT_MODE == "empirical":
         logger.warning("No positive labels found in cached train split; using pos_weight=1.0")
-        pos_weight_value = 1.0
-    else:
-        pos_weight_value = float(train_neg / train_pos)
+    pos_weight_value = resolve_pos_weight(
+        POS_WEIGHT_MODE, train_pos, train_neg
+    )
     logger.info(
-        "Train cached labels: pos=%d neg=%d missing=%d pos_weight=%.6f",
-        train_pos, train_neg, train_missing, pos_weight_value,
+        "Train cached labels: pos=%d neg=%d missing=%d pos_weight_mode=%s pos_weight=%.6f",
+        train_pos, train_neg, train_missing, POS_WEIGHT_MODE, pos_weight_value,
     )
 
     optimizer = optim.Adam(model.parameters(), lr=LR)
@@ -640,6 +656,7 @@ def main():
         "selection_metric": "val_age_conditioned_auroc_gap2",
         "best_epoch": best_epoch,
         "best_tpr5": best_tpr5,
+        "pos_weight_mode": POS_WEIGHT_MODE,
         "pos_weight": pos_weight_value,
         "calibrator": calibrator,
         "threshold": val_threshold,

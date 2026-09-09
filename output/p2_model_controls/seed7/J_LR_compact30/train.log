@@ -1,0 +1,14 @@
+arm=J_LR_compact30
+model_type=static_logistic
+selected_dimension=30
+selected_indices=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 16, 17, 18, 19, 20, 32, 34, 87, 96, 97, 98, 126, 127, 141, 168, 173]
+selected_names=['age', 'sex_Female', 'sex_Male', 'sex_OtherUnknown', 'race_Asian', 'race_Black', 'race_Others', 'race_Unavailable', 'race_White', 'BMI', 'caisr_sleep_tst_sec', 'caisr_sleep_se', 'caisr_sleep_sol_sec', 'caisr_sleep_rem_latency_sec', 'caisr_sleep_waso_sec', 'caisr_sleep_n1_pct', 'caisr_sleep_n2_pct', 'caisr_sleep_n3_pct', 'caisr_sleep_rem_pct', 'caisr_sleep_transition_rate', 'caisr_sleep_short_bout_ratio', 'caisr_sleep_mean_stage_entropy', 'caisr_arousal_arousal_index', 'caisr_arousal_arousal_burden_ratio', 'caisr_arousal_mean_arousal_duration', 'caisr_respiratory_respiratory_event_index', 'caisr_respiratory_respiratory_burden_ratio', 'caisr_respiratory_mean_resp_duration', 'caisr_limb_limb_movement_index', 'caisr_limb_plmi']
+train_records=733 val_records=158
+train_metrics={'auroc': 0.8329078801331854, 'age_conditioned_auroc': 0.7233991333654309, 'auprc': 0.3197897606534095}
+validation_metrics={'auroc': 0.6889269406392695, 'age_conditioned_auroc': 0.5387931034482759, 'auprc': 0.25925848245917243}
+calibrator={'method': 'platt_logistic', 'coef': 0.7032926365395931, 'intercept': -2.327795269140508}
+threshold=0.14419502862444586 tpr=0.4166666666666667 fpr=0.0547945205479452
+n_iter=[43] converged=True
+nonzero_coefficients=14
+convergence_warnings=[]
+model_path=/mnt/data5t-in-container/workspace/.medex_run_4b99f022d3da475ca9e65add1b5fffa4/python-example-2026/p2_h100_results/seed7/J_LR_compact30/lstm_model.pt

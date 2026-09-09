@@ -1,0 +1,30 @@
+version: 1
+
+workspace: ..
+
+exclude:
+  - .git/
+  - __pycache__/
+  - eeg_qc/
+  - output/
+  - h100_results/
+  - p2_h100_results/
+  - npz_sup20/
+  - feat_input/medex.yaml
+  - feat_input/medex_p2.yaml
+
+include:
+  - src: output/p0_ab/seed7/B_typed_v1/lstm_model.pt
+    dst: p2_inputs/B_typed_v1/
+
+env: eeg_env
+device: auto
+
+run:
+  script: feat_input/feat_mody/run_p2_h100.py
+  wait: true
+
+rsync_back:
+  - p2_h100_results
+
+notify: []
