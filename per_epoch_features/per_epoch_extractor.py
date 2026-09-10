@@ -445,7 +445,7 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
     # Per-epoch sub-extractors
     # ========================================================================
 
-    def _extract_per_epoch_eeg(self, std_data, std_fs):
+    def _extract_per_epoch_eeg(self, std_data, std_fs, return_metadata=False):
         """返回 (N_epochs, 432): 54 频谱 + 360 相干 + 18 BSR. 输入已标准化+200Hz."""
         from .eeg_sleep_features import eeg_segment_coherence, N_PAIRS, N_FFT_BINS
 
@@ -487,11 +487,16 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
             eeg_signals = [s[:min_len] for s in eeg_signals]
 
         eeg_data = np.stack(eeg_signals, axis=0)
-        epoch_features, _ = eeg_segment_coherence(
+        coherence_output = eeg_segment_coherence(
             eeg_data,
             200.0,
             channel_available=channel_available,
-        )  # (N_ep, 1554)
+            return_metadata=return_metadata,
+        )
+        if return_metadata:
+            epoch_features, _, eeg_metadata = coherence_output
+        else:
+            epoch_features, _ = coherence_output
         n_epochs = epoch_features.shape[0]
         if n_epochs == 0:
             return None
@@ -511,7 +516,8 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
             channel_available=channel_available,
         )
         result = np.concatenate([spectral, coherence, bsr_features], axis=1).astype(np.float32)
-        return np.nan_to_num(result, nan=0.0)
+        result = np.nan_to_num(result, nan=0.0)
+        return (result, eeg_metadata) if return_metadata else result
 
     def _extract_per_epoch_emg(self, std_data, std_fs):
         """返回 (N_epochs, 24): chin(8) + lleg(8) + rleg(8). 输入已标准化+200Hz."""
@@ -613,19 +619,40 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
             rows.append(row)
         return np.nan_to_num(np.asarray(rows, dtype=np.float32), nan=0.0)
 
-    def _extract_per_epoch_onehot(self, algo_data):
-        """返回 (N_epochs, 13)."""
+    def _extract_per_epoch_onehot(self, algo_data, n_epochs=None, return_metadata=False):
+        """返回 (N_epochs, 13)，v2 可同时返回原位 stage 元数据。"""
         if not algo_data or 'stage_caisr' not in algo_data:
-            return None
+            return (None, {}) if return_metadata else None
 
         raw_stages = np.asarray(algo_data['stage_caisr'], dtype=float).reshape(-1)
         valid = np.isin(raw_stages, [1, 2, 3, 4, 5])
-        stages = raw_stages[valid].astype(int)
-        n_epochs = len(stages)
+        timegrid_v2 = algo_data.get('__extraction_mode__') == 'timegrid_v2'
+        if timegrid_v2:
+            source = np.asarray(
+                algo_data.get('__aligned_stage_code__', raw_stages), dtype=float,
+            ).reshape(-1)
+            if n_epochs is None:
+                n_epochs = len(source)
+            n_epochs = int(n_epochs)
+            stages = np.full(n_epochs, np.nan, dtype=float)
+            copy_len = min(n_epochs, len(source))
+            stages[:copy_len] = source[:copy_len]
+            stage_valid = np.isin(stages, [1, 2, 3, 4, 5])
+        else:
+            stages = raw_stages[valid].astype(int)
+            n_epochs = len(stages)
+            stage_valid = np.ones(n_epochs, dtype=bool)
         if n_epochs == 0:
-            return None
+            return (None, {}) if return_metadata else None
 
         trt_sec = n_epochs * EPOCH_SEC
+
+        def _sample_sec(key, default):
+            if timegrid_v2:
+                fs = float(algo_data.get('__sampling_frequencies__', {}).get(key, 0.0))
+                return 1.0 / fs if fs > 0 else float(default)
+            signal = np.asarray(algo_data.get(key, []), dtype=float).reshape(-1)
+            return trt_sec / len(signal) if len(signal) > 0 else float(default)
 
         def _segments(signal, dt_sec):
             sig = np.asarray(signal, dtype=float).reshape(-1)
@@ -636,18 +663,18 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
             return starts, ends
 
         arousal_signal = np.asarray(algo_data.get('arousal_caisr', []), dtype=float).reshape(-1)
-        arousal_dt = trt_sec / len(arousal_signal) if len(arousal_signal) > 0 else 0.5
+        arousal_dt = _sample_sec('arousal_caisr', 0.5)
         a_s, a_e = _segments(arousal_signal, arousal_dt)
 
         resp_signal = np.asarray(algo_data.get('resp_caisr', []), dtype=float).reshape(-1)
-        resp_dt = trt_sec / len(resp_signal) if len(resp_signal) > 0 else 1.0
+        resp_dt = _sample_sec('resp_caisr', 1.0)
         resp_ss, resp_es = {}, {}
         for rt, rc in [("OA", 1), ("CA", 2), ("MA", 3), ("HY", 4), ("RERA", 5)]:
             s, e = _segments(resp_signal == rc, resp_dt)
             resp_ss[rt], resp_es[rt] = s, e
 
         limb_signal = np.asarray(algo_data.get('limb_caisr', []), dtype=float).reshape(-1)
-        limb_dt = trt_sec / len(limb_signal) if len(limb_signal) > 0 else 1.0
+        limb_dt = _sample_sec('limb_caisr', 1.0)
         l_iso_s, l_iso_e = _segments(limb_signal == 1, limb_dt)
         l_plm_s, l_plm_e = _segments(limb_signal == 2, limb_dt)
 
@@ -664,9 +691,16 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
         columns.append(_event_fractions_by_epoch(
             l_plm_s, l_plm_e, n_epochs,
         )[:, None])
-        return np.concatenate(columns, axis=1)
+        features = np.concatenate(columns, axis=1)
+        if not return_metadata:
+            return features
+        return features, {
+            'stage_code_raw': raw_stages,
+            'stage_code_aligned': stages,
+            'stage_valid': stage_valid,
+        }
 
-    def _extract_sliding_ecg(self, std_data, std_fs, n_epochs, edf_start_time=None):
+    def _extract_sliding_ecg(self, std_data, std_fs, n_epochs, edf_start_time=None, return_metadata=False):
         """
         滑动 5 分钟 ECG HRV + 窗口中点 circadian_cos, stride=30s. 输入已标准化+200Hz.
         返回完整 30s 时间网格；坏窗口在原位置将 11 维 HRV 置零。
@@ -690,6 +724,7 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
         n_wins = (len(ecg_sig) - window_samples) // stride_samples + 1
 
         result = np.zeros((n_wins, 12), dtype=np.float32)
+        hrv_success = np.zeros(n_wins, dtype=bool)
         circadian_all = extract_hrv_window_circadian_cos(
             edf_start_time, n_wins, win_sec=300.0, stride_sec=30.0,
         )
@@ -706,7 +741,10 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
                 np.asarray(f11, dtype=np.float32),
                 nan=0.0, posinf=0.0, neginf=0.0,
             )
+            hrv_success[i] = True
 
+        if return_metadata:
+            return result, {"hrv_success": hrv_success}
         return result
 
 

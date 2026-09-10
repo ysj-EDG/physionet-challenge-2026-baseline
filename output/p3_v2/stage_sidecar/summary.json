@@ -1,0 +1,18 @@
+{
+  "alignment": {
+    "annotation_missing": 13,
+    "reliable_official_relative_prefix": 1090
+  },
+  "by_split": {
+    "external": 54,
+    "test": 158,
+    "train": 733,
+    "val": 158
+  },
+  "cached_matches_compressed": 1103,
+  "cached_matches_raw_prefix": 13,
+  "records": 1103,
+  "records_with_invalid_in_cache_prefix": 1103,
+  "source_data": "/database2/physionet2026_kaggle/data",
+  "source_demographics_sha256": "2da2f66b2f0e0690a7899aca9e0e707aa60a2c472b0bf336ed231b44fce46458"
+}

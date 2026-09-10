@@ -1,6 +1,6 @@
 # DATA2 timegrid_v2 cache start report
 
-Status: **BLOCKED at the remote data mount, after implementation and successful 6-record acceptance.** No model training ran and no existing NPZ was overwritten.
+Status: **ACTIVE: local data2 is being synchronized into Medex keep storage; the same submitted task will start full H100 extraction after upload.** At the 2026-09-10 09:49 UTC check, 161.9 GB had transferred, rsync and the parent Medex process were both alive, and no existing NPZ had been overwritten.
 
 ## Scope and version
 
@@ -26,12 +26,14 @@ Single-record elapsed time was 523.5 s. The three-worker run completed five new 
 
 ## Full launch status and recovery
 
-An actual Medex submission was made at 2026-09-10 05:07 UTC with `eeg_env` on H100 GPU 0. Medex history entry 1 describes it as entry 1, but the client exposes no stable job ID. The strict remote preflight stopped before extraction because `/database2/physionet2026_kaggle/data2` was unavailable on the remote host. The only registered remote dataset is `physionet2026_data` (129 GiB; `training_set/` and `supplementary_set/`), not data2 (local data2 is 1.3 TiB). It was not substituted or uploaded. The complete evidence is `data2_medex_submit.log`.
+The first actual Medex submission at 2026-09-10 05:07 UTC stopped before extraction because `/database2/physionet2026_kaggle/data2` was unavailable remotely. The registered `physionet2026_data` dataset was not substituted.
 
-After data2 is mounted at that exact path, resume with:
+After user authorization to synchronize the local source, `medex_data2_timegrid_v2.yaml` was updated with a persistent `include` from `/database2/physionet2026_kaggle/data2` to `data2_source/`. A replacement Medex task started at 2026-09-10 07:45 UTC. Its rsync and parent process remain active; progress evidence is streamed to `data2_medex_upload_and_run.log`. The uploaded source is marked `keep: true`, and `run_data2_timegrid_v2_medex.py` searches both `data2_source/` layouts before requiring the exact original mount. Once synchronization finishes, this same waiting Medex invocation automatically runs the restartable full extractor in `eeg_env` and rsyncs `npz_data2` back.
+
+If the active task is interrupted, resume with:
 
 ```bash
 /opt/miniconda3/bin/medex-run run feat_input/medex_data2_timegrid_v2.yaml
 ```
 
-The batch writer uses a same-directory temporary file, fsync, validation, and atomic rename. It skips only a valid matching version and logs each success, failure, or existing cache to `npz_data2/manifest.jsonl`, so the same command is the recovery command. Current local output contains only the six accepted smoke caches; full success counts are pending the required remote mount.
+The batch writer uses a same-directory temporary file, fsync, validation, and atomic rename. It skips only a valid matching version and logs each success, failure, or existing cache to `npz_data2/manifest.jsonl`, so the same command is the recovery command. Current local output still contains the six accepted smoke caches; full extraction has not started because the 1.3 TiB source synchronization is still in progress. The percentage/ETA printed by rsync changes as its file list advances, so transferred bytes and process liveness are the reliable progress fields.

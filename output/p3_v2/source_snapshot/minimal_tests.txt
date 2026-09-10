@@ -1,0 +1,1 @@
+collected=3 passed=3 runner=direct_python_no_pytest_installed

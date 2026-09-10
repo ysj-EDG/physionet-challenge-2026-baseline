@@ -1,0 +1,7 @@
+Reward: 0.158
+Age-conditioned AUROC : 0.679
+Age-weighted AUROC : 0.616
+AUROC: 0.848
+AUPRC: 0.488
+Accuracy: 0.886
+F-measure: 0.471

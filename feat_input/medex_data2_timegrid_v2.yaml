@@ -12,6 +12,11 @@ exclude:
   - feat_input/data2_smoke_logs/
   - feat_input/medex.yaml
   - feat_input/medex_p2.yaml
+include:
+  - src: /database2/physionet2026_kaggle/data2
+    dst: data2_source/
+    keep: true
+
 env: eeg_env
 device: auto
 run:

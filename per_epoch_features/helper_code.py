@@ -29,16 +29,39 @@ HEADERS = {
 }
 
 
-def load_signal_data(edf_path) -> Tuple[Dict[str, np.ndarray], Dict[str, float]]:
-    """Load every EDF signal as a lowercase-labelled NumPy array."""
+def load_signal_data(edf_path, return_metadata=False):
+    """Load EDF signals, optionally returning non-model alignment metadata.
+
+    The default two-value return is intentionally unchanged for legacy callers.
+    """
     edf = edfio.read_edf(str(edf_path), lazy_load_data=False)
     channel_dict = {}
     fs_dict = {}
+    lengths = {}
+    dimensions = {}
     for signal in edf.signals:
         label = signal.label.lower().strip()
         channel_dict[label] = signal.data
         fs_dict[label] = float(signal.sampling_frequency)
-    return channel_dict, fs_dict
+        lengths[label] = int(np.asarray(signal.data).size)
+        dimensions[label] = str(signal.physical_dimension)
+    if not return_metadata:
+        return channel_dict, fs_dict
+
+    def _safe_header(name):
+        try:
+            value = getattr(edf, name)
+            return None if value is None else str(value)
+        except Exception:
+            return None
+
+    return channel_dict, fs_dict, {
+        "duration_sec": float(edf.duration),
+        "startdate": _safe_header("startdate"),
+        "starttime": _safe_header("starttime"),
+        "signal_lengths": lengths,
+        "physical_dimensions": dimensions,
+    }
 
 
 def _normalize_identifier(value) -> str:

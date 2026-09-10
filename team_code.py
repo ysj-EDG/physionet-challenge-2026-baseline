@@ -29,6 +29,11 @@ from helper_code import DEMOGRAPHICS_FILE, HEADERS, load_label
 from feature_scaling import FeatureScaler, FeatureScalingError, SCALER_VERSION
 from static_logistic import MODEL_TYPE as STATIC_LOGISTIC_MODEL_TYPE
 from static_logistic import StaticLogisticModel
+from pooled_logistic_v2 import (
+    MODEL_TYPE as POOLED_LOGISTIC_V2_MODEL_TYPE,
+    apply_imputer_scaler as apply_pooled_imputer_scaler,
+    assemble_features as assemble_pooled_features,
+)
 
 # ============================================================================
 # Configuration
@@ -129,6 +134,55 @@ def _infer_one(network, sample):
 
     logit = network(X_seq, X_ecg, x_static, lengths)
     return float(logit.detach().cpu().item())
+
+
+def _infer_pooled_logistic_v2(checkpoint, sample, sidecar_path):
+    """Apply the checkpoint's shared P3 pooling and frozen linear state."""
+    required = {
+        "stage_code", "stage_valid", "eeg_channel_available", "record_id"
+    }
+    with np.load(sidecar_path, allow_pickle=False) as sidecar:
+        missing = required - set(sidecar.files)
+        if missing:
+            raise RuntimeError(
+                f"P3 sidecar {sidecar_path} is missing keys: {sorted(missing)}"
+            )
+        saved_record_id = str(np.asarray(sidecar["record_id"]).item())
+        if saved_record_id != sample["rec_key"]:
+            raise RuntimeError(
+                f"P3 sidecar identity mismatch: {saved_record_id!r} != "
+                f"{sample['rec_key']!r}"
+            )
+        stage_code = np.asarray(sidecar["stage_code"])
+        stage_valid = np.asarray(sidecar["stage_valid"])
+        channel_available = np.asarray(sidecar["eeg_channel_available"])
+    if len(stage_code) < sample["length"] or len(stage_valid) < sample["length"]:
+        raise RuntimeError(
+            f"P3 sidecar {sidecar_path} has fewer epochs than X_seq: "
+            f"stage={len(stage_code)}, valid={len(stage_valid)}, "
+            f"X_seq={sample['length']}"
+        )
+    values = assemble_pooled_features(
+        sample["x_static"], stage_code, stage_valid, channel_available,
+        sample["X_seq"], checkpoint["arm"],
+    )
+    med = np.asarray(checkpoint["imputer_median"], dtype=np.float64)
+    mean = np.asarray(checkpoint["linear_mean"], dtype=np.float64)
+    scale = np.asarray(checkpoint["linear_scale"], dtype=np.float64)
+    coefficients = np.asarray(checkpoint["coefficients"], dtype=np.float64)
+    if not (values.shape == med.shape == mean.shape == scale.shape == coefficients.shape):
+        raise RuntimeError(
+            "P3 checkpoint feature-state shapes differ: "
+            f"values={values.shape}, median={med.shape}, mean={mean.shape}, "
+            f"scale={scale.shape}, coefficients={coefficients.shape}"
+        )
+    standardized = apply_pooled_imputer_scaler(
+        values[None, :], med, mean, scale
+    )[0]
+    logit = float(standardized @ coefficients + float(checkpoint["intercept"]))
+    if not np.isfinite(logit):
+        raise RuntimeError(f"Non-finite P3 logit for {sample['rec_key']}")
+    return logit
 
 # ============================================================================
 # Workspace Paths and Record Identity
@@ -585,7 +639,7 @@ def load_model(model_folder, verbose):
     model_folder = Path(model_folder).resolve()
     model_path = model_folder / "lstm_model.pt"
     checkpoint = torch.load(model_path, map_location=DEVICE, weights_only=False)
-    if not isinstance(checkpoint, dict) or "state_dict" not in checkpoint:
+    if not isinstance(checkpoint, dict):
         raise RuntimeError(f"Unsupported checkpoint format: {model_path}")
 
     saved_dims = checkpoint.get("feature_dims")
@@ -613,14 +667,30 @@ def load_model(model_folder, verbose):
 
     model_type = checkpoint.get("model_type", "lstm")
     if model_type == "lstm":
+        if "state_dict" not in checkpoint:
+            raise RuntimeError(f"LSTM checkpoint is missing state_dict: {model_path}")
         network = LSTMModel()
         network.load_state_dict(checkpoint["state_dict"])
     elif model_type == STATIC_LOGISTIC_MODEL_TYPE:
         network = StaticLogisticModel.from_checkpoint(checkpoint)
+    elif model_type == POOLED_LOGISTIC_V2_MODEL_TYPE:
+        network = None
     else:
         raise RuntimeError(f"Unsupported checkpoint model_type: {model_type!r}")
-    network = network.to(DEVICE)
-    network.eval()
+    if network is not None:
+        network = network.to(DEVICE)
+        network.eval()
+
+    p3_sidecar_root = None
+    if model_type == POOLED_LOGISTIC_V2_MODEL_TYPE:
+        configured_sidecar = os.environ.get("P3_STAGE_SIDECAR")
+        if not configured_sidecar:
+            raise RuntimeError(
+                "P3_STAGE_SIDECAR must point to the frozen P3 stage sidecar"
+            )
+        p3_sidecar_root = Path(configured_sidecar).resolve()
+        if not p3_sidecar_root.is_dir():
+            raise FileNotFoundError(p3_sidecar_root)
 
     cache_roots = []
     configured_cache = os.environ.get("LSTM_NPZ_CACHE")
@@ -658,6 +728,8 @@ def load_model(model_folder, verbose):
         "threshold": float(checkpoint.get("threshold", 0.5)),
         "preprocessor": preprocessor,
         "decision_output_path": decision_output_path,
+        "checkpoint": checkpoint,
+        "p3_sidecar_root": p3_sidecar_root,
     }
 
 # ============================================================================
@@ -731,7 +803,15 @@ def _sample(record, data_folder, cache_roots, preprocessor):
 def run_model(model, record, data_folder, verbose):
     """执行一条官方记录；异常直接抛出，不以 0.5 隐藏失败。"""
     sample = _sample(record, data_folder, model["cache_roots"], model["preprocessor"])
-    logit = _infer_one(model["network"], sample)
+    if model["model_type"] == POOLED_LOGISTIC_V2_MODEL_TYPE:
+        sidecar_path = model["p3_sidecar_root"] / f"{sample['rec_key']}.npz"
+        if not sidecar_path.is_file():
+            raise FileNotFoundError(sidecar_path)
+        logit = _infer_pooled_logistic_v2(
+            model["checkpoint"], sample, sidecar_path
+        )
+    else:
+        logit = _infer_one(model["network"], sample)
     probability = float(
         _apply_calibrator(np.asarray([logit]), model["calibrator"])[0]
     )

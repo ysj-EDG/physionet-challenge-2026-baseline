@@ -1,0 +1,56 @@
+{
+  "python": "/database/home/gaohaojie/.conda/envs/sleepfm_env/bin/python",
+  "cache": "/database/home/gaohaojie/workspace/python-example-2026/npz_new",
+  "sidecar": "/database/home/gaohaojie/workspace/python-example-2026/output/p3_v2/stage_sidecar",
+  "prevalence": "/database/home/gaohaojie/workspace/challenge2026/output/input/prevalence.csv",
+  "prevalence_sha256": "19290c59ba99e29b53aba48d30607da54dc4baa7d70b6ba8cbd4eb4483d1fd23",
+  "run_model_sha256": "09941ccaeff383ee9911bc662d539522b080ea4599268dd07cb68afd3edd9021",
+  "evaluate_model_sha256": "227e40a45a7ddb918812c17fd4a8e678334134c965d488db763409d245802970",
+  "arms": {
+    "P3_demo10": {
+      "checkpoint_sha256": "46b00f370bdebd776a78d0518ac886e95a0d25382714af4a9787ef935632799f"
+    },
+    "P3_compact30": {
+      "checkpoint_sha256": "580b8e35f38b094bd6836deeff533a1d60fbd1d29a53e288593795b6eada1d35"
+    },
+    "P3_compact35": {
+      "checkpoint_sha256": "02f239098b6beb0269f475e8a48e5f1afeb3fab07de42ab76643e7fdb40ca439"
+    },
+    "P3_global59": {
+      "checkpoint_sha256": "68e2e4a4f85c54dbdeff615fa4aa16e8006e4b51370f856a50e8fdfda4b38454"
+    },
+    "P3_stage155": {
+      "checkpoint_sha256": "95cce63f1590c4fbdc9c72ddfea5754609d925b2d189b81d031fbb1529b02fe1"
+    }
+  },
+  "splits": {
+    "train": {
+      "data_folder": "/database/home/gaohaojie/workspace/python-example-2026/output/p2_model_controls/seed7/eval_inputs/train",
+      "demographics_sha256": "98cb5be3b2287b32a548d78b71498da11cb6ab4cf17617c7c55b163a1512fee2",
+      "labels": "/database/home/gaohaojie/workspace/python-example-2026/output/p2_model_controls/seed7/eval_inputs/train/demographics.csv",
+      "labels_sha256": "98cb5be3b2287b32a548d78b71498da11cb6ab4cf17617c7c55b163a1512fee2",
+      "expected_records": 733
+    },
+    "val": {
+      "data_folder": "/database/home/gaohaojie/workspace/python-example-2026/output/p2_model_controls/seed7/eval_inputs/val",
+      "demographics_sha256": "85e67385fe8df41521ca4cb6fce165018995e44e1463dcb38a00b4628680a6d3",
+      "labels": "/database/home/gaohaojie/workspace/python-example-2026/output/p2_model_controls/seed7/eval_inputs/val/demographics.csv",
+      "labels_sha256": "85e67385fe8df41521ca4cb6fce165018995e44e1463dcb38a00b4628680a6d3",
+      "expected_records": 158
+    },
+    "test": {
+      "data_folder": "/database/home/gaohaojie/workspace/challenge2026/output/input/test",
+      "demographics_sha256": "90379d361e6dc8977c3827f7f60801ee23a65949d69900c5bc2d957ca4bc86f7",
+      "labels": "/database/home/gaohaojie/workspace/challenge2026/output/input/test/labels.csv",
+      "labels_sha256": "adbc7b2b96091d7b4fec34cf14d5d96f240ff745194b41bea3ad9ffcf940c62b",
+      "expected_records": 158
+    },
+    "external": {
+      "data_folder": "/database/home/gaohaojie/workspace/challenge2026/output/input/external",
+      "demographics_sha256": "a54ec4b06f6282bfb8f8b8b5d474a386dbe683a8d07c4bc4bce500f62311c3d1",
+      "labels": "/database/home/gaohaojie/workspace/challenge2026/output/input/external/labels.csv",
+      "labels_sha256": "cdf8341ed37b02611665f5336265948a939530e11a3c7ad3a0c72bac2e5658e7",
+      "expected_records": 54
+    }
+  }
+}

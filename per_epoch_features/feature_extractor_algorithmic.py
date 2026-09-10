@@ -25,6 +25,49 @@ from typing import Dict, List, Tuple, Optional, Union
 from collections import defaultdict
 
 
+TIMEGRID_V2 = "timegrid_v2"
+
+
+def _timegrid_v2_enabled(algo_data):
+    return bool(algo_data.get("__extraction_mode__") == TIMEGRID_V2)
+
+
+def _stage_sequence(algo_data, valid_stages):
+    """Return legacy-compressed stages or the position-preserving v2 grid."""
+    source = algo_data.get(
+        "__aligned_stage_code__", algo_data.get("stage_caisr", np.array([])),
+    )
+    raw = np.asarray(source, dtype=float).reshape(-1)
+    valid = np.isin(raw, list(valid_stages))
+    if _timegrid_v2_enabled(algo_data):
+        return np.where(valid, raw, 0).astype(int), valid
+    return raw[valid].astype(int), np.ones(int(np.count_nonzero(valid)), dtype=bool)
+
+
+def _event_sample_sec(algo_data, key, trt_sec, length, legacy_default):
+    """Use EDF sampling frequency in v2; retain legacy duration fitting otherwise."""
+    if _timegrid_v2_enabled(algo_data):
+        sampling_frequencies = algo_data.get("__sampling_frequencies__", {})
+        try:
+            frequency = float(sampling_frequencies.get(key, 0.0))
+        except (TypeError, ValueError):
+            frequency = 0.0
+        return 1.0 / frequency if frequency > 0 else float(legacy_default)
+    return float(trt_sec) / int(length) if length > 0 and trt_sec > 0 else float(legacy_default)
+
+
+def _transition_epoch_indices(stages, valid_stages, timegrid_v2):
+    """Unknown epochs are boundaries, never stage-to-stage transitions."""
+    stages = np.asarray(stages)
+    if len(stages) < 2:
+        return np.array([], dtype=int)
+    changed = stages[1:] != stages[:-1]
+    if timegrid_v2:
+        valid = np.isin(stages, list(valid_stages))
+        changed &= valid[1:] & valid[:-1]
+    return np.where(changed)[0] + 1
+
+
 # ============================================================================
 # AlgorithmicMixin — 集成到 FeatureExtractor
 # ============================================================================
@@ -100,9 +143,7 @@ class AlgorithmicMixin:
         # 分期序列与基础睡眠结构
         # CAISR 编码: 1=N3、2=N2、3=N1、4=REM、5=Wake、9=Unavailable。
         # --------------------------------------------------------------------
-        raw_stages = _as_float_1d(algo_data.get('stage_caisr', np.array([])))
-        stage_mask = np.isin(raw_stages, list(VALID_STAGES))
-        stages = raw_stages[stage_mask].astype(int)
+        stages, stage_mask = _stage_sequence(algo_data, VALID_STAGES)
         n_epochs = len(stages)
 
         trt_sec = n_epochs * EPOCH_SEC
@@ -162,10 +203,10 @@ class AlgorithmicMixin:
         # --------------------------------------------------------------------
         # 睡眠片段化与 bout 统计
         # --------------------------------------------------------------------
-        if n_epochs > 1:
-            stage_transition_count = int(np.count_nonzero(np.diff(stages) != 0))
-        else:
-            stage_transition_count = 0
+        transition_epoch_idx = _transition_epoch_indices(
+            stages, VALID_STAGES, _timegrid_v2_enabled(algo_data),
+        )
+        stage_transition_count = int(len(transition_epoch_idx))
         transition_rate = _safe_div(stage_transition_count, tst_sec / 3600.0)
 
         starts, ends, bout_stages, bout_lengths_epochs = _build_bouts(stages)
@@ -269,6 +310,9 @@ class AlgorithmicMixin:
                 elif bs == REM and in_nrem and cycle_start is not None:
                     sleep_cycle_count += 1
                     cycle_durations_sec.append((b_end - cycle_start) * EPOCH_SEC)
+                    in_nrem = False
+                    cycle_start = None
+                elif bs not in (N1, N2, N3, REM, WAKE):
                     in_nrem = False
                     cycle_start = None
 
@@ -513,9 +557,7 @@ class AlgorithmicMixin:
                 linked += int(hit)
             return _safe_div(linked, n_base)
 
-        raw_stages = _as_float_1d(algo_data.get('stage_caisr', np.array([])))
-        stage_mask = np.isin(raw_stages, list(VALID_STAGES))
-        stages = raw_stages[stage_mask].astype(int)
+        stages, stage_mask = _stage_sequence(algo_data, VALID_STAGES)
         n_epochs = len(stages)
         trt_sec = n_epochs * EPOCH_SEC
 
@@ -532,10 +574,14 @@ class AlgorithmicMixin:
         )
 
         if len(arousal_labels) > 0:
-            arousal_dt_sec = _safe_div(trt_sec, len(arousal_labels)) if trt_sec > 0 else 0.5
+            arousal_dt_sec = _event_sample_sec(
+                algo_data, 'arousal_caisr', trt_sec, len(arousal_labels), 0.5,
+            )
             arousal_binary = arousal_labels > 0
         elif len(arousal_prob) > 0:
-            arousal_dt_sec = _safe_div(trt_sec, len(arousal_prob)) if trt_sec > 0 else 0.5
+            arousal_dt_sec = _event_sample_sec(
+                algo_data, 'caisr_prob_arous', trt_sec, len(arousal_prob), 0.5,
+            )
             arousal_binary = arousal_prob >= HIGH_PROB_THRESHOLD
         else:
             arousal_dt_sec = 0.5
@@ -620,7 +666,9 @@ class AlgorithmicMixin:
 
         transition_times_sec = np.array([], dtype=float)
         if len(stages) > 1:
-            transition_epoch_idx = np.where(np.diff(stages) != 0)[0] + 1
+            transition_epoch_idx = _transition_epoch_indices(
+                stages, VALID_STAGES, _timegrid_v2_enabled(algo_data),
+            )
             transition_times_sec = transition_epoch_idx.astype(float) * EPOCH_SEC
 
         if arousal_count > 0 and len(transition_times_sec) > 0:
@@ -636,7 +684,9 @@ class AlgorithmicMixin:
             transition_linked_arousal_ratio = 0.0
 
         resp_signal = _as_float_1d(algo_data.get('resp_caisr', np.array([])))
-        resp_dt_sec = _safe_div(trt_sec, len(resp_signal)) if len(resp_signal) > 0 and trt_sec > 0 else 1.0
+        resp_dt_sec = _event_sample_sec(
+            algo_data, 'resp_caisr', trt_sec, len(resp_signal), 1.0,
+        )
         resp_starts_sec, resp_ends_sec, _ = _segments_from_binary(resp_signal > 0, resp_dt_sec)
         resp_linked_arousal_ratio = _event_overlap_ratio(
             arousal_starts_sec,
@@ -647,7 +697,9 @@ class AlgorithmicMixin:
         )
 
         limb_signal = _as_float_1d(algo_data.get('limb_caisr', np.array([])))
-        limb_dt_sec = _safe_div(trt_sec, len(limb_signal)) if len(limb_signal) > 0 and trt_sec > 0 else 1.0
+        limb_dt_sec = _event_sample_sec(
+            algo_data, 'limb_caisr', trt_sec, len(limb_signal), 1.0,
+        )
         limb_starts_sec, limb_ends_sec, _ = _segments_from_binary(limb_signal > 0, limb_dt_sec)
         limb_linked_arousal_ratio = _event_overlap_ratio(
             arousal_starts_sec,
@@ -815,9 +867,7 @@ class AlgorithmicMixin:
             durations_sec = (ends - starts).astype(float) * sample_sec
             return starts_sec, ends_sec, durations_sec
 
-        raw_stages = _as_float_1d(algo_data.get('stage_caisr', np.array([])))
-        stage_mask = np.isin(raw_stages, list(VALID_STAGES))
-        stages = raw_stages[stage_mask].astype(int)
+        stages, stage_mask = _stage_sequence(algo_data, VALID_STAGES)
         n_epochs = len(stages)
         trt_sec = n_epochs * EPOCH_SEC
 
@@ -829,7 +879,9 @@ class AlgorithmicMixin:
         n3_sec = float(np.count_nonzero(stages == N3) * EPOCH_SEC)
 
         resp_signal = _as_float_1d(algo_data.get('resp_caisr', np.array([])))
-        resp_dt_sec = _safe_div(trt_sec, len(resp_signal)) if len(resp_signal) > 0 and trt_sec > 0 else 1.0
+        resp_dt_sec = _event_sample_sec(
+            algo_data, 'resp_caisr', trt_sec, len(resp_signal), 1.0,
+        )
         resp_events = _segment_multiclass_events(resp_signal.astype(int), resp_dt_sec)
 
         total_resp_count = int(len(resp_events))
@@ -951,7 +1003,9 @@ class AlgorithmicMixin:
 
         arousal_signal = _as_float_1d(algo_data.get('arousal_caisr', np.array([])))
         if len(arousal_signal) > 0:
-            arousal_dt_sec = _safe_div(trt_sec, len(arousal_signal)) if trt_sec > 0 else 0.5
+            arousal_dt_sec = _event_sample_sec(
+                algo_data, 'arousal_caisr', trt_sec, len(arousal_signal), 0.5,
+            )
             arousal_starts_sec, arousal_ends_sec, _ = _segments_from_binary(arousal_signal > 0, arousal_dt_sec)
         else:
             arousal_starts_sec = np.array([], dtype=float)
@@ -975,7 +1029,9 @@ class AlgorithmicMixin:
 
         transition_times_sec = np.array([], dtype=float)
         if len(stages) > 1:
-            transition_epoch_idx = np.where(np.diff(stages) != 0)[0] + 1
+            transition_epoch_idx = _transition_epoch_indices(
+                stages, VALID_STAGES, _timegrid_v2_enabled(algo_data),
+            )
             transition_times_sec = transition_epoch_idx.astype(float) * EPOCH_SEC
 
         if total_resp_count > 0 and len(transition_times_sec) > 0:
@@ -1174,9 +1230,7 @@ class AlgorithmicMixin:
                 linked += int(hit)
             return _safe_div(linked, n_base)
 
-        raw_stages = _as_float_1d(algo_data.get('stage_caisr', np.array([])))
-        stage_mask = np.isin(raw_stages, list(VALID_STAGES))
-        stages = raw_stages[stage_mask].astype(int)
+        stages, stage_mask = _stage_sequence(algo_data, VALID_STAGES)
         n_epochs = len(stages)
         trt_sec = n_epochs * EPOCH_SEC
 
@@ -1187,7 +1241,9 @@ class AlgorithmicMixin:
         n3_sec = float(np.count_nonzero(stages == N3) * EPOCH_SEC)
 
         limb_signal = _as_float_1d(algo_data.get('limb_caisr', np.array([])))
-        limb_dt_sec = _safe_div(trt_sec, len(limb_signal)) if len(limb_signal) > 0 and trt_sec > 0 else 1.0
+        limb_dt_sec = _event_sample_sec(
+            algo_data, 'limb_caisr', trt_sec, len(limb_signal), 1.0,
+        )
         limb_events = _segment_multiclass_events(limb_signal.astype(int), limb_dt_sec)
 
         total_limb_count = int(len(limb_events))
@@ -1274,7 +1330,9 @@ class AlgorithmicMixin:
 
         arousal_signal = _as_float_1d(algo_data.get('arousal_caisr', np.array([])))
         if len(arousal_signal) > 0:
-            arousal_dt_sec = _safe_div(trt_sec, len(arousal_signal)) if trt_sec > 0 else 0.5
+            arousal_dt_sec = _event_sample_sec(
+                algo_data, 'arousal_caisr', trt_sec, len(arousal_signal), 0.5,
+            )
             arousal_starts_sec, arousal_ends_sec, _ = _segments_from_binary(arousal_signal > 0, arousal_dt_sec)
         else:
             arousal_starts_sec = np.array([], dtype=float)
@@ -1302,7 +1360,9 @@ class AlgorithmicMixin:
         arousal_followed_by_limb_ratio = _safe_div(arousal_followed_by_limb_hits, len(arousal_starts_sec))
 
         resp_signal = _as_float_1d(algo_data.get('resp_caisr', np.array([])))
-        resp_dt_sec = _safe_div(trt_sec, len(resp_signal)) if len(resp_signal) > 0 and trt_sec > 0 else 1.0
+        resp_dt_sec = _event_sample_sec(
+            algo_data, 'resp_caisr', trt_sec, len(resp_signal), 1.0,
+        )
         resp_starts_sec, resp_ends_sec, _ = _segments_from_binary(resp_signal > 0, resp_dt_sec)
         resp_linked_limb_ratio = _event_overlap_ratio(
             limb_starts_sec,
@@ -1314,7 +1374,9 @@ class AlgorithmicMixin:
 
         transition_times_sec = np.array([], dtype=float)
         if len(stages) > 1:
-            transition_epoch_idx = np.where(np.diff(stages) != 0)[0] + 1
+            transition_epoch_idx = _transition_epoch_indices(
+                stages, VALID_STAGES, _timegrid_v2_enabled(algo_data),
+            )
             transition_times_sec = transition_epoch_idx.astype(float) * EPOCH_SEC
 
         if total_limb_count > 0 and len(transition_times_sec) > 0:

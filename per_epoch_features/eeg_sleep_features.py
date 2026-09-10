@@ -518,6 +518,7 @@ def eeg_epoch_coherence(
     thr=100.0,
     dthr=45.0,
     channel_available=None,
+    return_metadata=False,
 ):
     """
     Per-channel PSD features + inter-channel coherence for a single 30-s epoch.
@@ -577,6 +578,9 @@ def eeg_epoch_coherence(
     w = np.hamming(epoch_len)
     U = float(w.T @ w)
 
+    clean_counts = np.zeros(MAX_CHANNELS, dtype=np.int32)
+    total_counts = np.zeros(MAX_CHANNELS, dtype=np.int32)
+    total_counts[:n_chan_orig] = np.where(channel_available, max(n_sub, 0), 0)
     if n_chan_orig > 0 and n_sub > 0:
         # (channel, sub-window, sample).  The view avoids copying the raw
         # windows; subsequent detrending creates the working array.
@@ -604,13 +608,14 @@ def eeg_epoch_coherence(
         FXX_all[:n_chan_orig] = spectra
 
         power = (spectra * spectra.conj()).real
-        clean_counts = np.count_nonzero(~valid_art_flags, axis=1)
+        clean_counts[:n_chan_orig] = np.count_nonzero(~valid_art_flags, axis=1)
+        clean_counts[:n_chan_orig] *= channel_available.astype(clean_counts.dtype)
         power_sum = np.sum(power, axis=1)
         np.divide(
             power_sum * 2.0,
-            clean_counts[:, None] * U * fs,
+            clean_counts[:n_chan_orig, None] * U * fs,
             out=PSD_all[:n_chan_orig],
-            where=clean_counts[:, None] > 0,
+            where=clean_counts[:n_chan_orig, None] > 0,
         )
 
     # Sub-segments clean in all available original channels.
@@ -657,7 +662,17 @@ def eeg_epoch_coherence(
         Cxy = np.abs(Pxy) ** 2 / np.maximum(Pxx * Pyy, 1e-30)
         coherence_features.reshape(N_PAIRS, N_FFT_BINS)[valid_pairs] = Cxy
 
-    return np.concatenate([psd_features.ravel(), coherence_features])
+    features = np.concatenate([psd_features.ravel(), coherence_features])
+    if not return_metadata:
+        return features
+    return features, {
+        'clean_subsegment_count': clean_counts,
+        'total_subsegment_count': total_counts,
+        'channel_available': np.pad(
+            channel_available, (0, MAX_CHANNELS - len(channel_available)),
+            constant_values=False,
+        ),
+    }
 
 
 def eeg_segment_coherence(
@@ -667,6 +682,7 @@ def eeg_segment_coherence(
     thr=100.0,
     dthr=45.0,
     channel_available=None,
+    return_metadata=False,
 ):
     """
     Batch version: process all 30-s epochs of a recording.
@@ -719,16 +735,34 @@ def eeg_segment_coherence(
 
     features = np.zeros((n_seg, FEATURE_VECTOR_LEN))
     pvalues = np.zeros(n_seg)
+    clean_counts = np.zeros((n_seg, MAX_CHANNELS), dtype=np.int32)
+    total_counts = np.zeros((n_seg, MAX_CHANNELS), dtype=np.int32)
 
     for i in range(n_seg):
         start = i * seg_len_samples
         epoch_data = resampled[:, start:start + seg_len_samples]
-        features[i] = eeg_epoch_coherence(
+        epoch_result = eeg_epoch_coherence(
             epoch_data,
             fs=target_fs,
             thr=thr,
             dthr=dthr,
             channel_available=channel_available,
+            return_metadata=return_metadata,
         )
+        if return_metadata:
+            features[i], epoch_metadata = epoch_result
+            clean_counts[i] = epoch_metadata['clean_subsegment_count']
+            total_counts[i] = epoch_metadata['total_subsegment_count']
+        else:
+            features[i] = epoch_result
 
-    return features, pvalues
+    if not return_metadata:
+        return features, pvalues
+    return features, pvalues, {
+        'clean_subsegment_count': clean_counts,
+        'total_subsegment_count': total_counts,
+        'channel_available': np.pad(
+            channel_available, (0, MAX_CHANNELS - len(channel_available)),
+            constant_values=False,
+        ),
+    }
