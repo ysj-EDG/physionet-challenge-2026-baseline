@@ -1,0 +1,22 @@
+version: 1
+workspace: ..
+exclude:
+  - .git/
+  - __pycache__/
+  - eeg_qc/
+  - output/
+  - h100_results/
+  - p2_h100_results/
+  - npz_new/
+  - npz_data2/
+  - feat_input/data2_smoke_logs/
+  - feat_input/medex.yaml
+  - feat_input/medex_p2.yaml
+env: eeg_env
+device: auto
+run:
+  script: feat_input/feat_mody/run_data2_timegrid_v2_medex.py
+  wait: true
+rsync_back:
+  - npz_data2
+notify: []
