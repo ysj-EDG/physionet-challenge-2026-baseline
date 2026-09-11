@@ -1,0 +1,57 @@
+{
+  "base_commit": "498380f1bee20afdbb78c55ca076262e6cd0a182",
+  "cache": "/mnt/data5t-in-container/workspace/.medex_run_e2db1617608b4920b03f3be04e3db3b9/python-example-2026/npz_new/npz_new",
+  "cache_npz_count": 1103,
+  "cuda_version": "12.1",
+  "cudnn_version": 90100,
+  "deterministic_algorithms": true,
+  "environment": {
+    "CUBLAS_WORKSPACE_CONFIG": ":4096:8",
+    "CUDA_VISIBLE_DEVICES": "0",
+    "LSTM_INPUT_PREPROCESSING": "legacy_clip",
+    "LSTM_POS_WEIGHT_MODE": "empirical",
+    "LSTM_SEED": "7",
+    "PYTHONHASHSEED": "7"
+  },
+  "fold_manifest": "/mnt/data5t-in-container/workspace/.medex_run_e2db1617608b4920b03f3be04e3db3b9/python-example-2026/p4_inputs/cv_fold_manifest.csv",
+  "fold_manifest_sha256": "d3642ebc22b932ca8c17daba9d94cffbd8444580e80d64f3cd7f7afa83076426",
+  "gpu": "NVIDIA H100 PCIe",
+  "model_seed": 7,
+  "numpy_version": "2.2.6",
+  "outer_seeds": [
+    7,
+    17,
+    29
+  ],
+  "platform": "Linux-6.8.0-83-generic-x86_64-with-glibc2.35",
+  "preflight": {
+    "batch_size": 8,
+    "finite_logits": true,
+    "x_ecg_shape": [
+      8,
+      1067,
+      12
+    ],
+    "x_seq_shape": [
+      8,
+      1067,
+      483
+    ],
+    "x_static_shape": [
+      8,
+      196
+    ]
+  },
+  "python": "/mnt/data5t-in-container/env/eeg_env/bin/python3",
+  "python_version": "3.10.12 (main, May 27 2025, 17:12:29) [GCC 11.4.0]",
+  "sklearn_version": "1.7.2",
+  "source_sha256": {
+    "feat_input/feat_mody/run_p4_legacy_lstm_cv.py": "4a0afab6441053048bbc8f484e0cfd0a68a966f4f9795e4d1c214137c986e338",
+    "feature_scaling.py": "88ee07403d2dff6fa77b16d16ea1d82b1d6c2183582ca38b8b8946b3be869dde",
+    "train_lstm.py": "229e1522136fd0f3316b4130238a1e4b87d7057bf6298574d2ad416d2dc8140b"
+  },
+  "torch_version": "2.5.1+cu121",
+  "val_base_bdsp_overlap": 0,
+  "val_identities": "/mnt/data5t-in-container/workspace/.medex_run_e2db1617608b4920b03f3be04e3db3b9/python-example-2026/feat_input/p4_val_identity.csv",
+  "val_identities_sha256": "8ffab7273a69eabef3c238d1b7416f66b8a9381f5bcb009b9fe2d100f797e8a2"
+}

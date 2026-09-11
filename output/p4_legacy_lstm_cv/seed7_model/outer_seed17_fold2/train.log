@@ -1,0 +1,47 @@
+2026-09-10 14:07:47 | INFO    | p4_legacy_lstm_cv | START outer_seed=17 fold=2 train=489 holdout=244 fixed_val=158 model_seed=7
+2026-09-10 14:07:48 | INFO    | train_lstm | Balanced train sampler enabled: class_counts={0: 452, 1: 37} missing=0 num_samples=489 replacement=True
+2026-09-10 14:07:48 | INFO    | p4_legacy_lstm_cv | first_batch X_seq shape=(8, 1008, 483) min=-32.9254 max=50.0000
+2026-09-10 14:07:48 | INFO    | p4_legacy_lstm_cv | first_batch X_ecg shape=(8, 1008, 12) min=-8.8453 max=50.0000
+2026-09-10 14:07:48 | INFO    | p4_legacy_lstm_cv | first_batch x_static shape=(8, 196) min=-50.0000 max=50.0000
+2026-09-10 14:08:09 | INFO    | p4_legacy_lstm_cv | epoch=1 loss=23.683059 val_ac=0.543103 val_auroc=0.585616 val_auprc=0.116247 lr=0.001 improved=True time=20.6s
+2026-09-10 14:08:32 | INFO    | p4_legacy_lstm_cv | epoch=2 loss=4.415285 val_ac=0.284483 val_auroc=0.358447 val_auprc=0.062516 lr=0.001 improved=False time=22.6s
+2026-09-10 14:08:51 | INFO    | p4_legacy_lstm_cv | epoch=3 loss=2.612499 val_ac=0.383621 val_auroc=0.417237 val_auprc=0.080791 lr=0.001 improved=False time=19.8s
+2026-09-10 14:09:13 | INFO    | p4_legacy_lstm_cv | epoch=4 loss=2.240704 val_ac=0.603448 val_auroc=0.639269 val_auprc=0.145752 lr=0.001 improved=True time=21.3s
+2026-09-10 14:09:34 | INFO    | p4_legacy_lstm_cv | epoch=5 loss=1.765879 val_ac=0.573276 val_auroc=0.630708 val_auprc=0.154236 lr=0.001 improved=False time=20.8s
+2026-09-10 14:09:55 | INFO    | p4_legacy_lstm_cv | epoch=6 loss=1.853346 val_ac=0.512931 val_auroc=0.565068 val_auprc=0.153993 lr=0.001 improved=False time=21.3s
+2026-09-10 14:10:16 | INFO    | p4_legacy_lstm_cv | epoch=7 loss=1.790130 val_ac=0.577586 val_auroc=0.631849 val_auprc=0.176933 lr=0.001 improved=False time=21.2s
+2026-09-10 14:10:38 | INFO    | p4_legacy_lstm_cv | epoch=8 loss=1.648694 val_ac=0.581897 val_auroc=0.622717 val_auprc=0.196833 lr=0.001 improved=False time=22.5s
+2026-09-10 14:11:01 | INFO    | p4_legacy_lstm_cv | epoch=9 loss=1.588923 val_ac=0.551724 val_auroc=0.597032 val_auprc=0.182628 lr=0.001 improved=False time=22.4s
+2026-09-10 14:11:21 | INFO    | p4_legacy_lstm_cv | epoch=10 loss=1.655833 val_ac=0.566810 val_auroc=0.608162 val_auprc=0.158653 lr=0.001 improved=False time=20.3s
+2026-09-10 14:11:42 | INFO    | p4_legacy_lstm_cv | epoch=11 loss=1.468166 val_ac=0.678879 val_auroc=0.695205 val_auprc=0.232475 lr=0.001 improved=True time=21.0s
+2026-09-10 14:12:03 | INFO    | p4_legacy_lstm_cv | epoch=12 loss=1.510815 val_ac=0.605603 val_auroc=0.604452 val_auprc=0.178979 lr=0.001 improved=False time=20.8s
+2026-09-10 14:12:26 | INFO    | p4_legacy_lstm_cv | epoch=13 loss=1.631151 val_ac=0.633621 val_auroc=0.650114 val_auprc=0.184147 lr=0.001 improved=False time=22.6s
+2026-09-10 14:12:48 | INFO    | p4_legacy_lstm_cv | epoch=14 loss=1.435547 val_ac=0.631466 val_auroc=0.662957 val_auprc=0.173476 lr=0.001 improved=False time=22.3s
+2026-09-10 14:13:09 | INFO    | p4_legacy_lstm_cv | epoch=15 loss=1.619701 val_ac=0.668103 val_auroc=0.653539 val_auprc=0.202959 lr=0.001 improved=False time=21.3s
+2026-09-10 14:13:31 | INFO    | p4_legacy_lstm_cv | epoch=16 loss=1.315030 val_ac=0.586207 val_auroc=0.643836 val_auprc=0.183260 lr=0.001 improved=False time=22.0s
+2026-09-10 14:13:51 | INFO    | p4_legacy_lstm_cv | epoch=17 loss=1.857101 val_ac=0.637931 val_auroc=0.659247 val_auprc=0.175355 lr=0.001 improved=False time=19.9s
+2026-09-10 14:14:11 | INFO    | p4_legacy_lstm_cv | epoch=18 loss=1.011973 val_ac=0.663793 val_auroc=0.674087 val_auprc=0.200196 lr=0.001 improved=False time=20.2s
+2026-09-10 14:14:33 | INFO    | p4_legacy_lstm_cv | epoch=19 loss=1.074978 val_ac=0.521552 val_auroc=0.537671 val_auprc=0.204179 lr=0.001 improved=False time=21.4s
+2026-09-10 14:14:54 | INFO    | p4_legacy_lstm_cv | epoch=20 loss=1.017461 val_ac=0.500000 val_auroc=0.539384 val_auprc=0.138384 lr=0.0005 improved=False time=20.9s
+2026-09-10 14:15:15 | INFO    | p4_legacy_lstm_cv | epoch=21 loss=1.096193 val_ac=0.685345 val_auroc=0.670662 val_auprc=0.257059 lr=0.0005 improved=True time=21.9s
+2026-09-10 14:15:37 | INFO    | p4_legacy_lstm_cv | epoch=22 loss=0.842182 val_ac=0.568966 val_auroc=0.597032 val_auprc=0.216491 lr=0.0005 improved=False time=21.7s
+2026-09-10 14:15:58 | INFO    | p4_legacy_lstm_cv | epoch=23 loss=1.001554 val_ac=0.741379 val_auroc=0.731164 val_auprc=0.254533 lr=0.0005 improved=True time=20.9s
+2026-09-10 14:16:22 | INFO    | p4_legacy_lstm_cv | epoch=24 loss=0.956038 val_ac=0.685345 val_auroc=0.696918 val_auprc=0.245668 lr=0.0005 improved=False time=23.5s
+2026-09-10 14:16:42 | INFO    | p4_legacy_lstm_cv | epoch=25 loss=0.756421 val_ac=0.607759 val_auroc=0.640982 val_auprc=0.221833 lr=0.0005 improved=False time=20.9s
+2026-09-10 14:17:06 | INFO    | p4_legacy_lstm_cv | epoch=26 loss=0.717903 val_ac=0.715517 val_auroc=0.709475 val_auprc=0.248014 lr=0.0005 improved=False time=23.3s
+2026-09-10 14:17:26 | INFO    | p4_legacy_lstm_cv | epoch=27 loss=0.806683 val_ac=0.637931 val_auroc=0.654110 val_auprc=0.228966 lr=0.0005 improved=False time=20.7s
+2026-09-10 14:17:48 | INFO    | p4_legacy_lstm_cv | epoch=28 loss=0.532283 val_ac=0.594828 val_auroc=0.619863 val_auprc=0.232680 lr=0.0005 improved=False time=21.5s
+2026-09-10 14:18:09 | INFO    | p4_legacy_lstm_cv | epoch=29 loss=0.667966 val_ac=0.655172 val_auroc=0.637557 val_auprc=0.264112 lr=0.0005 improved=False time=21.2s
+2026-09-10 14:18:32 | INFO    | p4_legacy_lstm_cv | epoch=30 loss=0.513719 val_ac=0.646552 val_auroc=0.643265 val_auprc=0.269179 lr=0.0005 improved=False time=22.3s
+2026-09-10 14:18:53 | INFO    | p4_legacy_lstm_cv | epoch=31 loss=0.907553 val_ac=0.620690 val_auroc=0.634132 val_auprc=0.267027 lr=0.0005 improved=False time=21.5s
+2026-09-10 14:19:15 | INFO    | p4_legacy_lstm_cv | epoch=32 loss=1.049560 val_ac=0.564655 val_auroc=0.602169 val_auprc=0.266931 lr=0.00025 improved=False time=22.5s
+2026-09-10 14:19:37 | INFO    | p4_legacy_lstm_cv | epoch=33 loss=0.413300 val_ac=0.620690 val_auroc=0.633562 val_auprc=0.267157 lr=0.00025 improved=False time=21.9s
+2026-09-10 14:20:01 | INFO    | p4_legacy_lstm_cv | epoch=34 loss=0.508345 val_ac=0.534483 val_auroc=0.601598 val_auprc=0.237887 lr=0.00025 improved=False time=23.2s
+2026-09-10 14:20:23 | INFO    | p4_legacy_lstm_cv | epoch=35 loss=0.405426 val_ac=0.564655 val_auroc=0.609589 val_auprc=0.270152 lr=0.00025 improved=False time=22.8s
+2026-09-10 14:20:46 | INFO    | p4_legacy_lstm_cv | epoch=36 loss=0.281889 val_ac=0.599138 val_auroc=0.623858 val_auprc=0.239120 lr=0.00025 improved=False time=22.5s
+2026-09-10 14:21:08 | INFO    | p4_legacy_lstm_cv | epoch=37 loss=0.606795 val_ac=0.543103 val_auroc=0.582192 val_auprc=0.258798 lr=0.00025 improved=False time=21.9s
+2026-09-10 14:21:30 | INFO    | p4_legacy_lstm_cv | epoch=38 loss=0.266872 val_ac=0.534483 val_auroc=0.571918 val_auprc=0.252732 lr=0.00025 improved=False time=22.1s
+2026-09-10 14:21:30 | INFO    | p4_legacy_lstm_cv | early_stop epoch=38 best_epoch=23
+2026-09-10 14:22:07 | INFO    | p4_legacy_lstm_cv | Both complete checkpoints frozen; constructing outer holdout loader now
+2026-09-10 14:22:14 | INFO    | p4_legacy_lstm_cv | best_val_ac outer_holdout ac=0.645514 auroc=0.709704 auprc=0.149330
+2026-09-10 14:22:22 | INFO    | p4_legacy_lstm_cv | fixed_epoch6 outer_holdout ac=0.684902 auroc=0.694627 auprc=0.145949

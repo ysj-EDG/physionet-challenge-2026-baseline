@@ -1,0 +1,28 @@
+version: 1
+workspace: ..
+exclude:
+  - .git/
+  - __pycache__/
+  - eeg_qc/
+  - output/
+  - h100_results/
+  - p2_h100_results/
+  - p4_h100_results/
+  - npz_new/
+  - npz_data2/
+  - feat_input/data2_medex_upload_and_run.log
+include:
+  - src: npz_new
+    dst: npz_new/
+    keep: false
+  - src: output/p3_v2/cv_fold_manifest.csv
+    dst: p4_inputs/
+    keep: false
+env: eeg_env
+device: auto
+run:
+  script: feat_input/feat_mody/run_p4_legacy_lstm_cv.py
+  wait: true
+rsync_back:
+  - p4_h100_results
+notify: []

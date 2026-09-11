@@ -1,0 +1,94 @@
+{
+  "best_epoch": 3,
+  "best_selection_val": {
+    "ac_auroc": 0.7629310344827587,
+    "auprc": 0.15636799033747198,
+    "auroc": 0.7128995433789954,
+    "eligible_age_pairs_gap2": 232,
+    "n": 158,
+    "negatives": 146,
+    "positives": 12
+  },
+  "checkpoints": {
+    "best_val_ac": {
+      "calibrator": {
+        "coef": 0.1809728162215855,
+        "intercept": -2.322442242115207,
+        "method": "platt_logistic"
+      },
+      "natural_outer_train": {
+        "ac_auroc": 0.812874251497006,
+        "auprc": 0.2889209863832947,
+        "auroc": 0.8329443342280313,
+        "eligible_age_pairs_gap2": 2004,
+        "n": 489,
+        "negatives": 451,
+        "positives": 38
+      },
+      "outer_holdout": {
+        "ac_auroc": 0.726775956284153,
+        "auprc": 0.23094302502145636,
+        "auroc": 0.7443959243085881,
+        "eligible_age_pairs_gap2": 366,
+        "n": 244,
+        "negatives": 229,
+        "positives": 15
+      },
+      "threshold": 0.07403853213338078,
+      "threshold_fpr": 0.3424657534246575,
+      "threshold_tpr": 0.75,
+      "validation": {
+        "ac_auroc": 0.7629310344827587,
+        "auprc": 0.15636799033747198,
+        "auroc": 0.7128995433789954,
+        "eligible_age_pairs_gap2": 232,
+        "n": 158,
+        "negatives": 146,
+        "positives": 12
+      }
+    },
+    "fixed_epoch6": {
+      "calibrator": {
+        "coef": 0.27262970541222453,
+        "intercept": -2.4860321820213156,
+        "method": "platt_logistic"
+      },
+      "natural_outer_train": {
+        "ac_auroc": 0.8512974051896207,
+        "auprc": 0.29459399325764657,
+        "auroc": 0.8671957054498776,
+        "eligible_age_pairs_gap2": 2004,
+        "n": 489,
+        "negatives": 451,
+        "positives": 38
+      },
+      "outer_holdout": {
+        "ac_auroc": 0.7513661202185792,
+        "auprc": 0.2027173685638995,
+        "auroc": 0.7630276564774381,
+        "eligible_age_pairs_gap2": 366,
+        "n": 244,
+        "negatives": 229,
+        "positives": 15
+      },
+      "threshold": 0.061702003511809315,
+      "threshold_fpr": 0.5205479452054794,
+      "threshold_tpr": 0.9166666666666666,
+      "validation": {
+        "ac_auroc": 0.7155172413793104,
+        "auprc": 0.14249702031804956,
+        "auroc": 0.6866438356164384,
+        "eligible_age_pairs_gap2": 232,
+        "n": 158,
+        "negatives": 146,
+        "positives": 12
+      }
+    }
+  },
+  "initial_model_hash": "2661bbb93ec13d50ff4d1bbf5ce553f878f38eaebecb89467813f06589d570eb",
+  "model_seed": 7,
+  "outer_fold": 0,
+  "outer_seed": 17,
+  "pos_weight": 11.868421052631579,
+  "stop_epoch": 18
+}
