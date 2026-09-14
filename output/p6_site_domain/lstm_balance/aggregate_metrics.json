@@ -1,0 +1,119 @@
+{
+  "B1_global_class_pos1": {
+    "delta_vs_p5": {
+      "macro_ac_auroc": 0.04573482398423856,
+      "sites": {
+        "I0002": 0.02083333333333326,
+        "I0006": 0.05782312925170069,
+        "S0001": 0.05854800936768145
+      },
+      "worst_site_ac_auroc": 0.05782312925170069
+    },
+    "macro_ac_auroc": 0.5872148495099315,
+    "macro_age_weighted_auroc": 0.5793788103372927,
+    "macro_auprc": 0.1582941489016778,
+    "macro_auroc": 0.592346654108336,
+    "sites": {
+      "I0002": {
+        "ac_auroc": 0.6666666666666666,
+        "age_weighted_auroc": 0.6606127722406792,
+        "auprc": 0.25803429027113234,
+        "auroc": 0.6766304347826086,
+        "eligible_ac_pairs": 48,
+        "negatives": 46,
+        "positives": 8
+      },
+      "I0006": {
+        "ac_auroc": 0.5317460317460317,
+        "age_weighted_auroc": 0.5315893231416953,
+        "auprc": 0.12609242220944347,
+        "auroc": 0.5438953488372094,
+        "eligible_ac_pairs": 441,
+        "negatives": 172,
+        "positives": 20
+      },
+      "S0001": {
+        "ac_auroc": 0.563231850117096,
+        "age_weighted_auroc": 0.5459343356295037,
+        "auprc": 0.0907557342244576,
+        "auroc": 0.5565141787051899,
+        "eligible_ac_pairs": 5124,
+        "negatives": 801,
+        "positives": 56
+      }
+    },
+    "worst_site_ac_auroc": 0.5317460317460317
+  },
+  "B2_site_class_pos1": {
+    "delta_vs_p5": {
+      "macro_ac_auroc": 0.06678655068584816,
+      "sites": {
+        "I0002": 0.0,
+        "I0006": 0.0884353741496599,
+        "S0001": 0.1119242779078845
+      },
+      "worst_site_ac_auroc": 0.0884353741496599
+    },
+    "macro_ac_auroc": 0.6082665762115411,
+    "macro_age_weighted_auroc": 0.6184775490256059,
+    "macro_auprc": 0.1866684651761885,
+    "macro_auroc": 0.6071537499558938,
+    "sites": {
+      "I0002": {
+        "ac_auroc": 0.6458333333333334,
+        "age_weighted_auroc": 0.6432244370616463,
+        "auprc": 0.24914693492601234,
+        "auroc": 0.5760869565217391,
+        "eligible_ac_pairs": 48,
+        "negatives": 46,
+        "positives": 8
+      },
+      "I0006": {
+        "ac_auroc": 0.562358276643991,
+        "age_weighted_auroc": 0.5609332145670879,
+        "auprc": 0.17002981019747107,
+        "auroc": 0.606686046511628,
+        "eligible_ac_pairs": 441,
+        "negatives": 172,
+        "positives": 20
+      },
+      "S0001": {
+        "ac_auroc": 0.616608118657299,
+        "age_weighted_auroc": 0.6512749954480834,
+        "auprc": 0.1408286504050822,
+        "auroc": 0.6386882468343144,
+        "eligible_ac_pairs": 5124,
+        "negatives": 801,
+        "positives": 56
+      }
+    },
+    "worst_site_ac_auroc": 0.562358276643991
+  },
+  "P5_baseline": {
+    "macro_ac_auroc": 0.541480025525693,
+    "macro_age_weighted_auroc": 0.5397054152434153,
+    "macro_auprc": 0.2057045470480249,
+    "macro_auroc": 0.6337021982308335,
+    "sites": {
+      "I0002": {
+        "ac_auroc": 0.6458333333333334,
+        "age_weighted_auroc": 0.6528811369509044,
+        "auprc": 0.33275397609636737,
+        "auroc": 0.7717391304347827
+      },
+      "I0006": {
+        "ac_auroc": 0.47392290249433106,
+        "age_weighted_auroc": 0.4488705584848103,
+        "auprc": 0.18541434304574383,
+        "auroc": 0.5581395348837209
+      },
+      "S0001": {
+        "ac_auroc": 0.5046838407494145,
+        "age_weighted_auroc": 0.5173645502945313,
+        "auprc": 0.09894532200196363,
+        "auroc": 0.5712279293739967
+      }
+    },
+    "worst_site_ac_auroc": 0.47392290249433106
+  }
+}
