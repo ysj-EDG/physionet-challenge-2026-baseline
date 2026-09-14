@@ -1,0 +1,38 @@
+version: 1
+workspace: ..
+exclude:
+  - .git/
+  - __pycache__/
+  - eeg_qc/
+  - output/
+  - h100_results/
+  - p2_h100_results/
+  - p4_h100_results/
+  - p5_h100_results/
+  - npz_new/
+  - npz_data2/
+  - feat_input/data2_medex_upload_and_run.log
+  - feat_input/p4_medex_run.log
+  - feat_input/p4_medex_run_retry2.log
+  - feat_input/p4_medex_submit.log
+include:
+  - src: npz_new
+    dst: npz_new/
+    keep: false
+  - src: output/p3_v2/stage_sidecar
+    dst: p5_inputs/
+    keep: false
+  - src: output/p5_loso_1103/loso_manifest.csv
+    dst: p5_inputs/
+    keep: false
+  - src: output/p5_loso_1103/input_fingerprints.json
+    dst: p5_inputs/
+    keep: false
+env: eeg_env
+device: auto
+run:
+  script: feat_input/feat_mody/run_loso_1103.py --run
+  wait: true
+rsync_back:
+  - p5_h100_results
+notify: []

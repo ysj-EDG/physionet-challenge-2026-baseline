@@ -1,0 +1,2 @@
+epoch,n,positives,negatives,eligible_ac_pairs,ac_auroc,age_weighted_auroc,auroc,auprc,diagnostic_threshold,diagnostic_accuracy,diagnostic_f1
+final,911,64,847,6249,0.5802528404544727,0.5895863633694469,0.7877066115702479,0.24332033805787603,decision_score>=0 (uncalibrated p>=0.5),0.7277716794731065,0.27485380116959063
