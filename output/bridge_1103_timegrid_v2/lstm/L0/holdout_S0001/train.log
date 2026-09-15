@@ -1,0 +1,14 @@
+2026-09-15 08:30:55 | INFO    | p5.holdout_S0001 | arm=L0 holdout=S0001 device=cuda
+2026-09-15 08:30:55 | INFO    | p5.holdout_S0001 | sampling_cell site=I0002 label=0 raw=46 weight=0.5642201835 expected=0.105505
+2026-09-15 08:30:55 | INFO    | p5.holdout_S0001 | sampling_cell site=I0002 label=1 raw=8 weight=4.392857143 expected=0.142857
+2026-09-15 08:30:55 | INFO    | p5.holdout_S0001 | sampling_cell site=I0006 label=0 raw=172 weight=0.5642201835 expected=0.394495
+2026-09-15 08:30:55 | INFO    | p5.holdout_S0001 | sampling_cell site=I0006 label=1 raw=20 weight=4.392857143 expected=0.357143
+2026-09-15 08:30:56 | INFO    | p5.holdout_S0001 | smoke seq=(8, 918, 483) ecg=(8, 918, 12) static=(8, 196) positives=2 age=[52.0,80.0]
+2026-09-15 08:31:05 | INFO    | p5.holdout_S0001 | epoch=1 train_loss=19.00555850 time=9.3s
+2026-09-15 08:31:14 | INFO    | p5.holdout_S0001 | epoch=2 train_loss=7.55586420 time=9.3s
+2026-09-15 08:31:23 | INFO    | p5.holdout_S0001 | epoch=3 train_loss=7.15123224 time=9.1s
+2026-09-15 08:31:33 | INFO    | p5.holdout_S0001 | epoch=4 train_loss=3.38573000 time=9.4s
+2026-09-15 08:31:42 | INFO    | p5.holdout_S0001 | epoch=5 train_loss=1.93329963 time=9.5s
+2026-09-15 08:31:51 | INFO    | p5.holdout_S0001 | epoch=6 train_loss=1.91768006 time=9.2s
+2026-09-15 08:31:51 | INFO    | p5.holdout_S0001 | checkpoint frozen before constructing holdout loader
+2026-09-15 08:32:29 | INFO    | p5.holdout_S0001 | frozen holdout site=S0001 ac=0.599532 age_weighted=0.610291 auroc=0.581996 auprc=0.124930

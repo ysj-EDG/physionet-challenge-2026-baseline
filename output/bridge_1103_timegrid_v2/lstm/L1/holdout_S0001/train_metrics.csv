@@ -1,0 +1,7 @@
+epoch,train_loss,natural_n,natural_positives,natural_negatives,natural_eligible_ac_pairs,natural_ac_auroc,natural_age_weighted_auroc,natural_auroc,natural_auprc,natural_diagnostic_threshold,natural_diagnostic_accuracy,natural_diagnostic_f1
+1,7.198618683388562,,,,,,,,,,,
+2,2.8581999921944083,,,,,,,,,,,
+3,1.7083194246137046,,,,,,,,,,,
+4,1.0036052203759915,,,,,,,,,,,
+5,0.6427964863738393,,,,,,,,,,,
+6,0.6295497161828405,246.0,28.0,218.0,791.0,0.8242730720606827,0.8481018981064908,0.8618938401048493,0.5490952812906034,decision_score>=0 (uncalibrated p>=0.5),0.7235772357723578,0.40350877192982454

@@ -1,18 +1,22 @@
 # Baseline registry
 
-Old1103/data2 differences are descriptive; extractor, sample size, and site composition all change.
+OLD/NEW are matched-patient bridge observations. DATA2 differs in sample size and site composition.
 
-| ID | Dataset | Model/features | Protocol | I0002 | I0006 | S0001 | Macro | Worst | Role |
-|---|---|---|---|---:|---:|---:|---:|---:|---|
-| OLD-D | OLD1103 / old npz_new | elastic-net LR / demo10 | three-site LOSO | 0.542 | 0.382 | 0.513 | 0.479 | 0.382 | historical LOSO benchmark |
-| OLD-C | OLD1103 / old npz_new | elastic-net LR / compact30 | three-site LOSO | 0.583 | 0.533 | 0.522 | 0.546 | 0.522 | historical LOSO benchmark |
-| OLD-G | OLD1103 / old npz_new | elastic-net LR / global59 | three-site LOSO | 0.646 | 0.494 | 0.491 | 0.544 | 0.491 | historical LOSO benchmark |
-| OLD-L0 | OLD1103 / old npz_new | 2-layer LSTM / 483+12+196 | three-site LOSO fixed epoch6 | 0.646 | 0.474 | 0.505 | 0.541 | 0.474 | historical LOSO benchmark |
-| OLD-L1 | OLD1103 / old npz_new | 2-layer LSTM / 483+12+196 | three-site LOSO fixed epoch6 | 0.667 | 0.532 | 0.563 | 0.587 | 0.532 | historical LOSO benchmark |
-| OLD-L2 | OLD1103 / old npz_new | 2-layer LSTM / 483+12+196 | three-site LOSO fixed epoch6 | 0.646 | 0.562 | 0.617 | 0.608 | 0.562 | historical LOSO benchmark |
-| P4-MIXED | OLD1103 / old npz_new | 2-layer LSTM / 483+12+196 | 3x3 mixed-site repeated CV | N/A | N/A | N/A | 0.701 | N/A | MIXED-SITE REFERENCE ONLY |
-| DATA2-D | data2 timegrid_v2 | elastic-net LR / demo10 | three-site LOSO | 0.605 | 0.490 | 0.577 | 0.557 | 0.490 | current data2 low-cost baseline |
-| DATA2-C | data2 timegrid_v2 | elastic-net LR / compact30 | three-site LOSO | 0.748 | 0.681 | 0.654 | 0.694 | 0.654 | current data2 low-cost baseline |
-| DATA2-G | data2 timegrid_v2 | elastic-net LR / global59 | three-site LOSO | 0.748 | 0.686 | 0.614 | 0.683 | 0.614 | current data2 low-cost baseline |
-
-`P4-MIXED` is a MIXED-SITE REFERENCE ONLY and must not be interpreted as the same protocol as LOSO.
+| ID | Dataset | Model/features | I0002 | I0006 | S0001 | Macro | Worst | Role |
+|---|---|---|---:|---:|---:|---:|---:|---|
+| OLD-D | OLD1103 / old npz_new | elastic-net LR / demo10 | 0.5416666666666666 | 0.3820861678004535 | 0.5128805620608899 | 0.47887779884267 | 0.3820861678004535 | historical LOSO benchmark |
+| OLD-C | OLD1103 / old npz_new | elastic-net LR / compact30 | 0.5833333333333334 | 0.5328798185941043 | 0.5218579234972678 | 0.5460236918082352 | 0.5218579234972678 | historical LOSO benchmark |
+| OLD-G | OLD1103 / old npz_new | elastic-net LR / global59 | 0.6458333333333334 | 0.4943310657596372 | 0.49063231850117095 | 0.5435989058647138 | 0.49063231850117095 | historical LOSO benchmark |
+| OLD-L0 | OLD1103 / old npz_new | 2-layer LSTM / 483+12+196 | 0.6458333333333334 | 0.47392290249433106 | 0.5046838407494145 | 0.541480025525693 | 0.47392290249433106 | historical LOSO benchmark |
+| OLD-L1 | OLD1103 / old npz_new | 2-layer LSTM / 483+12+196 | 0.6666666666666666 | 0.5317460317460317 | 0.563231850117096 | 0.5872148495099315 | 0.5317460317460317 | historical LOSO benchmark |
+| OLD-L2 | OLD1103 / old npz_new | 2-layer LSTM / 483+12+196 | 0.6458333333333334 | 0.562358276643991 | 0.616608118657299 | 0.6082665762115411 | 0.562358276643991 | historical LOSO benchmark |
+| P4-MIXED | OLD1103 / old npz_new | 2-layer LSTM / 483+12+196 | N/A | N/A | N/A | 0.701 | N/A | MIXED-SITE REFERENCE ONLY |
+| DATA2-D | data2 timegrid_v2 | elastic-net LR / demo10 | 0.6052492046659597 | 0.4899606706685986 | 0.5769456480008776 | 0.5573851744451453 | 0.4899606706685986 | current data2 low-cost baseline |
+| DATA2-C | data2 timegrid_v2 | elastic-net LR / compact30 | 0.7476139978791092 | 0.6805354308976748 | 0.6538199967092634 | 0.6939898084953491 | 0.6538199967092634 | current data2 low-cost baseline |
+| DATA2-G | data2 timegrid_v2 | elastic-net LR / global59 | 0.7476139978791092 | 0.6862623335403298 | 0.6143037349860143 | 0.6827266888018179 | 0.6143037349860143 | current data2 low-cost baseline |
+| NEW-D | NEW1103 / timegrid_v2 | elastic-net LR / demo10 | 0.5416666666666666 | 0.3820861678004535 | 0.5128805620608899 | 0.47887779884267 | 0.3820861678004535 | NEW1103 bridge benchmark |
+| NEW-C | NEW1103 / timegrid_v2 | elastic-net LR / compact30 | 0.625 | 0.5306122448979592 | 0.5257611241217799 | 0.5604577896732464 | 0.5257611241217799 | NEW1103 bridge benchmark |
+| NEW-G | NEW1103 / timegrid_v2 | elastic-net LR / global59 | 0.6458333333333334 | 0.4943310657596372 | 0.49102263856362216 | 0.5437290125521975 | 0.49102263856362216 | NEW1103 bridge benchmark |
+| NEW-L0 | NEW1103 / timegrid_v2 | 2-layer LSTM / 483+12+196 | 0.7291666666666666 | 0.5374149659863946 | 0.5995316159250585 | 0.62203774952604 | 0.5374149659863946 | NEW1103 bridge benchmark |
+| NEW-L1 | NEW1103 / timegrid_v2 | 2-layer LSTM / 483+12+196 | 0.7083333333333334 | 0.5453514739229025 | 0.5310304449648712 | 0.5949050840737024 | 0.5310304449648712 | NEW1103 bridge benchmark |
+| NEW-L2 | NEW1103 / timegrid_v2 | 2-layer LSTM / 483+12+196 | 0.53125 | 0.590702947845805 | 0.5239071038251366 | 0.5486200172236472 | 0.5239071038251366 | NEW1103 bridge benchmark |

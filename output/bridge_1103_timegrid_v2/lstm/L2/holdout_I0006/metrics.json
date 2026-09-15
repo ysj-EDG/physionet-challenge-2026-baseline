@@ -1,0 +1,32 @@
+{
+  "protocol": "L2",
+  "holdout_site": "I0006",
+  "train": {
+    "n": 911,
+    "positives": 64,
+    "negatives": 847,
+    "eligible_ac_pairs": 6249,
+    "ac_auroc": 0.6873899823971835,
+    "age_weighted_auroc": 0.7173179763943414,
+    "auroc": 0.6727328069657614,
+    "auprc": 0.21333167594577213,
+    "diagnostic_threshold": "decision_score>=0 (uncalibrated p>=0.5)",
+    "diagnostic_accuracy": 0.686059275521405,
+    "diagnostic_f1": 0.192090395480226
+  },
+  "holdout": {
+    "n": 192,
+    "positives": 20,
+    "negatives": 172,
+    "eligible_ac_pairs": 441,
+    "ac_auroc": 0.590702947845805,
+    "age_weighted_auroc": 0.6383804063653766,
+    "auroc": 0.5892441860465116,
+    "auprc": 0.16833202329537128,
+    "diagnostic_threshold": "decision_score>=0 (uncalibrated p>=0.5)",
+    "diagnostic_accuracy": 0.5052083333333334,
+    "diagnostic_f1": 0.20168067226890757
+  },
+  "train_ac_minus_holdout_ac": 0.0966870345513785,
+  "epochs_completed": 6
+}

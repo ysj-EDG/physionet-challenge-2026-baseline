@@ -1,0 +1,59 @@
+{
+  "protocol": "L0",
+  "holdout_site": "I0002",
+  "manifest": "output/p5_loso_1103/loso_manifest.csv",
+  "input_cache": "npz_1103_timegrid_v2 (NEW1103)",
+  "outer_holdout_used_during_training": false,
+  "model": "train_lstm.LSTMModel",
+  "preprocessing": "legacy_clip",
+  "training_config": {
+    "batch_size": 8,
+    "optimizer": "Adam",
+    "lr": 0.001,
+    "epochs": 6,
+    "early_stopping": false,
+    "scheduler": null,
+    "gradient_clip_max_norm": 1.0,
+    "weighted_random_sampler": true,
+    "sampler": "global_class_balanced",
+    "num_samples": 1049,
+    "replacement": true,
+    "pos_weight_mode": "empirical",
+    "pos_weight": 12.802631578947368,
+    "model_seed": 7,
+    "hidden_size": 128,
+    "num_layers": 2,
+    "fc_hidden": 64,
+    "dropout": 0.3
+  },
+  "sampler_cells": [
+    {
+      "site": "I0006",
+      "label": 0,
+      "raw_count": 172,
+      "sample_weight": 0.5390544707091469,
+      "expected_sampling_proportion": 0.0883864337101747
+    },
+    {
+      "site": "I0006",
+      "label": 1,
+      "raw_count": 20,
+      "sample_weight": 6.901315789473684,
+      "expected_sampling_proportion": 0.13157894736842105
+    },
+    {
+      "site": "S0001",
+      "label": 0,
+      "raw_count": 801,
+      "sample_weight": 0.5390544707091469,
+      "expected_sampling_proportion": 0.41161356628982526
+    },
+    {
+      "site": "S0001",
+      "label": 1,
+      "raw_count": 56,
+      "sample_weight": 6.901315789473684,
+      "expected_sampling_proportion": 0.3684210526315789
+    }
+  ]
+}

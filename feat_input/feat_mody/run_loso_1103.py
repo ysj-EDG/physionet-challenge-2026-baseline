@@ -97,6 +97,19 @@ def resolve_sidecar(requested: Path) -> Path:
 CACHE = resolve_cache_root(CACHE_REQUESTED)
 SIDE = resolve_sidecar(SIDE_REQUESTED)
 
+CACHE_LAYOUT = os.environ.get("P5_CACHE_LAYOUT", "partition")
+
+def cache_path(row) -> Path:
+    """Resolve cache records while preserving the historical partition default."""
+    if CACHE_LAYOUT not in {"partition", "site"}:
+        raise ValueError(f"Unsupported P5_CACHE_LAYOUT: {CACHE_LAYOUT}")
+    record_id = row["record_id"] if isinstance(row, dict) else row.record_id
+    if CACHE_LAYOUT == "site":
+        group = row["site"] if isinstance(row, dict) else row.site
+    else:
+        group = row["npz_partition"] if isinstance(row, dict) else row.npz_partition
+    return CACHE / str(group) / f"{record_id}.npz"
+
 
 def sha256(path: Path) -> str:
     digest = hashlib.sha256()
@@ -305,7 +318,7 @@ class FrozenTruthDataset(tl.PSGDataset):
 
     def __getitem__(self, idx):
         row = self.records[idx]
-        path = CACHE / row["npz_partition"] / f"{row['record_id']}.npz"
+        path = cache_path(row)
         if not path.is_file():
             raise FileNotFoundError(path)
         with np.load(path, allow_pickle=False) as data:
@@ -386,7 +399,7 @@ def load_lr_matrices(
     values = {arm: [] for arm in LR_ARMS}
     labels, ages = [], []
     for row in rows:
-        path = CACHE / row["npz_partition"] / f"{row['record_id']}.npz"
+        path = cache_path(row)
         with np.load(path, allow_pickle=False) as data:
             x_seq = np.asarray(data["X_seq"])
             x_ecg = np.asarray(data["X_ecg"])

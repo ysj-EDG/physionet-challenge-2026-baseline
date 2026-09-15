@@ -1,0 +1,11 @@
+{
+  "source_commit": "d6bb0606b3e11b1694ce5d82e1b75cf0b37a912c",
+  "branch": "official-submission",
+  "records": 1103,
+  "old_manifest_sha256": "af003ca012b0883ecd8edd3f50e7175c2ab91fffa95407b356a8c850af8112d8",
+  "extraction_code_sha_values": [
+    "69e2aecef497f879b6a9e9c1953474191b8e6d91",
+    "9eb1b8dc93e2d5905ae544a462f2dce71b1e1fe1"
+  ],
+  "global59_status": "executed from embedded aligned stage metadata"
+}
