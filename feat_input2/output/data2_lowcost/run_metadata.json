@@ -1,0 +1,58 @@
+{
+  "source_commit": "9eb1b8dc93e2d5905ae544a462f2dce71b1e1fe1",
+  "branch": "official-submission",
+  "dataset": "data2 timegrid_v2",
+  "npz_root": "/database/home/gaohaojie/workspace/python-example-2026/npz_data2",
+  "records": 6600,
+  "source_manifest_sha256": "75b89550c0019f241c0e43262aa99ba139375172933505430ae5c7de761905da",
+  "source_summary_sha256": "7081612fad5e0ecae160543877d297c2750194f55810407c8051485fb7c3ffae",
+  "feature_rules_sha256": "b8624092b12e5a2800d7627413d6d4c791fec8c7fb77552a007e1d43342c3c90",
+  "extraction_code_sha_values": [
+    "unknown"
+  ],
+  "extraction_source_sha256_json_values": [
+    {
+      "channel_table.csv": "b0aa1507e0119dfcd52b214077a471c4c84f15723d26fb3869de9459e1d1862f",
+      "per_epoch_features/eeg_sleep_features.py": "a0e89bfa5989ae6fcc1aefc2dc0318be51d59f2bfad36c57ca255af42f01f8fb",
+      "per_epoch_features/feature_extractor_algorithmic.py": "802436e5e525f0fe8811cdc81c4f18df1655d5e8e6147e89fe4253c13c7159de",
+      "per_epoch_features/per_epoch_extractor.py": "ae9d5b4f180497906e18ef7057a9e633e7afb345360c5d369b1b128ea28ae435",
+      "per_epoch_features/timegrid_v2_extractor.py": "6bade23f49d66ef289d592c1e625d501bb901efdd7816cf74be65a8fd1a9139f"
+    }
+  ],
+  "extraction_launch": {
+    "data_root": "/mnt/data5t-in-container/workspace/.medex_run_42b03583b48f48cb82f5ef0ddb9755ed/python-example-2026/data2_source/data2",
+    "dependencies": {
+      "edfio": "0.4.13",
+      "numpy": "2.2.6",
+      "pandas": "2.3.3",
+      "python": "3.10.12",
+      "scipy": "1.15.3"
+    },
+    "event": "launch",
+    "git_sha": "unknown",
+    "output_root": "/mnt/data5t-in-container/workspace/.medex_run_42b03583b48f48cb82f5ef0ddb9755ed/python-example-2026/npz_data2",
+    "records": 6600,
+    "source_sha256": {
+      "channel_table.csv": "b0aa1507e0119dfcd52b214077a471c4c84f15723d26fb3869de9459e1d1862f",
+      "per_epoch_features/eeg_sleep_features.py": "a0e89bfa5989ae6fcc1aefc2dc0318be51d59f2bfad36c57ca255af42f01f8fb",
+      "per_epoch_features/feature_extractor_algorithmic.py": "802436e5e525f0fe8811cdc81c4f18df1655d5e8e6147e89fe4253c13c7159de",
+      "per_epoch_features/per_epoch_extractor.py": "ae9d5b4f180497906e18ef7057a9e633e7afb345360c5d369b1b128ea28ae435",
+      "per_epoch_features/timegrid_v2_extractor.py": "6bade23f49d66ef289d592c1e625d501bb901efdd7816cf74be65a8fd1a9139f"
+    },
+    "time": 1789373224.7811162,
+    "version": "timegrid_v2.0.0",
+    "workers": 16
+  },
+  "global59_status": "executed from embedded aligned stage metadata",
+  "summary_cache": "/database/home/gaohaojie/workspace/python-example-2026/feat_input2/output/data2_lowcost/cache/data2_patient_summaries.npz",
+  "summary_cache_sha256": "a65a269eedc57b44df6d0710d9a7c5c0b57e3fb501819220c2412eac1a7c5bd3",
+  "summary_cache_committed": false,
+  "elapsed_seconds": 3611.3754663467407,
+  "environment": {
+    "python": "3.10.20 | packaged by conda-forge | (main, Mar  5 2026, 16:42:22) [GCC 14.3.0]",
+    "executable": "/database/home/gaohaojie/.conda/envs/sleepfm_env/bin/python",
+    "numpy": "2.2.6",
+    "pandas": "2.2.3",
+    "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.39"
+  }
+}

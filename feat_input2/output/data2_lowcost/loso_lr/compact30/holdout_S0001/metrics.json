@@ -1,0 +1,34 @@
+{
+  "model": "compact30",
+  "holdout_site": "S0001",
+  "train": {
+    "n": 1461,
+    "positives": 164,
+    "negatives": 1297,
+    "eligible_ac_pairs": 27234,
+    "ac_auroc": 0.7374238084747008,
+    "age_weighted_auroc": 0.7465417248898529,
+    "auroc": 0.8223903191229291,
+    "auprc": 0.4197906988078603,
+    "diagnostic_threshold": "decision_score>=0 (uncalibrated p>=0.5)",
+    "diagnostic_accuracy": 0.7508555783709788,
+    "diagnostic_f1": 0.3953488372093023
+  },
+  "holdout": {
+    "n": 5139,
+    "positives": 334,
+    "negatives": 4805,
+    "eligible_ac_pairs": 182330,
+    "ac_auroc": 0.6538199967092634,
+    "age_weighted_auroc": 0.6726515500263138,
+    "auroc": 0.8002897430944562,
+    "auprc": 0.23097325231198243,
+    "diagnostic_threshold": "decision_score>=0 (uncalibrated p>=0.5)",
+    "diagnostic_accuracy": 0.8192255302588052,
+    "diagnostic_f1": 0.2848344880677444
+  },
+  "train_ac_minus_holdout_ac": 0.08360381176543741,
+  "n_iter": 38,
+  "converged": true,
+  "convergence_warnings": []
+}

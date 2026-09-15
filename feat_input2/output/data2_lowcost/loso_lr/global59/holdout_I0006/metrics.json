@@ -1,0 +1,34 @@
+{
+  "model": "global59",
+  "holdout_site": "I0006",
+  "train": {
+    "n": 5458,
+    "positives": 386,
+    "negatives": 5072,
+    "eligible_ac_pairs": 226277,
+    "ac_auroc": 0.7031890116980515,
+    "age_weighted_auroc": 0.7234303847926942,
+    "auroc": 0.8191301731746784,
+    "auprc": 0.2945657594346628,
+    "diagnostic_threshold": "decision_score>=0 (uncalibrated p>=0.5)",
+    "diagnostic_accuracy": 0.7477097838035911,
+    "diagnostic_f1": 0.28689798032107716
+  },
+  "holdout": {
+    "n": 1142,
+    "positives": 112,
+    "negatives": 1030,
+    "eligible_ac_pairs": 14493,
+    "ac_auroc": 0.6862623335403298,
+    "age_weighted_auroc": 0.6485245010665736,
+    "auroc": 0.8137135922330097,
+    "auprc": 0.3565351649094492,
+    "diagnostic_threshold": "decision_score>=0 (uncalibrated p>=0.5)",
+    "diagnostic_accuracy": 0.6339754816112084,
+    "diagnostic_f1": 0.31921824104234525
+  },
+  "train_ac_minus_holdout_ac": 0.016926678157721642,
+  "n_iter": 47,
+  "converged": true,
+  "convergence_warnings": []
+}

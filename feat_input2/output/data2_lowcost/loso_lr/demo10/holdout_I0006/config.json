@@ -1,0 +1,32 @@
+{
+  "dataset": "data2 timegrid_v2",
+  "arm": "demo10",
+  "p3_definition": "P3_demo10",
+  "feature_names": [
+    "age",
+    "sex_Female",
+    "sex_Male",
+    "sex_OtherUnknown",
+    "race_Asian",
+    "race_Black",
+    "race_Others",
+    "race_Unavailable",
+    "race_White",
+    "BMI"
+  ],
+  "feature_dimension": 10,
+  "linear_model": {
+    "penalty": "elasticnet",
+    "solver": "saga",
+    "l1_ratio": 0.4,
+    "C": 0.03,
+    "class_weight": "balanced",
+    "fit_intercept": true,
+    "max_iter": 100000,
+    "tol": 0.0001,
+    "random_state": 7
+  },
+  "input_preprocessing": "typed_v1 selected-column adapter fit on outer training sites only",
+  "outer_holdout_used_for_fit_or_selection": false,
+  "holdout_site": "I0006"
+}
