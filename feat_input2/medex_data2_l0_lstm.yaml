@@ -1,0 +1,37 @@
+version: 1
+workspace: ..
+
+exclude:
+  - .git/
+  - __pycache__/
+  - eeg_qc/
+  - output/
+  - npz_new/
+  - npz_1103_timegrid_v2/
+  - npz_data2/
+  - data2_l0_h100_results/
+  - p5_h100_results/
+  - feat_input/data2_smoke_logs/
+
+include:
+  - src: npz_data2
+    dst: .
+    keep: true
+  - src: output/data2_l0_lstm/splits
+    dst: data2_l0_h100_results/
+  - src: output/data2_l0_lstm/REUSE_AUDIT.md
+    dst: data2_l0_h100_results/
+  - src: output/data2_l0_lstm/preflight.json
+    dst: data2_l0_h100_results/
+  - src: feat_input2/output/data2_lowcost/data2_manifest.csv
+    dst: feat_input2/output/data2_lowcost/
+
+env: eeg_env
+device: auto
+
+run:
+  script: feat_input2/run_data2_l0_h100.py
+  wait: true
+
+rsync_back:
+  - data2_l0_h100_results

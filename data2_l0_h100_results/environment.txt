@@ -1,0 +1,9 @@
+Formal training environment:
+python=/mnt/data5t-in-container/env/eeg_env/bin/python3
+python_version=3.10.12
+torch=2.5.1+cu121
+cuda=12.1
+gpu=NVIDIA H100 PCIe
+device=cuda
+medex_task_suffix=c7131e
+note=preflight.json records only the local P6000 split/smoke-test environment

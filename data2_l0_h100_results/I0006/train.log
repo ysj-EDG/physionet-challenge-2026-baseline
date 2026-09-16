@@ -1,0 +1,20 @@
+2026-09-16 09:39:38,968 INFO holdout=I0006 device=cuda inner_train=4366 inner_val=1092 outer_holdout=1142 pos_weight=13.12944984
+2026-09-16 09:45:07,392 INFO epoch=1 loss=4.1580820 train_ac=0.792966 val_I0002=0.779412 val_S0001=0.756830 macro=0.768121 lr=0.001 best=True time=328.4s
+2026-09-16 09:50:35,828 INFO epoch=2 loss=1.8281194 train_ac=0.835678 val_I0002=0.661765 val_S0001=0.826751 macro=0.744258 lr=0.001 best=False time=328.4s
+2026-09-16 09:56:13,707 INFO epoch=3 loss=1.7485015 train_ac=0.821603 val_I0002=0.661765 val_S0001=0.828952 macro=0.745359 lr=0.001 best=False time=337.9s
+2026-09-16 10:01:54,425 INFO epoch=4 loss=1.5893291 train_ac=0.828280 val_I0002=0.654412 val_S0001=0.832449 macro=0.743430 lr=0.001 best=False time=340.7s
+2026-09-16 10:07:27,603 INFO epoch=5 loss=1.4987566 train_ac=0.862404 val_I0002=0.647059 val_S0001=0.831477 macro=0.739268 lr=0.001 best=False time=333.2s
+2026-09-16 10:12:54,882 INFO epoch=6 loss=1.8273822 train_ac=0.834420 val_I0002=0.683824 val_S0001=0.829082 macro=0.756453 lr=0.001 best=False time=327.3s
+2026-09-16 10:18:27,274 INFO epoch=7 loss=1.5700355 train_ac=0.839114 val_I0002=0.632353 val_S0001=0.829924 macro=0.731138 lr=0.001 best=False time=332.4s
+2026-09-16 10:24:02,101 INFO epoch=8 loss=1.4561983 train_ac=0.848395 val_I0002=0.566176 val_S0001=0.820666 macro=0.693421 lr=0.001 best=False time=334.8s
+2026-09-16 10:29:31,268 INFO epoch=9 loss=1.4436793 train_ac=0.853938 val_I0002=0.617647 val_S0001=0.839829 macro=0.728738 lr=0.001 best=False time=329.2s
+2026-09-16 10:35:17,715 INFO epoch=10 loss=1.4156284 train_ac=0.857897 val_I0002=0.669118 val_S0001=0.823320 macro=0.746219 lr=0.0005 best=False time=346.4s
+2026-09-16 10:41:07,198 INFO epoch=11 loss=1.5848651 train_ac=0.867556 val_I0002=0.632353 val_S0001=0.817687 macro=0.725020 lr=0.0005 best=False time=349.5s
+2026-09-16 10:46:57,602 INFO epoch=12 loss=1.5043073 train_ac=0.880227 val_I0002=0.661765 val_S0001=0.793345 macro=0.727555 lr=0.0005 best=False time=350.4s
+2026-09-16 10:52:48,024 INFO epoch=13 loss=1.5480254 train_ac=0.884835 val_I0002=0.632353 val_S0001=0.811343 macro=0.721848 lr=0.0005 best=False time=350.4s
+2026-09-16 10:58:42,054 INFO epoch=14 loss=1.4905554 train_ac=0.902859 val_I0002=0.647059 val_S0001=0.803768 macro=0.725413 lr=0.0005 best=False time=354.0s
+2026-09-16 11:04:36,740 INFO epoch=15 loss=1.4297592 train_ac=0.914306 val_I0002=0.602941 val_S0001=0.795287 macro=0.699114 lr=0.0005 best=False time=354.7s
+2026-09-16 11:10:28,667 INFO epoch=16 loss=1.6638256 train_ac=0.919070 val_I0002=0.558824 val_S0001=0.810307 macro=0.684565 lr=0.0005 best=False time=351.9s
+2026-09-16 11:10:28,667 INFO early_stop epoch=16 best_epoch=1 best_macro=0.768121
+2026-09-16 11:10:28,688 INFO checkpoints frozen before outer holdout loader construction
+2026-09-16 11:17:54,107 INFO complete best_epoch=1 stop_epoch=16 outer_ac=0.516594 epoch6_outer_ac=0.531498

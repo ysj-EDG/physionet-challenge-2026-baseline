@@ -1,0 +1,133 @@
+{
+  "protocol": "DATA2-L0",
+  "holdout_site": "I0002",
+  "best_epoch": 1,
+  "stop_epoch": 16,
+  "inner_train_n": 5024,
+  "inner_val_n": 1257,
+  "outer_holdout_n": 319,
+  "val_sites": [
+    "I0006",
+    "S0001"
+  ],
+  "best": {
+    "epoch": 1,
+    "train": {
+      "n": 5024,
+      "positives": 357,
+      "negatives": 4667,
+      "eligible_ac_pairs": 192117,
+      "ac_auroc": 0.7556020549977358,
+      "age_weighted_auroc": 0.7632721416442363,
+      "auroc": 0.7947283477350657,
+      "auprc": 0.21737523010731558,
+      "diagnostic_threshold": "decision_score>=0 (uncalibrated p>=0.5)",
+      "diagnostic_accuracy": 0.08439490445859872,
+      "diagnostic_f1": 0.13436206247647722
+    },
+    "validation_by_site": {
+      "I0006": {
+        "n": 229,
+        "positives": 22,
+        "negatives": 207,
+        "eligible_ac_pairs": 485,
+        "ac_auroc": 0.7917525773195876,
+        "age_weighted_auroc": 0.7649790045435723,
+        "auroc": 0.7779973649538867,
+        "auprc": 0.26963286400475595,
+        "diagnostic_threshold": "decision_score>=0 (uncalibrated p>=0.5)",
+        "diagnostic_accuracy": 0.10480349344978165,
+        "diagnostic_f1": 0.17670682730923695
+      },
+      "S0001": {
+        "n": 1028,
+        "positives": 67,
+        "negatives": 961,
+        "eligible_ac_pairs": 7723,
+        "ac_auroc": 0.7546290301696232,
+        "age_weighted_auroc": 0.7628591289662514,
+        "auroc": 0.7829220184198673,
+        "auprc": 0.22932195770513977,
+        "diagnostic_threshold": "decision_score>=0 (uncalibrated p>=0.5)",
+        "diagnostic_accuracy": 0.07684824902723736,
+        "diagnostic_f1": 0.123730378578024
+      }
+    },
+    "seen_site_macro_ac": 0.7731908037446054,
+    "outer_holdout": {
+      "n": 319,
+      "positives": 52,
+      "negatives": 267,
+      "eligible_ac_pairs": 1886,
+      "ac_auroc": 0.6606574761399788,
+      "age_weighted_auroc": 0.6441269914407631,
+      "auroc": 0.6866897147796024,
+      "auprc": 0.34872210005358617,
+      "diagnostic_threshold": "decision_score>=0 (uncalibrated p>=0.5)",
+      "diagnostic_accuracy": 0.16300940438871472,
+      "diagnostic_f1": 0.2764227642276423
+    },
+    "train_minus_val_macro_ac": -0.017588748746869554,
+    "val_macro_minus_outer_ac": 0.11253332760462653
+  },
+  "epoch6_diagnostic": {
+    "epoch": 6,
+    "train": {
+      "n": 5024,
+      "positives": 357,
+      "negatives": 4667,
+      "eligible_ac_pairs": 192117,
+      "ac_auroc": 0.8485532253782851,
+      "age_weighted_auroc": 0.8561832849873752,
+      "auroc": 0.8758594074012721,
+      "auprc": 0.337219521560592,
+      "diagnostic_threshold": "decision_score>=0 (uncalibrated p>=0.5)",
+      "diagnostic_accuracy": 0.08539012738853503,
+      "diagnostic_f1": 0.13448860425692222
+    },
+    "validation_by_site": {
+      "I0006": {
+        "n": 229,
+        "positives": 22,
+        "negatives": 207,
+        "eligible_ac_pairs": 485,
+        "ac_auroc": 0.7298969072164948,
+        "age_weighted_auroc": 0.6748430946880808,
+        "auroc": 0.7310057092665788,
+        "auprc": 0.23784297069148458,
+        "diagnostic_threshold": "decision_score>=0 (uncalibrated p>=0.5)",
+        "diagnostic_accuracy": 0.10043668122270742,
+        "diagnostic_f1": 0.1693548387096774
+      },
+      "S0001": {
+        "n": 1028,
+        "positives": 67,
+        "negatives": 961,
+        "eligible_ac_pairs": 7723,
+        "ac_auroc": 0.798394406318788,
+        "age_weighted_auroc": 0.801873378464612,
+        "auroc": 0.8266420240110581,
+        "auprc": 0.34652395716482665,
+        "diagnostic_threshold": "decision_score>=0 (uncalibrated p>=0.5)",
+        "diagnostic_accuracy": 0.07782101167315175,
+        "diagnostic_f1": 0.12384473197781885
+      }
+    },
+    "seen_site_macro_ac": 0.7641456567676415,
+    "outer_holdout": {
+      "n": 319,
+      "positives": 52,
+      "negatives": 267,
+      "eligible_ac_pairs": 1886,
+      "ac_auroc": 0.6532343584305408,
+      "age_weighted_auroc": 0.6341356308683348,
+      "auroc": 0.6883462978968595,
+      "auprc": 0.31693931439788736,
+      "diagnostic_threshold": "decision_score>=0 (uncalibrated p>=0.5)",
+      "diagnostic_accuracy": 0.16614420062695925,
+      "diagnostic_f1": 0.27717391304347827
+    },
+    "train_minus_val_macro_ac": 0.08440756861064369,
+    "val_macro_minus_outer_ac": 0.11091129833710067
+  }
+}

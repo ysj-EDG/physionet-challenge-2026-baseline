@@ -354,6 +354,31 @@
       "result_commit": "bridge result commit (this commit)",
       "result_path": "output/bridge_1103_timegrid_v2",
       "role": "NEW1103 bridge benchmark"
+    },
+    {
+      "id": "DATA2-L0",
+      "dataset": "data2",
+      "n": 6600,
+      "cache": "npz_data2",
+      "extraction_version": "timegrid_v2.0.0",
+      "model": "2-layer LSTM",
+      "feature_set": "483+12+196",
+      "preprocessing": "legacy_clip",
+      "sampler": "global class-balanced",
+      "pos_weight": "empirical",
+      "CV_protocol": "three-site LOSO",
+      "inner_validation": "20% per seen site, stratified by label",
+      "checkpoint_rule": "unweighted mean validation AC across two seen sites",
+      "seed": 7,
+      "I0002_AC": 0.6606574761399788,
+      "I0006_AC": 0.5165942178982957,
+      "S0001_AC": 0.4386661547743103,
+      "macro_AC": 0.5386392829375283,
+      "worst_site_AC": 0.4386661547743103,
+      "best_epochs": {"I0002": 1, "I0006": 1, "S0001": 19},
+      "result_commit": "DATA2-L0 result commit (this commit)",
+      "result_path": "data2_l0_h100_results",
+      "role": "data2 historical-L0 LOSO baseline"
     }
   ]
 }
