@@ -1,0 +1,42 @@
+{
+  "model": "DATA2-CAISR20",
+  "sites": {
+    "I0002": {
+      "ac_auroc": 0.7460233297985154,
+      "age_weighted_auroc": 0.7456358409099622,
+      "auroc": 0.7641169691731489,
+      "auprc": 0.5129300450771846,
+      "n": 319,
+      "positives": 52,
+      "negatives": 267,
+      "eligible_ac_pairs": 1886
+    },
+    "I0006": {
+      "ac_auroc": 0.6777064789898571,
+      "age_weighted_auroc": 0.6594772673916318,
+      "auroc": 0.7314927184466019,
+      "auprc": 0.20293299537665033,
+      "n": 1142,
+      "positives": 112,
+      "negatives": 1030,
+      "eligible_ac_pairs": 14493
+    },
+    "S0001": {
+      "ac_auroc": 0.6166620961991992,
+      "age_weighted_auroc": 0.6263356233212005,
+      "auroc": 0.6991220472686261,
+      "auprc": 0.1316740860980098,
+      "n": 5139,
+      "positives": 334,
+      "negatives": 4805,
+      "eligible_ac_pairs": 182330
+    }
+  },
+  "macro_ac_auroc": 0.6801306349958572,
+  "worst_site_ac_auroc": 0.6166620961991992,
+  "macro_auroc": 0.7315772449627923,
+  "macro_auprc": 0.2825123755172816,
+  "feature_dimension": 20,
+  "seed": 7,
+  "source_commit": "07617864c97bd62392d5fd353c4bef4aac4cfbe0"
+}
