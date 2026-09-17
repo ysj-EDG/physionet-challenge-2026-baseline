@@ -1,0 +1,119 @@
+{
+  "dataset": "DATA2",
+  "data_root": "/database/home/gaohaojie/workspace/python-example-2026/npz_data2",
+  "n_records": 6600,
+  "extraction_version": "timegrid_v2.0.0",
+  "feature_set": "CAISR20",
+  "feature_indices": [
+    11,
+    12,
+    13,
+    14,
+    16,
+    17,
+    18,
+    19,
+    20,
+    32,
+    34,
+    87,
+    96,
+    97,
+    98,
+    126,
+    127,
+    141,
+    168,
+    173
+  ],
+  "feature_names": [
+    "caisr_sleep_tst_sec",
+    "caisr_sleep_se",
+    "caisr_sleep_sol_sec",
+    "caisr_sleep_rem_latency_sec",
+    "caisr_sleep_waso_sec",
+    "caisr_sleep_n1_pct",
+    "caisr_sleep_n2_pct",
+    "caisr_sleep_n3_pct",
+    "caisr_sleep_rem_pct",
+    "caisr_sleep_transition_rate",
+    "caisr_sleep_short_bout_ratio",
+    "caisr_sleep_mean_stage_entropy",
+    "caisr_arousal_arousal_index",
+    "caisr_arousal_arousal_burden_ratio",
+    "caisr_arousal_mean_arousal_duration",
+    "caisr_respiratory_respiratory_event_index",
+    "caisr_respiratory_respiratory_burden_ratio",
+    "caisr_respiratory_mean_resp_duration",
+    "caisr_limb_limb_movement_index",
+    "caisr_limb_plmi"
+  ],
+  "feature_groups": {
+    "sleep_architecture": [
+      11,
+      12,
+      13,
+      14,
+      16,
+      17,
+      18,
+      19,
+      20
+    ],
+    "fragmentation_uncertainty": [
+      32,
+      34,
+      87
+    ],
+    "arousal": [
+      96,
+      97,
+      98
+    ],
+    "respiratory": [
+      126,
+      127,
+      141
+    ],
+    "limb": [
+      168,
+      173
+    ]
+  },
+  "preprocessing": "outer-training-fold typed_v1 low-level rules; CAISR all-zero sentinel invalid; typed center/identity fill; training median imputation; training population mean/std standardization",
+  "LR_config": {
+    "penalty": "elasticnet",
+    "solver": "saga",
+    "l1_ratio": 0.4,
+    "C": 0.03,
+    "class_weight": "balanced",
+    "fit_intercept": true,
+    "max_iter": 100000,
+    "tol": 0.0001
+  },
+  "canonical_seed": 7,
+  "stability_seeds": [
+    7,
+    17,
+    27,
+    37,
+    47
+  ],
+  "bootstrap_seed": 20260917,
+  "bootstrap_replicates": 1000,
+  "primary_metric": "Age-conditioned AUROC",
+  "gap": 2,
+  "python_version": "3.10.20 | packaged by conda-forge | (main, Mar  5 2026, 16:42:22) [GCC 14.3.0]",
+  "numpy_version": "2.2.6",
+  "sklearn_version": "1.7.2",
+  "platform": "Linux-6.8.0-111-generic-x86_64-with-glibc2.39",
+  "git_base_commit": "9b06670c0cf07024c66fb4693b2eff267c05b460",
+  "baseline_py_sha256": "36cf32118d0d870a7c1fc6c1af40d80d5269fd4811c19e1d03033b9401e9048d",
+  "feature_rules_v1_sha256": "b8624092b12e5a2800d7627413d6d4c791fec8c7fb77552a007e1d43342c3c90",
+  "uses_human_annotations": false,
+  "uses_demographics_as_predictors": false,
+  "age_used_for_metric_only": true,
+  "creates_feature_cache": false,
+  "historical_regression_reference_commit": "79adc97e180e9d38f3743fbf8d10f18e6b5b11cc",
+  "primary_only": false
+}

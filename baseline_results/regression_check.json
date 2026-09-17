@@ -1,0 +1,47 @@
+{
+  "historical_commit": "79adc97e180e9d38f3743fbf8d10f18e6b5b11cc",
+  "oracle": {
+    "I0002": 0.7460233297985154,
+    "I0006": 0.6777064789898571,
+    "S0001": 0.6166620961991992,
+    "macro": 0.6801306349958572,
+    "worst": 0.6166620961991992
+  },
+  "sites": {
+    "I0002": {
+      "ac": 0.7460233297985154,
+      "oracle_ac": 0.7460233297985154,
+      "absolute_metric_difference": 0.0,
+      "records_aligned": true,
+      "n_records": 319,
+      "max_abs_score_difference": 4.440892098500626e-16,
+      "score_correlation": 1.0
+    },
+    "I0006": {
+      "ac": 0.6777064789898571,
+      "oracle_ac": 0.6777064789898571,
+      "absolute_metric_difference": 0.0,
+      "records_aligned": true,
+      "n_records": 1142,
+      "max_abs_score_difference": 4.440892098500626e-16,
+      "score_correlation": 0.9999999999999999
+    },
+    "S0001": {
+      "ac": 0.6166620961991992,
+      "oracle_ac": 0.6166620961991992,
+      "absolute_metric_difference": 0.0,
+      "records_aligned": true,
+      "n_records": 5139,
+      "max_abs_score_difference": 4.440892098500626e-16,
+      "score_correlation": 1.0
+    }
+  },
+  "macro_absolute_difference": 0.0,
+  "worst_absolute_difference": 0.0,
+  "record_alignment": true,
+  "max_abs_score_difference": 4.440892098500626e-16,
+  "minimum_score_correlation": 0.9999999999999999,
+  "metric_tolerance": 1e-12,
+  "score_atol": 1e-06,
+  "pass": true
+}
