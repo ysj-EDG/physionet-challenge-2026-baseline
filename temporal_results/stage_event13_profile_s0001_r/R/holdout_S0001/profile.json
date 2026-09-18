@@ -1,0 +1,73 @@
+{
+  "holdout": "S0001",
+  "arm": "R",
+  "device_start": {
+    "device": "cuda",
+    "cuda_visible_devices": "0",
+    "cpu_count": 32,
+    "process_rss_kib": 1174720,
+    "system_mem_total_kib": 164830288,
+    "system_mem_available_kib": 154609798,
+    "cuda_device_name": "NVIDIA H100 PCIe",
+    "cuda_allocated_bytes": 55296,
+    "cuda_reserved_bytes": 2097152,
+    "cuda_peak_allocated_bytes": 55296
+  },
+  "block_construction": {
+    "inner_train_sec": 0.05287787225097418,
+    "inner_val_I0002_sec": 0.0022648340091109276,
+    "inner_val_I0006_sec": 0.010191068984568119
+  },
+  "epochs": [
+    {
+      "epoch": 1,
+      "train_batches_total": 19,
+      "mean_batch_time_sec": 7.859179390177719,
+      "train_time_sec": 149.41294658230618,
+      "validation_time_sec_by_site": {
+        "I0002": 4.588502448052168,
+        "I0006": 15.056971507146955
+      },
+      "ac_time_sec_by_site": {
+        "I0002": 0.002508279401808977,
+        "I0006": 0.00348581001162529
+      },
+      "epoch_total_time_sec": 169.06511982623488,
+      "selection": 0.556239837398374,
+      "loss": 0.6935817883250027
+    },
+    {
+      "epoch": 2,
+      "train_batches_total": 19,
+      "mean_batch_time_sec": 7.960181678155143,
+      "train_time_sec": 151.3127990826033,
+      "validation_time_sec_by_site": {
+        "I0002": 4.113479143939912,
+        "I0006": 15.229934153147042
+      },
+      "ac_time_sec_by_site": {
+        "I0002": 0.0022010980173945427,
+        "I0006": 0.0032597100362181664
+      },
+      "epoch_total_time_sec": 170.6622814447619,
+      "selection": 0.5983943089430894,
+      "loss": 0.6918668518250592
+    }
+  ],
+  "holdout_block_construction_sec": 0.37596783181652427,
+  "holdout_inference_sec": 333.54705537483096,
+  "holdout_metric_sec": 16.735641468316317,
+  "device_end": {
+    "device": "cuda",
+    "cuda_visible_devices": "0",
+    "cpu_count": 32,
+    "process_rss_kib": 2147980,
+    "system_mem_total_kib": 164830288,
+    "system_mem_available_kib": 154805497,
+    "cuda_device_name": "NVIDIA H100 PCIe",
+    "cuda_allocated_bytes": 68048384,
+    "cuda_reserved_bytes": 849346560,
+    "cuda_peak_allocated_bytes": 286342144
+  },
+  "total_fold_sec": 690.435216628015
+}

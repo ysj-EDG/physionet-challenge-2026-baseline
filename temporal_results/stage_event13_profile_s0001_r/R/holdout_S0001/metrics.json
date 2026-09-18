@@ -1,0 +1,15 @@
+{
+  "ac_auroc": 0.5302971995294066,
+  "age_weighted_auroc": 0.5212191096687386,
+  "auroc": 0.6170800481240731,
+  "auprc": 0.09482321765573389,
+  "n": 5127,
+  "positives": 334,
+  "negatives": 4793,
+  "eligible_ac_pairs": 181898,
+  "arm": "R",
+  "best_epoch": 2,
+  "validation_site_macro_ac": 0.5983943089430894,
+  "training_wall_time_sec": 690.4321872368455,
+  "initial_weight_hash": "4f3c0df9a81f1e0f75cd8aeff87bef83afec66509d5f6b1e52ce3702a4e3cec1"
+}
