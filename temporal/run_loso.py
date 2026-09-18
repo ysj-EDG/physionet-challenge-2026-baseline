@@ -116,11 +116,13 @@ def preprocessing_json(state):
         'columns':[{'actual_index':p['actual_index'],'name':p['rule']['name'],'center':p['center'],'scale':p['scale'],'method':p['method']} for p in params], 'neutral':neutral.tolist()}
 
 class BlockDataset(Dataset):
-    def __init__(self,records,indices,state,shuffle): self.records=records; self.indices=list(indices); self.state=state; self.shuffle=shuffle
-    def __len__(self): return len(self.indices)
-    def __getitem__(self,k):
-        i=self.indices[k]; r=self.records[i]; blocks,_=blockify(apply_preprocessing(r,self.state)); blocks=apply_block_order(blocks,r.record_id,self.shuffle)
-        return torch.from_numpy(np.ascontiguousarray(blocks)),float(r.label),i
+    def __init__(self,records,indices,state,shuffle):
+        self.items=[]
+        for i in indices:
+            r=records[i]; blocks,_=blockify(apply_preprocessing(r,state)); blocks=apply_block_order(blocks,r.record_id,shuffle)
+            self.items.append((torch.from_numpy(np.ascontiguousarray(blocks)),float(r.label),i))
+    def __len__(self): return len(self.items)
+    def __getitem__(self,k): return self.items[k]
 
 def collate(batch):
     maximum=max(x[0].shape[0] for x in batch); d=batch[0][0].shape[-1]; x=torch.zeros(len(batch),maximum,10,d); padding=torch.ones(len(batch),maximum,dtype=torch.bool)
@@ -185,7 +187,9 @@ def run_tcn_fold(records,inner_train,inner_val,holdout,fold_dir,modality,shuffle
     state=fit_preprocessing(records,inner_train,modality); seed_all(7); model=LocalTCNClassifier(MODALITY_DIM[modality]).to(device); initial_hash=state_hash(model)
     train_loader,cells=sampler_loader(records,inner_train,state,shuffle,batch_size); pd.DataFrame(cells).to_csv(fold_dir/'sampler_cells.csv',index=False)
     optimizer=torch.optim.AdamW(model.parameters(),lr=1e-3,weight_decay=1e-4); criterion=nn.BCEWithLogitsLoss(pos_weight=torch.tensor(1.,device=device))
-    val_sites=sorted({records[i].site for i in inner_val}); history=[]; best=-math.inf; best_epoch=0; best_state=None; stale=0; started=time.time()
+    val_sites=sorted({records[i].site for i in inner_val})
+    val_loaders={site:natural_loader(records,[i for i in inner_val if records[i].site==site],state,shuffle,batch_size) for site in val_sites}
+    history=[]; best=-math.inf; best_epoch=0; best_state=None; stale=0; started=time.time()
     for epoch in range(1,max_epochs+1):
         model.train(); total=0.; seen=0
         for x,pad,y,_ in train_loader:
@@ -194,7 +198,7 @@ def run_tcn_fold(records,inner_train,inner_val,holdout,fold_dir,modality,shuffle
             loss.backward(); nn.utils.clip_grad_norm_(model.parameters(),1.0); optimizer.step(); total+=float(loss)*len(y); seen+=len(y)
         row={'epoch':epoch,'train_loss':total/seen,'lr':optimizer.param_groups[0]['lr']}; site_scores=[]
         for site in val_sites:
-            idx=[i for i in inner_val if records[i].site==site]; _,yy,ss,aa=collect(model,natural_loader(records,idx,state,shuffle,batch_size),records,device); mm=metric_bundle(yy,ss,aa,include_weighted=False); site_scores.append(mm['ac_auroc'])
+            _,yy,ss,aa=collect(model,val_loaders[site],records,device); mm=metric_bundle(yy,ss,aa,include_weighted=False); site_scores.append(mm['ac_auroc'])
             for key in ('ac_auroc','auroc','auprc','eligible_ac_pairs'): row[f'val_{site}_{key}']=mm[key]
         selection=float(np.mean(site_scores)); row['site_macro_ac']=selection; improved=selection>best+1e-4; row['is_best']=improved
         if improved: best=selection; best_epoch=epoch; best_state={k:v.detach().cpu().clone() for k,v in model.state_dict().items()}; stale=0
