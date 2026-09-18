@@ -31,7 +31,12 @@ DATA_ROOT=ROOT/'npz_data2'; RULES=ROOT/'feat_input'/'feature_rules_v1.json'
 LR_CONFIG=dict(penalty='elasticnet',solver='saga',l1_ratio=.4,C=.03,class_weight='balanced',fit_intercept=True,max_iter=100000,tol=1e-4,random_state=7)
 MODALITY_DIM={'stage_event13':13,'eeg72':72}
 
-def git_head(): return subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
+def git_head():
+    """Return provenance without failing in Medex snapshots that intentionally omit .git."""
+    try:
+        return subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True,stderr=subprocess.DEVNULL).strip()
+    except (subprocess.CalledProcessError,FileNotFoundError):
+        return os.environ.get('TEMPORAL_SOURCE_GIT_SHA','medex_snapshot_without_git')
 def json_dump(path,obj): Path(path).write_text(json.dumps(obj,indent=2,allow_nan=False)+'\n')
 
 def runtime_snapshot(device):
