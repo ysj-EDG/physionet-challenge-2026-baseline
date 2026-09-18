@@ -16,6 +16,10 @@ class TemporalTests(unittest.TestCase):
     def test_padding_excluded_from_pooling(self):
         got=masked_mean_std(torch.tensor([[[1.,2.],[3.,4.],[999.,999.]]]),torch.tensor([[False,False,True]]))
         self.assertTrue(torch.allclose(got,torch.tensor([[2.,3.,1.,1.]])))
+    def test_zero_variance_pooling_backward_is_finite(self):
+        tokens=torch.ones(2,3,4,requires_grad=True)
+        masked_mean_std(tokens,torch.tensor([[False,False,False],[False,True,True]])).sum().backward()
+        self.assertTrue(torch.isfinite(tokens.grad).all())
     def test_invalid_stage_uses_neutral_not_zero(self):
         neutral=fit_neutral([_record([[1,0,0,0,0],[0,1,0,0,0]],np.ones((2,5),bool))],[0])
         got=impute_values(_record([[0,0,0,0,0]],np.zeros((1,5),bool)),neutral)[0]

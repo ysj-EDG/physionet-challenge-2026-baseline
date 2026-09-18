@@ -23,11 +23,13 @@ class ResidualTemporalBlock(nn.Module):
 
 def masked_mean_std(tokens: torch.Tensor, block_padding_mask: torch.Tensor) -> torch.Tensor:
     """Return concatenated mean/std over real blocks; True means padding."""
-    valid = (~block_padding_mask).to(tokens.dtype).unsqueeze(-1)
-    count = valid.sum(1).clamp_min(1.0)
-    mean = (tokens * valid).sum(1) / count
-    variance = ((tokens - mean[:, None, :]).square() * valid).sum(1) / count
-    return torch.cat([mean, variance.clamp_min(0).sqrt()], dim=-1)
+    summaries = []
+    for patient_tokens, patient_padding in zip(tokens, block_padding_mask):
+        real = patient_tokens[~patient_padding]
+        if real.shape[0] == 0:
+            raise ValueError("A patient cannot contain only padded blocks")
+        summaries.append(torch.cat([real.mean(0), real.std(0, unbiased=False)]))
+    return torch.stack(summaries)
 
 
 class LocalTCNClassifier(nn.Module):
