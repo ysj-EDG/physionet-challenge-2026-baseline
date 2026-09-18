@@ -1,0 +1,57 @@
+{
+  "source_git_sha": "medex_snapshot_without_git",
+  "dataset": "DATA2",
+  "modality": "stage_event13",
+  "arm": "R",
+  "x_seq_indices": [
+    470,
+    471,
+    472,
+    473,
+    474,
+    475,
+    476,
+    477,
+    478,
+    479,
+    480,
+    481,
+    482
+  ],
+  "validity_definition": "metadata-only; no validity mask is supplied to model",
+  "imputation": {
+    "kind": "training_valid_neutral_mean",
+    "neutral": [
+      0.07649640187558382,
+      0.46081465974382985,
+      0.09325847020248015,
+      0.11810880807445268,
+      0.25132166010365353,
+      0.06350469208131738,
+      0.023399118483240628,
+      0.010653414137935266,
+      0.0024906868132799497,
+      0.1063534207728079,
+      0.005294530647747404,
+      0.037960806428140856,
+      0.06130730061841048
+    ]
+  },
+  "architecture": "LocalTCNClassifier",
+  "parameter_count": 12993,
+  "receptive_field_epochs": 13,
+  "optimizer": {
+    "name": "AdamW",
+    "lr": 0.001,
+    "weight_decay": 0.0001
+  },
+  "sampler": "site+class balanced 1/count(site,label)",
+  "pos_weight": 1.0,
+  "seed": 7,
+  "inner_split_seed": 7,
+  "shuffle_seed_phrase": null,
+  "best_epoch": 14,
+  "checkpoint_metric": "mean AC across two seen-site validation sets",
+  "outer_holdout_never_used_for_selection": true,
+  "batch_size": 64
+}

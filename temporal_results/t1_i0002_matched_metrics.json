@@ -1,0 +1,64 @@
+{
+  "cohort": {
+    "site": "I0002",
+    "n": 317,
+    "positives": 51,
+    "negatives": 266,
+    "ordered_record_alignment": true,
+    "identity_alignment": true,
+    "inner_split_S_R_identical": true,
+    "initial_weight_hash_S_R_identical": true
+  },
+  "metrics": {
+    "CAISR20_matched": {
+      "ac_auroc": 0.7585644371941273,
+      "auroc": 0.7782692024178093,
+      "auprc": 0.5197912341102919
+    },
+    "T1_O": {
+      "ac_auroc": 0.7210440456769984,
+      "auroc": 0.7333038478549315,
+      "auprc": 0.3615761653711441
+    },
+    "T1_S": {
+      "ac_auroc": 0.7471451876019576,
+      "auroc": 0.7563025210084033,
+      "auprc": 0.41964785419272993
+    },
+    "T1_R": {
+      "ac_auroc": 0.7313757476889614,
+      "auroc": 0.7437711926876014,
+      "auprc": 0.4108655695257734
+    }
+  },
+  "paired_bootstrap": {
+    "seed": 20260918,
+    "replicates": 1000,
+    "stratified_by_label": true,
+    "valid_replicates": 1000,
+    "S_minus_O": {
+      "point_delta_ac": 0.02610114192495916,
+      "bootstrap_mean": 0.02516983991737322,
+      "bootstrap_sd": 0.023689100601297565,
+      "ci95_low": -0.018063106888311805,
+      "ci95_high": 0.07140158324260913
+    },
+    "R_minus_S": {
+      "point_delta_ac": -0.015769439912996175,
+      "bootstrap_mean": -0.01558484192992448,
+      "bootstrap_sd": 0.011477258446872595,
+      "ci95_low": -0.039095732938477484,
+      "ci95_high": 0.004971087611708723
+    },
+    "R_minus_O_point_delta_ac": 0.010331702011962984
+  },
+  "T1_R_training": {
+    "best_epoch": 14,
+    "best_inner_validation_macro_ac": 0.682566709021601,
+    "training_wall_time_sec": 12567.73187873559,
+    "initial_weight_hash": "4f3c0df9a81f1e0f75cd8aeff87bef83afec66509d5f6b1e52ce3702a4e3cec1",
+    "nan_or_inf": false,
+    "cuda_oom": false,
+    "exception": false
+  }
+}

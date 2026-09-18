@@ -1,0 +1,168 @@
+{
+  "dataset": "DATA2",
+  "records": 6600,
+  "extraction_version": "timegrid_v2.0.0",
+  "wall_time_sec": 245.68490648269653,
+  "unusable_no_complete_block": [
+    "sub-I0002150027361_ses-4",
+    "sub-I0002150032928_ses-1",
+    "sub-S0001114925429_ses-1",
+    "sub-S0001115663429_ses-3",
+    "sub-S0001116358144_ses-1",
+    "sub-S0001116579864_ses-1",
+    "sub-S0001117544334_ses-1",
+    "sub-S0001118555290_ses-1",
+    "sub-S0001118906736_ses-1",
+    "sub-S0001119527021_ses-1",
+    "sub-S0001119843094_ses-1",
+    "sub-S0001120357881_ses-1",
+    "sub-S0001121549727_ses-1",
+    "sub-S0001121613321_ses-1"
+  ],
+  "validity_by_site": {
+    "I0002": {
+      "n_records": 319,
+      "total_physical_epochs": 290169,
+      "stage_valid_epochs": 288260,
+      "stage_valid_rate": 0.9934210753043916,
+      "arousal_caisr": {
+        "valid_epochs": 290162,
+        "valid_rate": 0.9999758761273603,
+        "missing_record_count": 2,
+        "partial_coverage_record_count": 0,
+        "trailing_invalid_epoch_count": 7
+      },
+      "resp_caisr": {
+        "valid_epochs": 290162,
+        "valid_rate": 0.9999758761273603,
+        "missing_record_count": 2,
+        "partial_coverage_record_count": 0,
+        "trailing_invalid_epoch_count": 7
+      },
+      "limb_caisr": {
+        "valid_epochs": 290162,
+        "valid_rate": 0.9999758761273603,
+        "missing_record_count": 2,
+        "partial_coverage_record_count": 0,
+        "trailing_invalid_epoch_count": 7
+      }
+    },
+    "I0006": {
+      "n_records": 1142,
+      "total_physical_epochs": 967975,
+      "stage_valid_epochs": 957658,
+      "stage_valid_rate": 0.9893416668818926,
+      "arousal_caisr": {
+        "valid_epochs": 964486,
+        "valid_rate": 0.9963955680673571,
+        "missing_record_count": 4,
+        "partial_coverage_record_count": 0,
+        "trailing_invalid_epoch_count": 3489
+      },
+      "resp_caisr": {
+        "valid_epochs": 960397,
+        "valid_rate": 0.9921712854154291,
+        "missing_record_count": 9,
+        "partial_coverage_record_count": 0,
+        "trailing_invalid_epoch_count": 7578
+      },
+      "limb_caisr": {
+        "valid_epochs": 964486,
+        "valid_rate": 0.9963955680673571,
+        "missing_record_count": 4,
+        "partial_coverage_record_count": 0,
+        "trailing_invalid_epoch_count": 3489
+      }
+    },
+    "S0001": {
+      "n_records": 5139,
+      "total_physical_epochs": 4671110,
+      "stage_valid_epochs": 4592852,
+      "stage_valid_rate": 0.9832463804106518,
+      "arousal_caisr": {
+        "valid_epochs": 4623157,
+        "valid_rate": 0.9897341317160161,
+        "missing_record_count": 72,
+        "partial_coverage_record_count": 0,
+        "trailing_invalid_epoch_count": 47953
+      },
+      "resp_caisr": {
+        "valid_epochs": 4622243,
+        "valid_rate": 0.9895384608797481,
+        "missing_record_count": 73,
+        "partial_coverage_record_count": 0,
+        "trailing_invalid_epoch_count": 48867
+      },
+      "limb_caisr": {
+        "valid_epochs": 4591686,
+        "valid_rate": 0.9829967609411896,
+        "missing_record_count": 99,
+        "partial_coverage_record_count": 0,
+        "trailing_invalid_epoch_count": 79424
+      }
+    }
+  },
+  "reconstruction": {
+    "atol": 1e-05,
+    "rtol": 1e-06,
+    "features": {
+      "TST": {
+        "max_abs_error": 0.0,
+        "mismatch_count": 0,
+        "mean_abs_error": 0.0
+      },
+      "sleep_efficiency": {
+        "max_abs_error": 0.0,
+        "mismatch_count": 0,
+        "mean_abs_error": 0.0
+      },
+      "SOL": {
+        "max_abs_error": 0.0,
+        "mismatch_count": 0,
+        "mean_abs_error": 0.0
+      },
+      "REM_latency": {
+        "max_abs_error": 0.0,
+        "mismatch_count": 0,
+        "mean_abs_error": 0.0
+      },
+      "WASO": {
+        "max_abs_error": 0.0,
+        "mismatch_count": 0,
+        "mean_abs_error": 0.0
+      },
+      "N1_pct": {
+        "max_abs_error": 0.0,
+        "mismatch_count": 0,
+        "mean_abs_error": 0.0
+      },
+      "N2_pct": {
+        "max_abs_error": 0.0,
+        "mismatch_count": 0,
+        "mean_abs_error": 0.0
+      },
+      "N3_pct": {
+        "max_abs_error": 0.0,
+        "mismatch_count": 0,
+        "mean_abs_error": 0.0
+      },
+      "REM_pct": {
+        "max_abs_error": 0.0,
+        "mismatch_count": 0,
+        "mean_abs_error": 0.0
+      },
+      "transition_rate": {
+        "max_abs_error": 0.0,
+        "mismatch_count": 0,
+        "mean_abs_error": 0.0
+      },
+      "short_bout_ratio": {
+        "max_abs_error": 0.0,
+        "mismatch_count": 0,
+        "mean_abs_error": 0.0
+      }
+    },
+    "pass": true
+  },
+  "sampling_frequency_errors": 0
+}

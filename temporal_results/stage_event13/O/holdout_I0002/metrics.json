@@ -1,0 +1,13 @@
+{
+  "ac_auroc": 0.7210440456769984,
+  "age_weighted_auroc": 0.7002049180615986,
+  "auroc": 0.7333038478549315,
+  "auprc": 0.3615761653711441,
+  "n": 317,
+  "positives": 51,
+  "negatives": 266,
+  "eligible_ac_pairs": 1839,
+  "arm": "O",
+  "best_epoch": null,
+  "convergence_warnings": []
+}

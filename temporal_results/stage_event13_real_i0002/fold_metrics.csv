@@ -1,0 +1,2 @@
+ac_auroc,age_weighted_auroc,auroc,auprc,n,positives,negatives,eligible_ac_pairs,arm,best_epoch,validation_site_macro_ac,training_wall_time_sec,initial_weight_hash,holdout_site,wall_time_sec,inner_train_n,inner_val_n,outer_train_n,holdout_n
+0.7313757476889614,0.7023109108036925,0.7437711926876014,0.4108655695257734,317,51,266,1839,R,14,0.682566709021601,12567.73187873559,4f3c0df9a81f1e0f75cd8aeff87bef83afec66509d5f6b1e52ce3702a4e3cec1,I0002,12569.498731136322,5014,1255,6269,317
