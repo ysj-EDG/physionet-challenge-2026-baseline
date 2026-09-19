@@ -1,4 +1,0 @@
-holdout_site,train_records,train_patients,train_positives,train_negatives,holdout_records,holdout_patients,holdout_positives,holdout_negatives,holdout_eligible_ac_pairs
-I0002,1049,1049,76,973,54,54,8,46,48
-I0006,911,911,64,847,192,192,20,172,441
-S0001,246,246,28,218,857,857,56,801,5124

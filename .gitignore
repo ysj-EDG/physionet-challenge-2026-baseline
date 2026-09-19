@@ -1,5 +1,6 @@
 __pycache__/
 *.py[cod]
+.pytest_cache/
 
 # Local H100 extraction/training artifacts and generated data.
 npz_full/
@@ -26,10 +27,18 @@ requirements.local.no_torch.txt
 **/*.pth
 *.ckpt
 **/*.ckpt
+checkpoint/
+checkpoints/
 *.joblib
 **/*.joblib
 *.sav
 **/*.sav
+
+# Frozen local datasets and feature caches.
+npz_data2/
+npz_new/
+npz_1103_timegrid_v2/
+npz_sup20/
 
 # Local reports and documents are not part of the official submission.
 reports/
@@ -37,7 +46,15 @@ docs/
 
 # Logs and local OS/editor metadata.
 *.log
+*.pid
+*.time
+*.tmp
+*.part
 .DS_Store
+
+# Local Medex launch and synchronization artifacts.
+medex_*.yaml
+.medex_run_*/
 
 # Local Docker experiments.
 Dockerfile*.local

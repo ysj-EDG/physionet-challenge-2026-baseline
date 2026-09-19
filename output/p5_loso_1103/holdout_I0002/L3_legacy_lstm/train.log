@@ -1,9 +1,0 @@
-2026-09-14 06:48:07 | INFO    | p5.L3_legacy_lstm | smoke batch seq=(8, 1056, 483) ecg=(8, 1056, 12) static=(8, 196) positives=5 age=[62.0,85.0]
-2026-09-14 06:48:46 | INFO    | p5.L3_legacy_lstm | epoch=1 train_loss=12.08467337 time=37.7s
-2026-09-14 06:49:26 | INFO    | p5.L3_legacy_lstm | epoch=2 train_loss=2.11431537 time=39.6s
-2026-09-14 06:50:02 | INFO    | p5.L3_legacy_lstm | epoch=3 train_loss=1.93360805 time=35.9s
-2026-09-14 06:50:40 | INFO    | p5.L3_legacy_lstm | epoch=4 train_loss=1.89335625 time=38.1s
-2026-09-14 06:51:14 | INFO    | p5.L3_legacy_lstm | epoch=5 train_loss=1.78791356 time=34.2s
-2026-09-14 06:51:54 | INFO    | p5.L3_legacy_lstm | epoch=6 train_loss=1.72857410 time=39.6s
-2026-09-14 06:51:54 | INFO    | p5.L3_legacy_lstm | epoch6 checkpoint frozen before holdout loader construction
-2026-09-14 06:52:26 | INFO    | p5.L3_legacy_lstm | holdout frozen evaluation site=I0002 ac=0.645833 weighted=0.652881 auroc=0.771739 auprc=0.332754

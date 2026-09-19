@@ -1,1 +1,0 @@
-"""Local temporal-order study."""
