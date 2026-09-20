@@ -25,7 +25,8 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parent
 DATA_DEFAULT = Path("/database2/physionet2026_kaggle/data2")
 OUT_DEFAULT = ROOT / "npz_data2"
-VERSION = "timegrid_v2.0.0"
+VERSION = "timegrid_v2.1.0"
+VALIDITY_SCHEMA_VERSION = "validity_v0.1"
 
 
 def sha256(path):
@@ -41,8 +42,17 @@ def provenance():
         ROOT / "channel_table.csv",
         ROOT / "per_epoch_features" / "per_epoch_extractor.py",
         ROOT / "per_epoch_features" / "timegrid_v2_extractor.py",
-        ROOT / "per_epoch_features" / "feature_extractor_algorithmic.py",
         ROOT / "per_epoch_features" / "eeg_sleep_features.py",
+        ROOT / "per_epoch_features" / "feature_extractor_eeg_coherence.py",
+        ROOT / "per_epoch_features" / "feature_extractor_eeg_bsr.py",
+        ROOT / "per_epoch_features" / "feature_extractor_emg.py",
+        ROOT / "per_epoch_features" / "feature_extractor_resp.py",
+        ROOT / "per_epoch_features" / "feature_extractor_event_onehot.py",
+        ROOT / "per_epoch_features" / "feature_extractor_ecg_neurokit.py",
+        ROOT / "per_epoch_features" / "feature_extractor_hrv_circadian_cos.py",
+        ROOT / "per_epoch_features" / "feature_extractor_algorithmic.py",
+        ROOT / "per_epoch_features" / "feature_extractor_demographic.py",
+        ROOT / "per_epoch_features" / "helper_code.py",
     ]
     try:
         git_sha = subprocess.check_output(
@@ -69,12 +79,34 @@ def scalar_text(value):
 def cache_valid(path, expected_record):
     try:
         with np.load(path, allow_pickle=False) as z:
+            t = len(z["X_seq"])
+            m = len(z["X_ecg"])
+            required_shapes = {
+                "eeg_common_clean_subsegment_count": (t,),
+                "emg_channel_available": (3,),
+                "emg_preprocessing_success": (3,),
+                "emg_epoch_success": (t, 3),
+                "resp_channel_available": (3,),
+                "resp_preprocessing_success": (3,),
+                "resp_feature_valid": (t, 14),
+                "arousal_valid": (t,),
+                "resp_event_valid": (t,),
+                "limb_event_valid": (t,),
+                "hrv_feature_valid": (m, 11),
+                "circadian_time_valid": (m,),
+                "ecg_alignment_valid": (t,),
+            }
             return (str(z["extraction_version"].item()) == VERSION
+                    and str(z["validity_schema_version"].item())
+                    == VALIDITY_SCHEMA_VERSION
                     and str(z["record_id"].item()) == expected_record
                     and z["X_seq"].ndim == 2 and z["X_seq"].shape[1] == 483
                     and z["X_ecg"].ndim == 2 and z["X_ecg"].shape[1] == 12
                     and z["x_static"].shape == (196,)
-                    and z["mask"].shape == (len(z["X_seq"]),)
+                    and z["mask"].shape == (t,)
+                    and all(key in z and z[key].shape == shape
+                            for key, shape in required_shapes.items())
+                    and np.array_equal(z["ecg_alignment_valid"], z["mask"])
                     and int(z["y"].item()) in (0, 1)
                     and np.isfinite(z["X_seq"]).all()
                     and np.isfinite(z["X_ecg"]).all()

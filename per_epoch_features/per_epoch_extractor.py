@@ -519,21 +519,29 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
         result = np.nan_to_num(result, nan=0.0)
         return (result, eeg_metadata) if return_metadata else result
 
-    def _extract_per_epoch_emg(self, std_data, std_fs):
+    def _extract_per_epoch_emg(self, std_data, std_fs, return_metadata=False):
         """返回 (N_epochs, 24): chin(8) + lleg(8) + rleg(8). 输入已标准化+200Hz."""
         chin_sig = std_data.get('chin1-chin2')
         lleg_sig = std_data.get('lat')
         rleg_sig = std_data.get('rat')
+        signals = [chin_sig, lleg_sig, rleg_sig]
+        channel_names = ["chin", "lleg", "rleg"]
+        channel_available = np.asarray([
+            signal is not None and len(signal) > 1 for signal in signals
+        ], dtype=bool)
+        preprocessing_success = np.zeros(3, dtype=bool)
         FS = 200.0
         logger.debug("Per-epoch EMG: chin=%s, lleg=%s, rleg=%s",
                      chin_sig is not None, lleg_sig is not None, rleg_sig is not None)
 
         n_epochs = None
         per_channel = {}
-        for name, sig in [("chin", chin_sig), ("lleg", lleg_sig), ("rleg", rleg_sig)]:
+        per_channel_success = {}
+        for channel_index, (name, sig) in enumerate(zip(channel_names, signals)):
             if sig is None:
                 continue
             emg_filt, envelope, baseline = _preprocess_emg(sig, FS)
+            preprocessing_success[channel_index] = channel_available[channel_index]
             ep_samples = int(round(30 * FS))
             n_ep = len(sig) // ep_samples
             if n_epochs is None:
@@ -543,48 +551,77 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
 
             mode = "chin" if name == "chin" else "leg"
             feats = []
+            epoch_success = np.zeros(n_ep, dtype=bool)
             for ep in range(n_ep):
                 s = ep * ep_samples
                 f_ep = emg_filt[s:s + ep_samples]
                 e_ep = envelope[s:s + ep_samples]
                 try:
                     f8 = _extract_emg_epoch(f_ep, e_ep, FS, baseline, mode=mode)
+                    epoch_success[ep] = True
                 except Exception:
                     f8 = np.zeros(8, dtype=np.float32)
                 feats.append(f8)
             per_channel[name] = np.stack(feats, axis=0)
+            per_channel_success[name] = epoch_success
 
         if n_epochs is None:
-            return None
+            metadata = {
+                "channel_available": channel_available,
+                "preprocessing_success": preprocessing_success,
+                "epoch_success": np.zeros((0, 3), dtype=bool),
+            }
+            return (None, metadata) if return_metadata else None
 
         result = []
-        for name in ["chin", "lleg", "rleg"]:
+        epoch_success = np.zeros((n_epochs, 3), dtype=bool)
+        for channel_index, name in enumerate(channel_names):
             if name in per_channel:
                 result.append(per_channel[name][:n_epochs])
+                epoch_success[:, channel_index] = per_channel_success[name][:n_epochs]
             else:
                 result.append(np.zeros((n_epochs, 8), dtype=np.float32))
-        return np.concatenate(result, axis=1).astype(np.float32)
+        features = np.concatenate(result, axis=1).astype(np.float32)
+        metadata = {
+            "channel_available": channel_available,
+            "preprocessing_success": preprocessing_success,
+            "epoch_success": epoch_success,
+        }
+        return (features, metadata) if return_metadata else features
 
-    def _extract_per_epoch_resp(self, std_data, std_fs):
+    def _extract_per_epoch_resp(self, std_data, std_fs, return_metadata=False):
         """返回 (N_epochs, 14). 输入已标准化+200Hz，内部重采样到25Hz."""
         airflow_sig = std_data.get('airflow')
         if airflow_sig is None:
             airflow_sig = std_data.get('ptaf')
         thorax_sig = std_data.get('chest')
         abdomen_sig = std_data.get('abd')
+        signals = [airflow_sig, thorax_sig, abdomen_sig]
+        channel_available = np.asarray([
+            signal is not None and len(signal) > 1 for signal in signals
+        ], dtype=bool)
+        preprocessing_success = np.zeros(3, dtype=bool)
 
         target_fs = 25
         IN_FS = 200.0
         processed = {}
         if airflow_sig is not None and len(airflow_sig) > 1:
             processed["airflow"] = _preprocess_resp_channel(airflow_sig, IN_FS)
+            preprocessing_success[0] = True
         if thorax_sig is not None and len(thorax_sig) > 1:
             processed["thorax"] = _preprocess_resp_channel(thorax_sig, IN_FS)
+            preprocessing_success[1] = True
         if abdomen_sig is not None and len(abdomen_sig) > 1:
             processed["abdomen"] = _preprocess_resp_channel(abdomen_sig, IN_FS)
+            preprocessing_success[2] = True
 
         if not processed:
-            return None
+            metadata = {
+                "channel_available": channel_available,
+                "preprocessing_success": preprocessing_success,
+                "feature_valid": np.zeros((0, RESP_PER_EPOCH_DIM), dtype=bool),
+            }
+            return (None, metadata) if return_metadata else None
 
         if "thorax" in processed and "abdomen" in processed:
             whole_corr = _safe_corr(processed["thorax"]["clean"], processed["abdomen"]["clean"])
@@ -595,34 +632,56 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
         n_epochs = min(len(p["clean"]) // ep_samples for p in processed.values())
 
         rows = []
+        validity_rows = []
         for ep in range(n_epochs):
             s, e = ep * ep_samples, (ep + 1) * ep_samples
             row = []
+            validity = []
             for ch in ["airflow", "thorax", "abdomen"]:
                 if ch in processed:
                     p = processed[ch]
                     f8 = _extract_resp_epoch(p, s, e, target_fs, ch, p.get("global_lowflow_runs", []))
                     if ch == "airflow":
-                        row.extend(f8[:7])
+                        selected = f8[:7]
                     else:
-                        row.extend([f8[2], f8[4]])
+                        selected = np.asarray([f8[2], f8[4]], dtype=np.float32)
+                    row.extend(selected)
+                    validity.extend(np.isfinite(selected))
                 else:
                     if ch == "airflow":
                         row.extend([0.0] * 7)
+                        validity.extend([False] * 7)
                     else:
                         row.extend([0.0, 0.0])
+                        validity.extend([False, False])
             if "thorax" in processed and "abdomen" in processed:
                 ta = _extract_thorax_abd_epoch(processed["thorax"], processed["abdomen"], s, e, target_fs)
-                row.extend(ta[:3])
+                selected = ta[:3]
+                row.extend(selected)
+                validity.extend(np.isfinite(selected))
             else:
                 row.extend([0.0, 0.0, 0.0])
+                validity.extend([False, False, False])
             rows.append(row)
-        return np.nan_to_num(np.asarray(rows, dtype=np.float32), nan=0.0)
+            validity_rows.append(validity)
+        features = np.nan_to_num(np.asarray(rows, dtype=np.float32), nan=0.0)
+        metadata = {
+            "channel_available": channel_available,
+            "preprocessing_success": preprocessing_success,
+            "feature_valid": np.asarray(validity_rows, dtype=bool),
+        }
+        return (features, metadata) if return_metadata else features
 
     def _extract_per_epoch_onehot(self, algo_data, n_epochs=None, return_metadata=False):
         """返回 (N_epochs, 13)，v2 可同时返回原位 stage 元数据。"""
         if not algo_data or 'stage_caisr' not in algo_data:
-            return (None, {}) if return_metadata else None
+            empty_epochs = int(n_epochs or 0)
+            metadata = {
+                'arousal_valid': np.zeros(empty_epochs, dtype=bool),
+                'resp_event_valid': np.zeros(empty_epochs, dtype=bool),
+                'limb_event_valid': np.zeros(empty_epochs, dtype=bool),
+            }
+            return (None, metadata) if return_metadata else None
 
         raw_stages = np.asarray(algo_data['stage_caisr'], dtype=float).reshape(-1)
         valid = np.isin(raw_stages, [1, 2, 3, 4, 5])
@@ -662,6 +721,24 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
             ends = np.where(edges == -1)[0].astype(float) * dt_sec
             return starts, ends
 
+        def _source_validity(key):
+            result = np.zeros(n_epochs, dtype=bool)
+            if not timegrid_v2 or key not in algo_data:
+                return result
+            signal = np.asarray(algo_data[key], dtype=float).reshape(-1)
+            fs = float(algo_data.get('__sampling_frequencies__', {}).get(key, 0.0))
+            if len(signal) == 0 or not np.isfinite(fs) or fs <= 0:
+                return result
+            for epoch in range(n_epochs):
+                start_sample = int(np.floor(epoch * EPOCH_SEC * fs + 1e-9))
+                end_sample = int(np.ceil((epoch + 1) * EPOCH_SEC * fs - 1e-9))
+                if (start_sample >= 0 and end_sample <= len(signal)
+                        and end_sample > start_sample):
+                    result[epoch] = bool(np.all(np.isfinite(
+                        signal[start_sample:end_sample]
+                    )))
+            return result
+
         arousal_signal = np.asarray(algo_data.get('arousal_caisr', []), dtype=float).reshape(-1)
         arousal_dt = _sample_sec('arousal_caisr', 0.5)
         a_s, a_e = _segments(arousal_signal, arousal_dt)
@@ -698,6 +775,9 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
             'stage_code_raw': raw_stages,
             'stage_code_aligned': stages,
             'stage_valid': stage_valid,
+            'arousal_valid': _source_validity('arousal_caisr'),
+            'resp_event_valid': _source_validity('resp_caisr'),
+            'limb_event_valid': _source_validity('limb_caisr'),
         }
 
     def _extract_sliding_ecg(self, std_data, std_fs, n_epochs, edf_start_time=None, return_metadata=False):
@@ -725,6 +805,10 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
 
         result = np.zeros((n_wins, 12), dtype=np.float32)
         hrv_success = np.zeros(n_wins, dtype=bool)
+        hrv_feature_valid = np.zeros((n_wins, 11), dtype=bool)
+        circadian_time_valid = np.full(
+            n_wins, edf_start_time is not None, dtype=bool,
+        )
         circadian_all = extract_hrv_window_circadian_cos(
             edf_start_time, n_wins, win_sec=300.0, stride_sec=30.0,
         )
@@ -734,7 +818,7 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
             seg = ecg_sig[start:start + window_samples]
             if len(seg) != window_samples:
                 continue
-            f11, _ = extract_5min_hrv(seg, FS)
+            f11, hrv_metadata = extract_5min_hrv(seg, FS)
             if f11 is None:
                 continue
             result[i, :11] = np.nan_to_num(
@@ -742,9 +826,16 @@ class PerEpochExtractor(DemographicMixin, AlgorithmicMixin,
                 nan=0.0, posinf=0.0, neginf=0.0,
             )
             hrv_success[i] = True
+            hrv_feature_valid[i] = np.asarray(
+                hrv_metadata["feature_valid"], dtype=bool,
+            )
 
         if return_metadata:
-            return result, {"hrv_success": hrv_success}
+            return result, {
+                "hrv_success": hrv_success,
+                "hrv_feature_valid": hrv_feature_valid,
+                "circadian_time_valid": circadian_time_valid,
+            }
         return result
 
 

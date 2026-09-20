@@ -207,7 +207,11 @@ def extract_5min_hrv(ecg_1d, sampling_rate, apply_artifact_correction=True):
         _value(hrv_symbolic, "HRV_Symbolic_EqualProb4_2UV"),
     ]
     features = np.asarray(base_features, dtype=np.float32)
-    return np.nan_to_num(features, nan=0.0, posinf=0.0, neginf=0.0), None
+    feature_valid = np.isfinite(features)
+    return (
+        np.nan_to_num(features, nan=0.0, posinf=0.0, neginf=0.0),
+        {"feature_valid": feature_valid},
+    )
 
 
 # ============================================================================

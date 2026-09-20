@@ -16,7 +16,8 @@ from .per_epoch_extractor import (
 )
 from .feature_extractor_hrv_circadian_cos import read_edf_start_time
 
-EXTRACTION_VERSION = "timegrid_v2.0.0"
+EXTRACTION_VERSION = "timegrid_v2.1.0"
+VALIDITY_SCHEMA_VERSION = "validity_v0.1"
 
 
 class TimegridV2Extractor(PerEpochExtractor):
@@ -52,8 +53,12 @@ class TimegridV2Extractor(PerEpochExtractor):
             return self._failed(demo_feat, label, record_id, site_id,
                                 "eeg_unavailable", return_metadata)
         x_eeg, eeg_meta = eeg_result
-        x_emg = self._extract_per_epoch_emg(std_data, std_fs)
-        x_resp = self._extract_per_epoch_resp(std_data, std_fs)
+        x_emg, emg_meta = self._extract_per_epoch_emg(
+            std_data, std_fs, return_metadata=True,
+        )
+        x_resp, resp_meta = self._extract_per_epoch_resp(
+            std_data, std_fs, return_metadata=True,
+        )
 
         # Missing optional modalities receive full-length fixed-width blocks;
         # placeholders never determine the recording length.
@@ -69,6 +74,15 @@ class TimegridV2Extractor(PerEpochExtractor):
             x_emg = np.zeros((n_phys, EMG_PER_EPOCH_DIM), dtype=np.float32)
         if x_resp is None:
             x_resp = np.zeros((n_phys, RESP_PER_EPOCH_DIM), dtype=np.float32)
+
+        emg_epoch_success = np.zeros((n_phys, 3), dtype=bool)
+        local_emg_success = np.asarray(emg_meta["epoch_success"], dtype=bool)
+        emg_copy = min(n_phys, len(local_emg_success))
+        emg_epoch_success[:emg_copy] = local_emg_success[:emg_copy]
+        resp_feature_valid = np.zeros((n_phys, RESP_PER_EPOCH_DIM), dtype=bool)
+        local_resp_valid = np.asarray(resp_meta["feature_valid"], dtype=bool)
+        resp_copy = min(n_phys, len(local_resp_valid))
+        resp_feature_valid[:resp_copy] = local_resp_valid[:resp_copy]
 
         algo_file = os.path.join(
             data_folder, ALGORITHMIC_ANNOTATIONS_SUBFOLDER, str(site_id),
@@ -100,9 +114,13 @@ class TimegridV2Extractor(PerEpochExtractor):
         if onehot is None:
             onehot = np.zeros((n_phys, ONEHOT_PER_EPOCH_DIM), dtype=np.float32)
             stage_meta = {
+                **stage_meta,
                 "stage_code_raw": raw_stage,
                 "stage_code_aligned": aligned_stage,
                 "stage_valid": np.zeros(n_phys, dtype=bool),
+                "arousal_valid": np.zeros(n_phys, dtype=bool),
+                "resp_event_valid": np.zeros(n_phys, dtype=bool),
+                "limb_event_valid": np.zeros(n_phys, dtype=bool),
             }
         x_seq = np.concatenate([
             x_eeg[:n_phys], x_emg[:n_phys], x_resp[:n_phys], onehot,
@@ -115,9 +133,17 @@ class TimegridV2Extractor(PerEpochExtractor):
         if ecg_result is None:
             x_ecg = np.zeros((0, ECG_DIM), dtype=np.float32)
             hrv_success = np.zeros(0, dtype=bool)
+            hrv_feature_valid = np.zeros((0, 11), dtype=bool)
+            circadian_time_valid = np.zeros(0, dtype=bool)
         else:
             x_ecg, ecg_meta = ecg_result
             hrv_success = np.asarray(ecg_meta["hrv_success"], dtype=bool)
+            hrv_feature_valid = np.asarray(
+                ecg_meta["hrv_feature_valid"], dtype=bool,
+            )
+            circadian_time_valid = np.asarray(
+                ecg_meta["circadian_time_valid"], dtype=bool,
+            )
         mask = np.zeros(n_phys, dtype=bool)
         aligned_ecg = min(max(0, n_phys - 10), len(x_ecg))
         mask[10:10 + aligned_ecg] = True
@@ -127,8 +153,12 @@ class TimegridV2Extractor(PerEpochExtractor):
         )
         clean = np.asarray(eeg_meta["clean_subsegment_count"], dtype=np.int32)[:n_phys, :6]
         total = np.asarray(eeg_meta["total_subsegment_count"], dtype=np.int32)[:n_phys, :6]
+        common_clean = np.asarray(
+            eeg_meta["common_clean_subsegment_count"], dtype=np.int32,
+        )[:n_phys]
         metadata = {
             "extraction_version": EXTRACTION_VERSION,
+            "validity_schema_version": VALIDITY_SCHEMA_VERSION,
             "record_id": record_id,
             "bids_folder": str(patient_id),
             "session_id": str(session_id),
@@ -147,7 +177,32 @@ class TimegridV2Extractor(PerEpochExtractor):
             "eeg_channel_available": np.asarray(eeg_meta["channel_available"], dtype=bool)[:6],
             "eeg_clean_subsegment_count": clean,
             "eeg_total_subsegment_count": total,
+            "eeg_common_clean_subsegment_count": common_clean,
+            "emg_channel_available": np.asarray(
+                emg_meta["channel_available"], dtype=bool,
+            ),
+            "emg_preprocessing_success": np.asarray(
+                emg_meta["preprocessing_success"], dtype=bool,
+            ),
+            "emg_epoch_success": emg_epoch_success,
+            "resp_channel_available": np.asarray(
+                resp_meta["channel_available"], dtype=bool,
+            ),
+            "resp_preprocessing_success": np.asarray(
+                resp_meta["preprocessing_success"], dtype=bool,
+            ),
+            "resp_feature_valid": resp_feature_valid,
+            "arousal_valid": np.asarray(stage_meta["arousal_valid"], dtype=bool),
+            "resp_event_valid": np.asarray(
+                stage_meta["resp_event_valid"], dtype=bool,
+            ),
+            "limb_event_valid": np.asarray(
+                stage_meta["limb_event_valid"], dtype=bool,
+            ),
             "hrv_success": hrv_success,
+            "hrv_feature_valid": hrv_feature_valid,
+            "circadian_time_valid": circadian_time_valid,
+            "ecg_alignment_valid": mask.copy(),
             "annotation_status": annotation_status,
             "annotation_sampling_frequencies": algo_fs,
             "annotation_signal_lengths": algo_meta.get("signal_lengths", {}),
@@ -203,6 +258,7 @@ class TimegridV2Extractor(PerEpochExtractor):
             demo_feat, np.zeros(186, dtype=np.float32),
         ]), label, None)
         metadata = {"extraction_version": EXTRACTION_VERSION,
+                    "validity_schema_version": VALIDITY_SCHEMA_VERSION,
                     "record_id": record_id, "site_id": str(site_id),
                     "physiological_status": status}
         return (*result, metadata) if return_metadata else result
