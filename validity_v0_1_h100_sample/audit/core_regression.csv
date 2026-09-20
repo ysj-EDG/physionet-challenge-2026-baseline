@@ -1,0 +1,13 @@
+site_id,record_id,label,old_exists,x_seq_equal,max_x_seq_diff,x_ecg_equal,max_x_ecg_diff,x_static_equal,max_x_static_diff,y_equal,mask_equal
+I0002,sub-I0002150002150_ses-2,1,True,True,0.0,True,0.0,True,0.0,True,True
+I0002,sub-I0002150005178_ses-1,0,True,True,0.0,True,0.0,True,0.0,True,True
+I0002,sub-I0002150028629_ses-1,0,True,True,0.0,True,0.0,True,0.0,True,True
+I0002,sub-I0002150030068_ses-1,1,True,True,0.0,True,0.0,True,0.0,True,True
+I0006,sub-I0006179000812_ses-1,0,True,True,0.0,True,0.0,True,0.0,True,True
+I0006,sub-I0006179000855_ses-1,1,True,True,0.0,True,0.0,True,0.0,True,True
+I0006,sub-I0006179010644_ses-1,0,True,True,0.0,True,0.0,True,0.0,True,True
+I0006,sub-I0006179011615_ses-2,1,True,True,0.0,True,0.0,True,0.0,True,True
+S0001,sub-S0001119196098_ses-1,0,True,True,0.0,True,0.0,True,0.0,True,True
+S0001,sub-S0001119592132_ses-1,1,True,True,0.0,True,0.0,True,0.0,True,True
+S0001,sub-S0001122292767_ses-1,0,True,True,0.0,True,0.0,True,0.0,True,True
+S0001,sub-S0001122321888_ses-2,1,True,True,0.0,True,0.0,True,0.0,True,True
