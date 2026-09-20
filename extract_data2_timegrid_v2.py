@@ -24,9 +24,23 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parent
 DATA_DEFAULT = Path("/database2/physionet2026_kaggle/data2")
-OUT_DEFAULT = ROOT / "npz_data2"
+FROZEN_CACHE_ROOT = (ROOT / "npz_data2").resolve()
 VERSION = "timegrid_v2.1.0"
 VALIDITY_SCHEMA_VERSION = "validity_v0.1"
+
+
+def _validated_output_root(path):
+    if path is None:
+        raise SystemExit(
+            "timegrid_v2.1 extraction requires an explicit --output-root; "
+            "the frozen npz_data2 cache is protected."
+        )
+    output_root = Path(path).expanduser().resolve()
+    if output_root == FROZEN_CACHE_ROOT or FROZEN_CACHE_ROOT in output_root.parents:
+        raise SystemExit(
+            f"refusing output inside frozen cache: {FROZEN_CACHE_ROOT}"
+        )
+    return output_root
 
 
 def sha256(path):
@@ -202,12 +216,13 @@ def parse_label(value):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data-root", type=Path, default=DATA_DEFAULT)
-    ap.add_argument("--output-root", type=Path, default=OUT_DEFAULT)
+    ap.add_argument("--output-root", type=Path)
     ap.add_argument("--workers", type=int, default=1)
     ap.add_argument("--ids", type=Path)
     ap.add_argument("--limit", type=int)
     ap.add_argument("--manifest", type=Path)
     args = ap.parse_args()
+    args.output_root = _validated_output_root(args.output_root)
     args.output_root.mkdir(parents=True, exist_ok=True)
     manifest = args.manifest or args.output_root / "manifest.jsonl"
     frame = pd.read_csv(args.data_root / "demographics.csv", dtype={
