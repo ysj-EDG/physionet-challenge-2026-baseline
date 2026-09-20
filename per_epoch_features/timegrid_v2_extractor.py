@@ -17,13 +17,24 @@ from .per_epoch_extractor import (
 from .feature_extractor_hrv_circadian_cos import read_edf_start_time
 
 EXTRACTION_VERSION = "timegrid_v2.1.0"
-VALIDITY_SCHEMA_VERSION = "validity_v0.1"
+VALIDITY_SCHEMA_VERSION = "validity_v0.2"
 
 
 class TimegridV2Extractor(PerEpochExtractor):
     """Explicit v2 entry point. The inherited legacy API remains unchanged."""
 
     extraction_version = EXTRACTION_VERSION
+
+    @staticmethod
+    def _ecg_source_metadata(std_data, std_fs):
+        """Describe the standardized ECG source used by the HRV extractor."""
+        del std_fs  # Sliding ECG extraction uses the standardized 200 Hz grid.
+        ecg_signal = std_data.get("ecg")
+        if ecg_signal is None:
+            ecg_signal = std_data.get("ekg")
+        available = ecg_signal is not None and len(ecg_signal) > 1
+        duration_sec = len(ecg_signal) / 200.0 if available else 0.0
+        return bool(available), np.float32(duration_sec)
 
     def extract_all(self, record, data_folder, return_metadata=False):
         patient_id = record.get(HEADERS["bids_folder"], record.get("BidsFolder"))
@@ -127,6 +138,9 @@ class TimegridV2Extractor(PerEpochExtractor):
         ], axis=1).astype(np.float32)
         x_seq = np.nan_to_num(x_seq, nan=0.0, posinf=0.0, neginf=0.0)
 
+        ecg_channel_available, ecg_signal_duration_sec = (
+            self._ecg_source_metadata(std_data, std_fs)
+        )
         ecg_result = self._extract_sliding_ecg(
             std_data, std_fs, n_phys, edf_start_time, return_metadata=True,
         )
@@ -198,6 +212,12 @@ class TimegridV2Extractor(PerEpochExtractor):
             ),
             "limb_event_valid": np.asarray(
                 stage_meta["limb_event_valid"], dtype=bool,
+            ),
+            "ecg_channel_available": np.asarray(
+                ecg_channel_available, dtype=bool,
+            ),
+            "ecg_signal_duration_sec": np.asarray(
+                ecg_signal_duration_sec, dtype=np.float32,
             ),
             "hrv_success": hrv_success,
             "hrv_feature_valid": hrv_feature_valid,

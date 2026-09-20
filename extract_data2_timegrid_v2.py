@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parent
 DATA_DEFAULT = Path("/database2/physionet2026_kaggle/data2")
 FROZEN_CACHE_ROOT = (ROOT / "npz_data2").resolve()
 VERSION = "timegrid_v2.1.0"
-VALIDITY_SCHEMA_VERSION = "validity_v0.1"
+VALIDITY_SCHEMA_VERSION = "validity_v0.2"
 
 
 def _validated_output_root(path):
@@ -96,6 +96,8 @@ def cache_valid(path, expected_record):
             t = len(z["X_seq"])
             m = len(z["X_ecg"])
             required_shapes = {
+                "ecg_channel_available": (),
+                "ecg_signal_duration_sec": (),
                 "eeg_common_clean_subsegment_count": (t,),
                 "emg_channel_available": (3,),
                 "emg_preprocessing_success": (3,),
@@ -120,6 +122,7 @@ def cache_valid(path, expected_record):
                     and z["mask"].shape == (t,)
                     and all(key in z and z[key].shape == shape
                             for key, shape in required_shapes.items())
+                    and float(z["ecg_signal_duration_sec"].item()) >= 0.0
                     and np.array_equal(z["ecg_alignment_valid"], z["mask"])
                     and int(z["y"].item()) in (0, 1)
                     and np.isfinite(z["X_seq"]).all()
