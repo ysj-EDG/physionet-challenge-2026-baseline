@@ -1,0 +1,15 @@
+{
+  "source_sha": "bc464564c90e8a5e641eb53360335cae73ce7e21",
+  "npz_version": "timegrid_v2.1.0",
+  "validity_schema_version": "validity_v0.2",
+  "locked_d": 16,
+  "seeds": [
+    7,
+    17,
+    27
+  ],
+  "device": "NVIDIA H100 PCIe",
+  "training_completed": true,
+  "paired_aggregation_rebuilt_locally": true,
+  "checkpoint_upload": false
+}
