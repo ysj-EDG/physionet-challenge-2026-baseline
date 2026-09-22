@@ -133,6 +133,7 @@ def train_coherence_ae(
     validation: dict[str, list[tuple[str, np.ndarray]]],
     device: torch.device,
     config: AEConfig = AEConfig(),
+    return_model: bool = False,
 ) -> dict[str, object]:
     if train_values.ndim != 2 or train_values.shape[1] != 24 or not len(train_values):
         raise ValueError(f"invalid training matrix: {train_values.shape}")
@@ -192,7 +193,7 @@ def train_coherence_ae(
         raise RuntimeError("autoencoder produced no checkpoint")
     model.load_state_dict(best_state)
     best_metrics = evaluate_coherence_ae(model, validation, device)
-    return {
+    result = {
         "latent_dim": latent_dim,
         "seed": seed,
         "best_epoch": best_epoch,
@@ -201,6 +202,9 @@ def train_coherence_ae(
         "history": history,
         **best_metrics,
     }
+    if return_model:
+        result["model"] = model
+    return result
 
 
 def summarize_and_select(

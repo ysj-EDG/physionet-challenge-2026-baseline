@@ -25,5 +25,8 @@ class SharedPairAutoencoder(nn.Module):
             nn.Linear(16, 24),
         )
 
+    def encode(self, values: torch.Tensor) -> torch.Tensor:
+        return self.encoder(values)
+
     def forward(self, values: torch.Tensor) -> torch.Tensor:
-        return self.decoder(self.encoder(values))
+        return self.decoder(self.encode(values))

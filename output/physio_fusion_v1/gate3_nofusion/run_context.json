@@ -1,0 +1,13 @@
+{
+  "device": "cuda",
+  "locked_d": 16,
+  "npz_root": "/mnt/data5t-in-container/workspace/.medex_run_c47c128b7cdb4d258075aec6eb33305e/gate3_medex_workspace/npz",
+  "numpy": "2.2.6",
+  "seeds": [
+    7,
+    17,
+    27
+  ],
+  "source_sha": "feaae35c3d6f73620a88e70f55a3fb5374e0250d",
+  "torch": "2.5.1+cu121"
+}

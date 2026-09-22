@@ -1,0 +1,146 @@
+{
+  "gate2_5_reproducibility": {
+    "I0002": {
+      "locked": 0.0051684209,
+      "mean": 0.0051684208851982645,
+      "relative_difference": 2.863879634537405e-09,
+      "seed_mse": [
+        0.004110569064236176,
+        0.004836828231301306,
+        0.006557865360057311
+      ]
+    },
+    "I0006": {
+      "locked": 0.0063393532,
+      "mean": 0.006339353170935776,
+      "relative_difference": 4.584730208389704e-09,
+      "seed_mse": [
+        0.003709860699079634,
+        0.0062417594496412335,
+        0.00906643936408646
+      ]
+    },
+    "S0001": {
+      "locked": 0.0049678171,
+      "mean": 0.004967817095194855,
+      "relative_difference": 9.6725481241601e-10,
+      "seed_mse": [
+        0.004714690707100852,
+        0.005296398571938955,
+        0.004892362006544757
+      ]
+    }
+  },
+  "locked_d": 16,
+  "metrics": [
+    {
+      "AC": 0.6214209968186638,
+      "AUPRC": 0.32486898155888355,
+      "AUROC": 0.653918179199078,
+      "age_weighted_AUROC": 0.6197330380443743,
+      "all_invalid_records": 210,
+      "heldout_site": "I0002",
+      "impute_cells": 16524,
+      "max_feature_missing": 53,
+      "nonzero_coefficients": 260,
+      "seed": 7
+    },
+    {
+      "AC": 0.6394485683987274,
+      "AUPRC": 0.3182345021946942,
+      "AUROC": 0.6769662921348315,
+      "age_weighted_AUROC": 0.6430714046906942,
+      "all_invalid_records": 210,
+      "heldout_site": "I0002",
+      "impute_cells": 16524,
+      "max_feature_missing": 53,
+      "nonzero_coefficients": 503,
+      "seed": 17
+    },
+    {
+      "AC": 0.6277836691410392,
+      "AUPRC": 0.2999674251842698,
+      "AUROC": 0.6640017286084702,
+      "age_weighted_AUROC": 0.6310047175237092,
+      "all_invalid_records": 210,
+      "heldout_site": "I0002",
+      "impute_cells": 16524,
+      "max_feature_missing": 53,
+      "nonzero_coefficients": 261,
+      "seed": 27
+    },
+    {
+      "AC": 0.6145035534395915,
+      "AUPRC": 0.19842245771612405,
+      "AUROC": 0.705391816920943,
+      "age_weighted_AUROC": 0.6192839488109112,
+      "all_invalid_records": 243,
+      "heldout_site": "I0006",
+      "impute_cells": 31580,
+      "max_feature_missing": 74,
+      "nonzero_coefficients": 252,
+      "seed": 7
+    },
+    {
+      "AC": 0.6381011522804112,
+      "AUPRC": 0.2165482822990198,
+      "AUROC": 0.7289528432732316,
+      "age_weighted_AUROC": 0.6182053686188371,
+      "all_invalid_records": 243,
+      "heldout_site": "I0006",
+      "impute_cells": 31580,
+      "max_feature_missing": 74,
+      "nonzero_coefficients": 261,
+      "seed": 17
+    },
+    {
+      "AC": 0.6227144138549645,
+      "AUPRC": 0.21039966297410967,
+      "AUROC": 0.7145631067961165,
+      "age_weighted_AUROC": 0.6076086282181768,
+      "all_invalid_records": 243,
+      "heldout_site": "I0006",
+      "impute_cells": 31580,
+      "max_feature_missing": 74,
+      "nonzero_coefficients": 254,
+      "seed": 27
+    },
+    {
+      "AC": 0.6268249876597378,
+      "AUPRC": 0.1578222134623031,
+      "AUROC": 0.6977381345529544,
+      "age_weighted_AUROC": 0.6305440919990108,
+      "all_invalid_records": 51,
+      "heldout_site": "S0001",
+      "impute_cells": 16252,
+      "max_feature_missing": 42,
+      "nonzero_coefficients": 132,
+      "seed": 7
+    },
+    {
+      "AC": 0.6206164646520046,
+      "AUPRC": 0.14560649996005434,
+      "AUROC": 0.6892059793005042,
+      "age_weighted_AUROC": 0.619158833479182,
+      "all_invalid_records": 51,
+      "heldout_site": "S0001",
+      "impute_cells": 16252,
+      "max_feature_missing": 42,
+      "nonzero_coefficients": 134,
+      "seed": 17
+    },
+    {
+      "AC": 0.6222837711841167,
+      "AUPRC": 0.14801313071594058,
+      "AUROC": 0.6944313246555796,
+      "age_weighted_AUROC": 0.62090243941353,
+      "all_invalid_records": 51,
+      "heldout_site": "S0001",
+      "impute_cells": 16252,
+      "max_feature_missing": 42,
+      "nonzero_coefficients": 134,
+      "seed": 27
+    }
+  ],
+  "source_sha": "feaae35c3d6f73620a88e70f55a3fb5374e0250d"
+}
