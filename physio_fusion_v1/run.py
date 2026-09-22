@@ -9,10 +9,12 @@ import json
 import math
 import os
 import platform
+import random
 import sys
 import time
 import warnings
 from pathlib import Path
+os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
 
 import numpy as np
 import torch
@@ -32,8 +34,9 @@ from dataset import (
     outer_loso_split,
     sample_training_pairs,
     sample_validation_pairs,
+    RobustScaler24,
 )
-from model import SharedPairAutoencoder
+from model import SharedPairAutoencoder, PhysioFusion192
 from train import AEConfig, summarize_and_select, train_coherence_ae
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from evaluate_model import compute_auroc_age, compute_auroc_weighted
@@ -208,6 +211,12 @@ D16 = 16
 PHYSIO_DIM = 361
 POOLED_DIM = 722
 FAMILY_NAMES = ("means", "auc", "iqr", "ratios", "spectrum", "sigma")
+AGE_CACHE: dict[str, float] = {}
+
+def _age_for(record) -> float:
+    if record.record_id not in AGE_CACHE:
+        AGE_CACHE[record.record_id] = float(load_record(record.path)["age"])
+    return AGE_CACHE[record.record_id]
 
 
 def _hash_ids(records: list) -> str:
@@ -461,7 +470,7 @@ def run_gate3_smoke(npz_root: Path) -> None:
 def run_nofusion(npz_root: Path, output_dir: Path, device_name: str = 'auto') -> None:
     global SOURCE_SHA
     SOURCE_SHA=os.environ.get('PHYSIO_SOURCE_SHA','feaae35c3d6f73620a88e70f55a3fb5374e0250d')
-    records=discover_records(npz_root,validate_schema=True); device=torch.device('cuda' if device_name=='auto' and torch.cuda.is_available() else device_name if device_name!='auto' else 'cpu')
+    records=discover_records(npz_root,validate_schema=True); AGE_CACHE.update({r.record_id: _age_for(r) for r in records}); device=torch.device('cuda' if device_name=='auto' and torch.cuda.is_available() else device_name if device_name!='auto' else 'cpu')
     if device.type=='cuda': print('NOFUSION_DEVICE=',torch.cuda.get_device_name(0),flush=True)
     output_dir.mkdir(parents=True,exist_ok=True); all_metrics=[]; repro={}
     for heldout in EXPECTED_SITE_COUNTS:
@@ -479,21 +488,211 @@ def run_nofusion(npz_root: Path, output_dir: Path, device_name: str = 'auto') ->
     _save_json(output_dir/'run_context.json',{'source_sha':SOURCE_SHA,'npz_root':str(npz_root.resolve()),'device':str(device),'torch':torch.__version__,'numpy':np.__version__,'locked_d':16,'seeds':[7,17,27]})
 
 
+
+# ---------------- Gate 4 Fusion192 ----------------
+
+def _gate4_seed(seed: int) -> None:
+    random.seed(seed); np.random.seed(seed); torch.manual_seed(seed)
+    if torch.cuda.is_available(): torch.cuda.manual_seed_all(seed)
+    try: torch.use_deterministic_algorithms(True)
+    except Exception: pass
+
+
+def _gate4_pair_count(records: list) -> int:
+    ages=np.asarray([_age_for(r) for r in records])
+    y=np.asarray([r.y for r in records])
+    n=0
+    for i in range(len(records)):
+        for j in range(i+1,len(records)):
+            if y[i] != y[j] and abs(ages[i]-ages[j]) <= 2: n += 1
+    return n
+
+
+def _gate4_metric(records: list, scores: np.ndarray) -> dict[str, float]:
+    y=np.asarray([r.y for r in records],dtype=np.int8)
+    ages=np.asarray([_age_for(r) for r in records],dtype=np.float64)
+    if len(np.unique(y)) < 2 or _gate4_pair_count(records) <= 0:
+        raise RuntimeError("validation AC is undefined")
+    ac=float(compute_auroc_age(y,scores,ages,gap=2))
+    au=float(roc_auc_score(y,scores)); ap=float(average_precision_score(y,scores))
+    if not np.isfinite([ac,au,ap]).all(): raise FloatingPointError("nonfinite Gate4 metric")
+    return {"AC":ac,"AUROC":au,"AUPRC":ap,"eligible_pairs":_gate4_pair_count(records)}
+
+
+def _gate4_batch(items: list[tuple[np.ndarray,bool]], device: torch.device) -> tuple[torch.Tensor,torch.Tensor]:
+    max_t=max(v.shape[0] for v,_ in items); x=np.zeros((len(items),max_t,PHYSIO_DIM),dtype=np.float32); m=np.zeros((len(items),max_t),dtype=bool)
+    for i,(v,present) in enumerate(items):
+        x[i,:len(v)]=v; m[i,:len(v)]=present
+    return torch.from_numpy(x).to(device),torch.from_numpy(m).to(device)
+
+
+def _gate4_train_epoch(model: PhysioFusion192, records: list, reps: dict[str,tuple[np.ndarray,np.ndarray]], device: torch.device, optimizer, criterion, generator_seed: int, epoch: int | None = None) -> float:
+    weights=_classifier_weights(records); rng=np.random.default_rng(generator_seed); probs=weights/weights.sum()
+    indices=rng.choice(len(records),size=len(records),replace=True,p=probs)
+    model.train(); losses=[]
+    for start in range(0,len(indices),16):
+        batch=[(reps[records[i].record_id][0], reps[records[i].record_id][2]) for i in indices[start:start+16]]
+        x,m=_gate4_batch(batch,device); y=torch.tensor([records[i].y for i in indices[start:start+16]],dtype=torch.float32,device=device)
+        optimizer.zero_grad(set_to_none=True)
+        if not torch.isfinite(x).all():
+            raise FloatingPointError(f"nonfinite Fusion input: epoch={epoch}, batch_start={start}, max_abs={torch.nan_to_num(x.detach()).abs().max().item()}")
+        logits=model(x,m)
+        if not torch.isfinite(logits).all():
+            raise FloatingPointError(f"nonfinite Fusion logits: epoch={epoch}, batch_start={start}, input_max_abs={x.detach().abs().max().item()}")
+        loss=criterion(logits,y)
+        if not torch.isfinite(loss):
+            raise FloatingPointError(f"nonfinite Fusion training loss: epoch={epoch}, batch_start={start}, logits_max_abs={logits.detach().abs().max().item()}")
+        loss.backward()
+        bad_grad = [(name, float(param.grad.detach().abs().max())) for name, param in model.named_parameters() if param.grad is not None and not torch.isfinite(param.grad).all()]
+        if bad_grad:
+            raise FloatingPointError(f"nonfinite Fusion gradient: epoch={epoch}, batch_start={start}, parameters={bad_grad}")
+        optimizer.step()
+        bad_param = [(name, float(param.detach().abs().max())) for name, param in model.named_parameters() if not torch.isfinite(param).all()]
+        if bad_param:
+            raise FloatingPointError(f"nonfinite Fusion parameter after optimizer step: epoch={epoch}, batch_start={start}, parameters={bad_param}")
+        losses.append(float(loss.detach().cpu()))
+    return float(np.mean(losses))
+
+
+def _gate4_predict(model: PhysioFusion192, records: list, reps: dict[str,tuple[np.ndarray,np.ndarray]], device: torch.device) -> np.ndarray:
+    model.eval(); out=[]
+    with torch.no_grad():
+        for start in range(0,len(records),16):
+            batch=[(reps[r.record_id][0],reps[r.record_id][2]) for r in records[start:start+16]]
+            x,m=_gate4_batch(batch,device); out.extend(model(x,m).detach().cpu().numpy().tolist())
+    arr=np.asarray(out,dtype=np.float64)
+    if not np.isfinite(arr).all(): raise FloatingPointError("nonfinite Fusion logits")
+    return arr
+
+
+def _gate4_load_ae(path: Path, heldout: str, seed: int, device: torch.device):
+    raw=torch.load(path,map_location=device,weights_only=False)
+    for key,val in (("d",16),("seed",seed),("outer_heldout_site",heldout),("inner_split_seed",7),("extraction_version",EXPECTED_EXTRACTION_VERSION),("validity_schema_version",EXPECTED_VALIDITY_SCHEMA)):
+        if raw.get(key)!=val: raise RuntimeError(f"AE checkpoint mismatch {path}: {key}={raw.get(key)!r}")
+    model=SharedPairAutoencoder(16).to(device); model.encoder.load_state_dict(raw["encoder_state_dict"]); model.decoder.load_state_dict(raw["decoder_state_dict"])
+    if not all(torch.isfinite(v).all() for v in model.parameters()): raise FloatingPointError("nonfinite AE checkpoint")
+    center=np.asarray(raw["coherence_scaler_center"],dtype=np.float32); scale=np.asarray(raw["coherence_scaler_scale"],dtype=np.float32)
+    if center.shape!=(24,) or scale.shape!=(24,) or not np.isfinite(center).all() or not np.isfinite(scale).all(): raise RuntimeError("invalid AE scaler")
+    return model, RobustScaler24(center,scale), raw
+
+
+def _gate4_load_reps(records: list, ae, scaler, device: torch.device) -> dict[str,tuple[np.ndarray,np.ndarray]]:
+    out={}
+    for rec in records:
+        loaded=load_record(rec.path); values,valid,_=_physiology_epoch(ae,loaded,scaler,device)
+        out[rec.record_id]=(values,valid,valid.any(axis=1))
+    return out
+
+
+def _gate4_inner_audit(heldout: str, outer_train: list, out: Path) -> tuple[list,list]:
+    inner_train,inner_val=inner_split_by_site(outer_train,seed=7); rows=[]
+    for site in sorted({r.site for r in outer_train}):
+        val=[r for r in inner_val if r.site==site]; row={"heldout_site":heldout,"site":site,"n":len(val),"positive":sum(r.y==1 for r in val),"negative":sum(r.y==0 for r in val),"eligible_ac_pairs":_gate4_pair_count(val)}
+        if row["positive"]<=0 or row["negative"]<=0 or row["eligible_ac_pairs"]<=0: raise RuntimeError(f"invalid inner validation for {heldout}/{site}: {row}")
+        rows.append(row)
+    return inner_train,inner_val,rows
+
+
+def _gate4_fit_scaler(items, records):
+    return _fit_epoch_scaler(items)
+
+
+def _gate4_transform_reps(raw_reps, records, scaler):
+    return {r.record_id:(_apply_epoch_scaler(raw_reps[r.record_id][0],raw_reps[r.record_id][1],scaler),raw_reps[r.record_id][1],raw_reps[r.record_id][2]) for r in records}
+
+
+def _gate4_train_selected(heldout, seed, inner_train, inner_val, reps, device, fold_dir):
+    _gate4_seed(seed); model=PhysioFusion192().to(device); opt=torch.optim.Adam(model.parameters(),lr=1e-3,weight_decay=1e-5); crit=torch.nn.BCEWithLogitsLoss(pos_weight=torch.tensor(1.0,device=device)); history=[]; best=-np.inf; best_epoch=0; best_state=None; epochs_without_improvement=0; patience=15
+    for epoch in range(1,81):
+        loss=_gate4_train_epoch(model,inner_train,reps,device,opt,crit,seed*1000+epoch,epoch=epoch)
+        site_metrics=[]
+        for site in sorted({r.site for r in inner_val}):
+            vr=[r for r in inner_val if r.site==site]; met=_gate4_metric(vr,_gate4_predict(model,vr,reps,device)); site_metrics.append(met)
+        selection=float(np.mean([m["AC"] for m in site_metrics])); row={"epoch":epoch,"train_loss":loss,"seen_site_macro_AC":selection,"seen_site_worst_AC":float(min(m["AC"] for m in site_metrics)),"site_AC_gap":float(abs(site_metrics[0]["AC"]-site_metrics[1]["AC"]))}
+        for site,met in zip(sorted({r.site for r in inner_val}),site_metrics):
+            row[f"{site}_AC"]=met["AC"]; row[f"{site}_AUROC"]=met["AUROC"]; row[f"{site}_AUPRC"]=met["AUPRC"]; row[f"{site}_eligible_pairs"]=met["eligible_pairs"]
+        row["lr"]=1e-3; row["is_best"]=selection>best; history.append(row)
+        if selection>best:
+            best=selection; best_epoch=epoch; best_state={k:v.detach().cpu().clone() for k,v in model.state_dict().items()}; epochs_without_improvement=0
+        else:
+            epochs_without_improvement += 1
+        if epochs_without_improvement >= patience:
+            break
+    if best_state is None: raise RuntimeError("no Fusion checkpoint")
+    model.load_state_dict(best_state); fold_dir.mkdir(parents=True,exist_ok=True); _write_csv(fold_dir/"inner_history.csv",history); _save_json(fold_dir/"best_epoch.json",{"best_epoch":best_epoch,"best_selection":best,"heldout_site":heldout,"seed":seed}); return best_epoch,best
+
+
+def _gate4_refit_and_test(heldout, seed, best_epoch, outer_train, outer_test, raw_reps, device, seed_dir, ae, scaler):
+    scaler361=_fit_epoch_scaler([(r,raw_reps[r.record_id][0],raw_reps[r.record_id][1]) for r in outer_train]); reps=_gate4_transform_reps(raw_reps,outer_train+outer_test,scaler361)
+    _gate4_seed(seed); model=PhysioFusion192().to(device); opt=torch.optim.Adam(model.parameters(),lr=1e-3,weight_decay=1e-5); crit=torch.nn.BCEWithLogitsLoss(pos_weight=torch.tensor(1.0,device=device))
+    losses=[]
+    for epoch in range(1,best_epoch+1): losses.append(_gate4_train_epoch(model,outer_train,reps,device,opt,crit,seed*1000+epoch))
+    seed_dir.mkdir(parents=True,exist_ok=True); _save_npz(seed_dir/"epoch_scaler.npz",mean=scaler361["mean"],scale=scaler361["scale"],site_record_counts=scaler361["site_record_counts"],sites=scaler361["sites"],feature_order=_feature_names(),heldout_site=heldout,seed=seed,source_sha=SOURCE_SHA)
+    torch.save({"model_state_dict":model.state_dict(),"best_epoch":best_epoch,"heldout_site":heldout,"seed":seed,"d":16,"source_sha":SOURCE_SHA},seed_dir/"final_checkpoint.pt")
+    scores=_gate4_predict(model,outer_test,reps,device); met=_gate4_metric(outer_test,scores); rows=[]
+    for r,score in zip(outer_test,scores): rows.append({"record_id":r.record_id,"site":r.site,"y":r.y,"age":_age_for(r),"score":float(score)})
+    _write_csv(seed_dir/"predictions_test.csv",rows); _save_json(seed_dir/"metrics.json",{**met,"heldout_site":heldout,"seed":seed,"best_epoch":best_epoch,"train_loss_last":losses[-1]})
+    return met
+
+
+
+def run_gate4_smoke(npz_root: Path, ae_root: Path) -> None:
+    records=discover_records(npz_root,validate_schema=True)
+    heldout="I0002"; outer_train,outer_test=outer_loso_split(records,heldout); inner_train,inner_val=inner_split_by_site(outer_train,seed=7); rows=[]
+    assert all(r.y in (0,1) for r in inner_val)
+    ck=ae_root/f"outer_{heldout}"/"seed_7"/"coherence_ae"/"checkpoint.pt"; device=torch.device("cuda" if torch.cuda.is_available() else "cpu"); ae,coh_scaler,meta=_gate4_load_ae(ck,heldout,7,device)
+    assert _hash_ids(inner_train)==meta["inner_train_record_ids_hash"] and _hash_ids(inner_val)==meta["inner_val_record_ids_hash"]
+    sample=inner_train[:2]+inner_val[:2]+outer_test[:2]; raw=_gate4_load_reps(sample,ae,coh_scaler,device); scaler=_fit_epoch_scaler([(r,raw[r.record_id][0],raw[r.record_id][1]) for r in inner_train[:2]])
+    reps=_gate4_transform_reps(raw,sample,scaler); values,valid,present=reps[sample[0].record_id]; assert values.shape[1]==361 and valid.shape==(len(values),PHYSIO_DIM) and present.shape==(len(values),)
+    model=PhysioFusion192().to(device); x,m=_gate4_batch([(values,present)],device); logits=model(x,m); assert logits.shape==(1,) and torch.isfinite(logits).all()
+    z=np.zeros((2,361),dtype=np.float32); q=np.zeros((2,361),dtype=bool); assert np.isnan(_pool_patient(z,q)[0]).all(); loss=torch.nn.BCEWithLogitsLoss()(logits,torch.ones(1,device=device)); loss.backward(); assert all(torch.isfinite(v).all() for v in model.parameters() if v.grad is not None)
+    print("GATE4_SMOKE_PASS")
+
+def run_fusion(npz_root: Path, output_dir: Path, ae_root: Path, device_name: str = "auto") -> None:
+    global SOURCE_SHA
+    SOURCE_SHA=os.environ.get("PHYSIO_SOURCE_SHA",SOURCE_SHA); records=discover_records(npz_root,validate_schema=True); AGE_CACHE.update({r.record_id: _age_for(r) for r in records}); device=torch.device("cuda" if device_name=="auto" and torch.cuda.is_available() else device_name if device_name!="auto" else "cpu")
+    output_dir.mkdir(parents=True,exist_ok=True); audit_rows=[]; final_rows=[]; manifest=[]
+    for heldout in EXPECTED_SITE_COUNTS:
+        outer_train,outer_test=outer_loso_split(records,heldout); inner_train,inner_val,rows=_gate4_inner_audit(heldout,outer_train,output_dir); audit_rows+=rows
+        for seed in (7,17,27):
+            ck=ae_root/f"outer_{heldout}"/f"seed_{seed}"/"coherence_ae"/"checkpoint.pt"; ae,coh_scaler,meta=_gate4_load_ae(ck,heldout,seed,device)
+            expected_train_hash=meta["inner_train_record_ids_hash"]; expected_val_hash=meta["inner_val_record_ids_hash"]
+            if _hash_ids(inner_train)!=expected_train_hash or _hash_ids(inner_val)!=expected_val_hash: raise RuntimeError(f"inner split hash mismatch {heldout}/{seed}")
+            raw_reps=_gate4_load_reps(outer_train+outer_test,ae,coh_scaler,device); inner_items=[(r,raw_reps[r.record_id][0],raw_reps[r.record_id][1]) for r in inner_train]; inner_scaler=_fit_epoch_scaler(inner_items); inner_reps=_gate4_transform_reps(raw_reps,outer_train+outer_test,inner_scaler)
+            seed_dir=output_dir/f"outer_{heldout}"/f"seed_{seed}"; best_epoch,best_sel=_gate4_train_selected(heldout,seed,inner_train,inner_val,inner_reps,device,seed_dir)
+            met=_gate4_refit_and_test(heldout,seed,best_epoch,outer_train,outer_test,raw_reps,device,seed_dir,ae,coh_scaler); final_rows.append({"heldout_site":heldout,"seed":seed,**met,"best_epoch":best_epoch,"best_selection":best_sel,"ae_checkpoint":str(ck),"ae_checkpoint_sha256":hashlib.sha256(ck.read_bytes()).hexdigest()}); manifest.append(final_rows[-1])
+    _write_csv(output_dir/"inner_split_audit.csv",audit_rows); lines=["# Gate4 inner validation audit","","| Held-out | Seen site | n | positive | negative | eligible AC pairs |","|---|---|---:|---:|---:|---:|"]
+    for r in audit_rows: lines.append(f"| {r['heldout_site']} | {r['site']} | {r['n']} | {r['positive']} | {r['negative']} | {r['eligible_ac_pairs']} |")
+    (output_dir/"INNER_SPLIT_AUDIT.md").write_text("\n".join(lines)+"\n"); _write_csv(output_dir/"paired_checkpoint_manifest.csv",manifest); _write_csv(output_dir/"fusion192_metrics.csv",final_rows)
+    gate3=json.loads((Path("output/physio_fusion_v1/gate3_nofusion")/"nofusion_metrics.json").read_text()); ref={(r["heldout_site"],int(r["seed"])):r for r in gate3["metrics"]}; paired=[]
+    for r in final_rows:
+        g=ref[(r["heldout_site"],r["seed"])] ; paired.append({"heldout_site":r["heldout_site"],"seed":r["seed"],"Gate3_NoFusion_AC":g["AC"],"Gate4_Fusion192_AC":r["AC"],"paired_delta_AC":r["AC"]-g["AC"]})
+    _write_csv(output_dir/"paired_gate3_gate4.csv",paired); _save_json(output_dir/"fusion192_metrics.json",{"metrics":final_rows,"gate3_reference":gate3,"source_sha":SOURCE_SHA}); _save_json(output_dir/"paired_summary.json",{"paired":paired});
+    report=["# Physio Fusion V1 Gate4 Fusion192","","GATE4_FUSION192 = COMPLETE","","Gate2.5 d=16 AE checkpoints were reused without retraining. Stage/Event, circadian, CAISR20, demographics, validity inputs, and Gate5 were excluded.","","## Final metrics","","| Held-out | seed | AC | AUROC | AUPRC | best epoch |","|---|---:|---:|---:|---:|---:|"]
+    for r in final_rows: report.append(f"| {r['heldout_site']} | {r['seed']} | {r['AC']:.8g} | {r['AUROC']:.8g} | {r['AUPRC']:.8g} | {r['best_epoch']} |")
+    report += ["","## Leakage checks","","- AE checkpoints and coherence scalers were frozen from Gate2.5.","- Inner split hashes were checked against every AE checkpoint.","- Outer holdout records were excluded from all fit and selection operations.","- Age was used only for metrics; validity was gating only.","- No Stage/Event, circadian, CAISR20, demographics, site ID, or Gate5 experiment was run."]
+    (output_dir/"FUSION192_RESULTS.md").write_text("\n".join(report)+"\n"); _save_json(output_dir/"run_context.json",{"source_sha":SOURCE_SHA,"npz_root":str(npz_root.resolve()),"ae_root":str(ae_root.resolve()),"device":str(device),"seeds":[7,17,27],"locked_d":16})
+
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=("smoke", "smoke-gate3", "d-search", "prepare-d16", "nofusion"))
+    parser.add_argument("command", choices=("smoke", "smoke-gate3", "smoke-gate4", "d-search", "prepare-d16", "nofusion", "fusion"))
     parser.add_argument("--npz-root", type=Path, default=DEFAULT_NPZ_ROOT)
     parser.add_argument("--output-dir", type=Path, default=Path("output/physio_fusion_v1/d_selection"))
     parser.add_argument("--device", default="auto")
+    parser.add_argument("--ae-root", type=Path, default=Path("output/physio_fusion_v1/gate3_nofusion"))
     args = parser.parse_args()
     if args.command == "smoke":
         run_smoke(args.npz_root)
     elif args.command == "smoke-gate3":
         run_gate3_smoke(args.npz_root)
+    elif args.command == "smoke-gate4":
+        run_gate4_smoke(args.npz_root, args.ae_root)
     elif args.command == "d-search":
         run_d_search(args.npz_root, args.output_dir, args.device)
     elif args.command == "nofusion":
         run_nofusion(args.npz_root, args.output_dir, args.device)
+    elif args.command == "fusion":
+        run_fusion(args.npz_root, args.output_dir, args.ae_root, args.device)
     else:
         records = discover_records(args.npz_root, validate_schema=True)
         device = torch.device("cuda" if args.device == "auto" and torch.cuda.is_available() else args.device if args.device != "auto" else "cpu")
