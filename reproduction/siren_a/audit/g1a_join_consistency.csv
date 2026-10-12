@@ -1,0 +1,43 @@
+site_id,metric,count,denominator,proportion,notes
+I0002,npz_records,319,319,1.0,aggregate only; no patient-level identifiers written
+I0002,csv_rows,319,319,1.0,aggregate only; no patient-level identifiers written
+I0002,csv_unique_keys,319,319,1.0,aggregate only; no patient-level identifiers written
+I0002,npz_unique_keys,319,319,1.0,aggregate only; no patient-level identifiers written
+I0002,matched_unique_keys,319,319,1.0,aggregate only; no patient-level identifiers written
+I0002,csv_duplicate_rows,0,319,0.0,aggregate only; no patient-level identifiers written
+I0002,csv_without_npz,0,319,0.0,aggregate only; no patient-level identifiers written
+I0002,npz_without_csv,0,319,0.0,aggregate only; no patient-level identifiers written
+I0006,npz_records,1142,1142,1.0,aggregate only; no patient-level identifiers written
+I0006,csv_rows,1142,1142,1.0,aggregate only; no patient-level identifiers written
+I0006,csv_unique_keys,1142,1142,1.0,aggregate only; no patient-level identifiers written
+I0006,npz_unique_keys,1142,1142,1.0,aggregate only; no patient-level identifiers written
+I0006,matched_unique_keys,1142,1142,1.0,aggregate only; no patient-level identifiers written
+I0006,csv_duplicate_rows,0,1142,0.0,aggregate only; no patient-level identifiers written
+I0006,csv_without_npz,0,1142,0.0,aggregate only; no patient-level identifiers written
+I0006,npz_without_csv,0,1142,0.0,aggregate only; no patient-level identifiers written
+S0001,npz_records,5139,5139,1.0,aggregate only; no patient-level identifiers written
+S0001,csv_rows,5139,5139,1.0,aggregate only; no patient-level identifiers written
+S0001,csv_unique_keys,5139,5139,1.0,aggregate only; no patient-level identifiers written
+S0001,npz_unique_keys,5139,5139,1.0,aggregate only; no patient-level identifiers written
+S0001,matched_unique_keys,5139,5139,1.0,aggregate only; no patient-level identifiers written
+S0001,csv_duplicate_rows,0,5139,0.0,aggregate only; no patient-level identifiers written
+S0001,csv_without_npz,0,5139,0.0,aggregate only; no patient-level identifiers written
+S0001,npz_without_csv,0,5139,0.0,aggregate only; no patient-level identifiers written
+I0002,Sex_encoding_consistent,319,319,1.0,compared against x_static; aggregate only
+I0002,Race_encoding_consistent,319,319,1.0,compared against x_static; aggregate only
+I0002,BMI_encoding_consistent,319,319,1.0,compared against x_static; aggregate only
+I0002,sex_unknown_or_other_raw,0,319,0.0,Other and missing are merged by existing helper
+I0002,race_unavailable_after_helper,18,319,0.05642633228840126,existing helper mapping
+I0002,bmi_missing_to_zero_expected,228,319,0.7147335423197492,existing helper load_bmi behavior
+I0006,Sex_encoding_consistent,1142,1142,1.0,compared against x_static; aggregate only
+I0006,Race_encoding_consistent,1142,1142,1.0,compared against x_static; aggregate only
+I0006,BMI_encoding_consistent,1142,1142,1.0,compared against x_static; aggregate only
+I0006,sex_unknown_or_other_raw,0,1142,0.0,Other and missing are merged by existing helper
+I0006,race_unavailable_after_helper,30,1142,0.02626970227670753,existing helper mapping
+I0006,bmi_missing_to_zero_expected,196,1142,0.17162872154115585,existing helper load_bmi behavior
+S0001,Sex_encoding_consistent,5139,5139,1.0,compared against x_static; aggregate only
+S0001,Race_encoding_consistent,5139,5139,1.0,compared against x_static; aggregate only
+S0001,BMI_encoding_consistent,5139,5139,1.0,compared against x_static; aggregate only
+S0001,sex_unknown_or_other_raw,0,5139,0.0,Other and missing are merged by existing helper
+S0001,race_unavailable_after_helper,137,5139,0.026658883051177272,existing helper mapping
+S0001,bmi_missing_to_zero_expected,4638,5139,0.9025102159953299,existing helper load_bmi behavior

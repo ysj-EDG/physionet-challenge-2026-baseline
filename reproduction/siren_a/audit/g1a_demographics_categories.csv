@@ -1,0 +1,37 @@
+site_id,variable,category,metric,count,denominator,proportion,minimum,p05,median,p95,maximum,notes
+I0002,Sex,Female,raw_category_count,156,319,0.4890282131661442,,,,,,aggregate category only
+I0002,Sex,Male,raw_category_count,163,319,0.5109717868338558,,,,,,aggregate category only
+I0002,Race,<MISSING>,raw_category_count,18,319,0.05642633228840126,,,,,,aggregate category only
+I0002,Race,Asian,raw_category_count,19,319,0.05956112852664577,,,,,,aggregate category only
+I0002,Race,Black,raw_category_count,42,319,0.13166144200626959,,,,,,aggregate category only
+I0002,Race,Others,raw_category_count,12,319,0.03761755485893417,,,,,,aggregate category only
+I0002,Race,White,raw_category_count,228,319,0.7147335423197492,,,,,,aggregate category only
+I0002,BMI,,missing_or_nonfinite,228,319,0.7147335423197492,15.1,20.395,29.63,49.755,68.86,descriptive flags only; no BMI correction rule
+I0002,BMI,,zero,0,319,0.0,15.1,20.395,29.63,49.755,68.86,descriptive flags only; no BMI correction rule
+I0002,BMI,,negative,0,319,0.0,15.1,20.395,29.63,49.755,68.86,descriptive flags only; no BMI correction rule
+I0002,BMI,,suspicious_lt_10,0,319,0.0,15.1,20.395,29.63,49.755,68.86,descriptive flags only; no BMI correction rule
+I0002,BMI,,suspicious_gt_80,0,319,0.0,15.1,20.395,29.63,49.755,68.86,descriptive flags only; no BMI correction rule
+I0006,Sex,Female,raw_category_count,639,1142,0.5595446584938704,,,,,,aggregate category only
+I0006,Sex,Male,raw_category_count,503,1142,0.4404553415061296,,,,,,aggregate category only
+I0006,Race,<MISSING>,raw_category_count,30,1142,0.02626970227670753,,,,,,aggregate category only
+I0006,Race,Asian,raw_category_count,24,1142,0.021015761821366025,,,,,,aggregate category only
+I0006,Race,Black,raw_category_count,459,1142,0.4019264448336252,,,,,,aggregate category only
+I0006,Race,Others,raw_category_count,4,1142,0.0035026269702276708,,,,,,aggregate category only
+I0006,Race,White,raw_category_count,625,1142,0.5472854640980735,,,,,,aggregate category only
+I0006,BMI,,missing_or_nonfinite,196,1142,0.17162872154115585,17.3,23.4975,32.22,48.385,71.54,descriptive flags only; no BMI correction rule
+I0006,BMI,,zero,0,1142,0.0,17.3,23.4975,32.22,48.385,71.54,descriptive flags only; no BMI correction rule
+I0006,BMI,,negative,0,1142,0.0,17.3,23.4975,32.22,48.385,71.54,descriptive flags only; no BMI correction rule
+I0006,BMI,,suspicious_lt_10,0,1142,0.0,17.3,23.4975,32.22,48.385,71.54,descriptive flags only; no BMI correction rule
+I0006,BMI,,suspicious_gt_80,0,1142,0.0,17.3,23.4975,32.22,48.385,71.54,descriptive flags only; no BMI correction rule
+S0001,Sex,Female,raw_category_count,2304,5139,0.44833625218914186,,,,,,aggregate category only
+S0001,Sex,Male,raw_category_count,2835,5139,0.5516637478108581,,,,,,aggregate category only
+S0001,Race,<MISSING>,raw_category_count,137,5139,0.026658883051177272,,,,,,aggregate category only
+S0001,Race,Asian,raw_category_count,122,5139,0.023740027242654213,,,,,,aggregate category only
+S0001,Race,Black,raw_category_count,308,5139,0.059933839268340144,,,,,,aggregate category only
+S0001,Race,Others,raw_category_count,258,5139,0.050204319906596614,,,,,,aggregate category only
+S0001,Race,White,raw_category_count,4314,5139,0.8394629305312318,,,,,,aggregate category only
+S0001,BMI,,missing_or_nonfinite,4638,5139,0.9025102159953299,17.78,21.85,28.88,40.12,49.92,descriptive flags only; no BMI correction rule
+S0001,BMI,,zero,0,5139,0.0,17.78,21.85,28.88,40.12,49.92,descriptive flags only; no BMI correction rule
+S0001,BMI,,negative,0,5139,0.0,17.78,21.85,28.88,40.12,49.92,descriptive flags only; no BMI correction rule
+S0001,BMI,,suspicious_lt_10,0,5139,0.0,17.78,21.85,28.88,40.12,49.92,descriptive flags only; no BMI correction rule
+S0001,BMI,,suspicious_gt_80,0,5139,0.0,17.78,21.85,28.88,40.12,49.92,descriptive flags only; no BMI correction rule

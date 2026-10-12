@@ -1,0 +1,28 @@
+{
+  "audit_name": "SIREN Branch A G1-A",
+  "audit_version": "g1a-v1",
+  "generated_at_utc": "2026-10-12T14:48:32.997580+00:00",
+  "repository_head_at_run": "048f19c341479e942d46004886dfc8b5ceaff93a",
+  "npz_root": "/database/home/gaohaojie/workspace/python-example-2026/validity_v0_2_full_6600/workspace/result_bundle/npz",
+  "demographics_path": "/database2/physionet2026_kaggle/data2/demographics.csv",
+  "npz_record_count": 6600,
+  "site_record_counts": {
+    "I0002": 319,
+    "I0006": 1142,
+    "S0001": 5139
+  },
+  "extraction_validity_versions": {
+    "timegrid_v2.1.0|validity_v0.2": 6600
+  },
+  "demographics_row_count": 6600,
+  "demographics_unique_primary_keys": 6600,
+  "npz_unique_primary_keys": 6600,
+  "matched_unique_primary_keys": 6600,
+  "manifest_rows": 827,
+  "manifest_unique_feature_ids": 807,
+  "min_valid_epochs": "NOT FROZEN",
+  "demo5_encoding": "NOT FROZEN",
+  "night_level_cache": "NOT GENERATED",
+  "model_training": "NOT STARTED",
+  "privacy": "aggregate outputs only; no raw demographics or patient-level identifiers written"
+}
