@@ -128,15 +128,40 @@ def read_cache(path: Path) -> dict[str, np.ndarray]:
         return {key: np.asarray(z[key]).copy() for key in z.files}
 
 
-def write_cache_atomic(path: Path, arrays: dict[str, object]) -> None:
+def _same_array(left, right):
+    if left.dtype != right.dtype or left.shape != right.shape:
+        return False
+    if np.issubdtype(left.dtype, np.floating):
+        return bool(np.array_equal(left, right, equal_nan=True))
+    return bool(np.array_equal(left, right))
+
+
+def _verify_roundtrip(payload, loaded):
+    if set(loaded) != set(payload):
+        raise ValueError("Cache round-trip keys mismatch")
+    for key in payload:
+        if not _same_array(payload[key], loaded[key]):
+            raise ValueError(f"Cache round-trip mismatch: {key}")
+
+
+def _fsync_directory(directory):
+    descriptor = os.open(directory, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def write_cache_atomic(path: Path, arrays: dict[str, object], payload_validator=None) -> None:
     path = Path(path)
-    if path.exists():
-        raise FileExistsError(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    payload = {k: np.asarray(v) for k, v in arrays.items()}
-    if any(v.dtype == object for v in payload.values()):
+    payload = {key: np.asarray(value) for key, value in arrays.items()}
+    if any(value.dtype == object for value in payload.values()):
         raise ValueError("Object arrays are forbidden")
+    if payload_validator is not None:
+        payload_validator(payload)
     temporary = None
+    linked = False; completed = False
     try:
         with tempfile.NamedTemporaryFile("wb", suffix=".npz.tmp", prefix=path.stem + ".",
                                          dir=path.parent, delete=False) as handle:
@@ -144,10 +169,25 @@ def write_cache_atomic(path: Path, arrays: dict[str, object]) -> None:
             np.savez_compressed(handle, **payload)
             handle.flush(); os.fsync(handle.fileno())
         loaded = read_cache(temporary)
-        if set(loaded) != set(payload):
-            raise ValueError("Cache round-trip keys mismatch")
-        os.replace(temporary, path)
+        _verify_roundtrip(payload, loaded)
+        if payload_validator is not None:
+            payload_validator(loaded)
+        os.link(temporary, path)
+        linked = True
+        _verify_roundtrip(payload, read_cache(path))
+        _fsync_directory(path.parent)
+        temporary.unlink()
         temporary = None
+        _fsync_directory(path.parent)
+        completed = True
+    except Exception:
+        if linked and path.exists():
+            path.unlink()
+            _fsync_directory(path.parent)
+        raise
     finally:
         if temporary is not None and temporary.exists():
             temporary.unlink()
+            _fsync_directory(path.parent)
+    if not completed:
+        raise RuntimeError("Cache publication did not complete")
