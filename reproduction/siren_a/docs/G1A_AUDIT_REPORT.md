@@ -10,7 +10,7 @@
 
 `stage_code_aligned` and `stage_valid` were checked together. Invalid codes 0, 9, and nonfinite values were excluded from all stage groups. NREM is codes 1/2/3; All-stage is codes 1/2/3/4/5. EEG validity is `eeg_channel_available & eeg_clean_subsegment_count > 0` per lead and epoch. `eeg_total_subsegment_count` was retained for source verification but no clean-ratio threshold was added.
 
-Per-record distributions, site summaries, threshold comparisons, six-lead counts, pair intersections, and F3/F4/O1/O2 intersections are in `audit/g1a_stage_support.csv`. All candidate thresholds 1, 2, 3, 5, 10, 20, 30, and 60 are descriptive only. No threshold was selected and no patient was excluded.
+Aggregate distributions, site summaries, threshold comparisons, six-lead counts, pair intersections, and F3/F4/O1/O2 intersections are in `audit/g1a_stage_support.csv`; detailed record-level evidence is retained only under the local ignored `audit/private/` directory. All candidate thresholds 1, 2, 3, 5, 10, 20, 30, and 60 are descriptive only. No threshold was selected and no patient was excluded.
 Raw stage-code counts are reported separately from effective stage counts; invalid codes remain excluded and stage_valid is not applied to the raw count.
 
 ### Candidate threshold record coverage
@@ -64,3 +64,29 @@ The manifest has 827 rows, contiguous zero-based positions within each view, and
 - Any anomaly is preserved as evidence for review; this Gate does not repair source data or mappings.
 
 See `docs/G1A_DECISION_REQUESTS.md` for the decisions intentionally left open.
+
+
+## G1-A-R correction record
+
+The public stage-support CSV was regenerated from the preserved local detail file and now contains aggregate rows only. The prior committed version remains in Git history; ordinary replacement/deletion does not erase content from past commits.
+
+## G1-A-R aggregate EEG/spatial support table
+
+The following table is aggregate-only and is provided for G1-B review. It reports EEG lead-quality support, not stage_valid coverage. No threshold is selected.
+
+| site | epochs | Wake EEG54 | REM EEG54 | N2 EEG54 | N3 EEG54 | NREM EEG54 | All-stage EEG54 | REM asym | N2 asym | REM AP | N2 AP | N3 AP | all planned EEG/spatial |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| I0002 | 5 | 277/319 (0.868) | 261/319 (0.818) | 277/319 (0.868) | 246/319 (0.771) | 277/319 (0.868) | 277/319 (0.868) | 262/319 (0.821) | 277/319 (0.868) | 262/319 (0.821) | 277/319 (0.868) | 246/319 (0.771) | 239/319 (0.749) |
+| I0002 | 10 | 277/319 (0.868) | 252/319 (0.790) | 277/319 (0.868) | 242/319 (0.759) | 277/319 (0.868) | 277/319 (0.868) | 252/319 (0.790) | 277/319 (0.868) | 252/319 (0.790) | 277/319 (0.868) | 242/319 (0.759) | 227/319 (0.712) |
+| I0002 | 20 | 277/319 (0.868) | 240/319 (0.752) | 274/319 (0.859) | 227/319 (0.712) | 275/319 (0.862) | 277/319 (0.868) | 240/319 (0.752) | 274/319 (0.859) | 240/319 (0.752) | 274/319 (0.859) | 227/319 (0.712) | 200/319 (0.627) |
+| I0006 | 5 | 1133/1142 (0.992) | 1055/1142 (0.924) | 1129/1142 (0.989) | 914/1142 (0.800) | 1129/1142 (0.989) | 1135/1142 (0.994) | 1055/1142 (0.924) | 1129/1142 (0.989) | 1057/1142 (0.926) | 1130/1142 (0.989) | 915/1142 (0.801) | 872/1142 (0.764) |
+| I0006 | 10 | 1132/1142 (0.991) | 1029/1142 (0.901) | 1129/1142 (0.989) | 854/1142 (0.748) | 1129/1142 (0.989) | 1135/1142 (0.994) | 1029/1142 (0.901) | 1129/1142 (0.989) | 1032/1142 (0.904) | 1130/1142 (0.989) | 855/1142 (0.749) | 794/1142 (0.695) |
+| I0006 | 20 | 1131/1142 (0.990) | 966/1142 (0.846) | 1128/1142 (0.988) | 779/1142 (0.682) | 1128/1142 (0.988) | 1134/1142 (0.993) | 966/1142 (0.846) | 1128/1142 (0.988) | 967/1142 (0.847) | 1129/1142 (0.989) | 781/1142 (0.684) | 651/1142 (0.570) |
+| S0001 | 5 | 5015/5139 (0.976) | 4766/5139 (0.927) | 4994/5139 (0.972) | 4571/5139 (0.889) | 4999/5139 (0.973) | 5024/5139 (0.978) | 4771/5139 (0.928) | 4996/5139 (0.972) | 4778/5139 (0.930) | 4999/5139 (0.973) | 4582/5139 (0.892) | 4422/5139 (0.860) |
+| S0001 | 10 | 5003/5139 (0.974) | 4673/5139 (0.909) | 4984/5139 (0.970) | 4453/5139 (0.867) | 4991/5139 (0.971) | 5019/5139 (0.977) | 4679/5139 (0.910) | 4985/5139 (0.970) | 4688/5139 (0.912) | 4988/5139 (0.971) | 4464/5139 (0.869) | 4253/5139 (0.828) |
+| S0001 | 20 | 4979/5139 (0.969) | 4546/5139 (0.885) | 4977/5139 (0.968) | 4247/5139 (0.826) | 4980/5139 (0.969) | 5005/5139 (0.974) | 4549/5139 (0.885) | 4978/5139 (0.969) | 4560/5139 (0.887) | 4981/5139 (0.969) | 4259/5139 (0.829) | 3896/5139 (0.758) |
+| ALL | 5 | 6425/6600 (0.973) | 6082/6600 (0.922) | 6400/6600 (0.970) | 5731/6600 (0.868) | 6405/6600 (0.970) | 6436/6600 (0.975) | 6088/6600 (0.922) | 6402/6600 (0.970) | 6097/6600 (0.924) | 6406/6600 (0.971) | 5743/6600 (0.870) | 5533/6600 (0.838) |
+| ALL | 10 | 6412/6600 (0.972) | 5954/6600 (0.902) | 6390/6600 (0.968) | 5549/6600 (0.841) | 6397/6600 (0.969) | 6431/6600 (0.974) | 5960/6600 (0.903) | 6391/6600 (0.968) | 5972/6600 (0.905) | 6395/6600 (0.969) | 5561/6600 (0.843) | 5274/6600 (0.799) |
+| ALL | 20 | 6387/6600 (0.968) | 5752/6600 (0.872) | 6379/6600 (0.967) | 5253/6600 (0.796) | 6383/6600 (0.967) | 6416/6600 (0.972) | 5755/6600 (0.872) | 6380/6600 (0.967) | 5767/6600 (0.874) | 6384/6600 (0.967) | 5267/6600 (0.798) | 4747/6600 (0.719) |
+
+`MIN_VALID_EPOCHS`, small-n IQR handling, Demo5 encoding, BMI missing representation, and final missing semantics remain unfrozen.

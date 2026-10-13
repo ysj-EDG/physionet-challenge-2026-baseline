@@ -29,6 +29,8 @@ NPZ_ROOT = Path(
     "/database/home/gaohaojie/workspace/python-example-2026/"
     "validity_v0_2_full_6600/workspace/result_bundle/npz"
 )
+PRIVATE_STAGE_SUPPORT = ROOT / "reproduction/siren_a/audit/private/g1a_stage_support_full_record.csv"
+
 DEMOGRAPHICS_PATH = Path("/database2/physionet2026_kaggle/data2/demographics.csv")
 EXTRACTION_VERSION = "timegrid_v2.1.0"
 VALIDITY_SCHEMA_VERSION = "validity_v0.2"
@@ -212,9 +214,9 @@ def spatial_candidate_rows() -> list[dict[str, str]]:
                 ))
     for stage in ("N2", "N3", "REM"):
         for band in bands:
-            indices = [_band_index(ch, band) for ch in EEG_CHANNELS]
-            indices += [_beta_index(ch) for ch in EEG_CHANNELS]
-            indices += [_p0_index(ch) for ch in EEG_CHANNELS]
+            indices = [_band_index(ch, band) for ch in ("F3", "F4", "O1", "O2")]
+            indices += [_beta_index(ch) for ch in ("F3", "F4", "O1", "O2")]
+            indices += [_p0_index(ch) for ch in ("F3", "F4", "O1", "O2")]
             name = f"spatial_ap_gradient_{stage}_{band.lower()}_mean"
             rows.append(_base_row(
                 unique_feature_id=name, feature_name=name,
@@ -487,7 +489,7 @@ def _read_demographics(path: Path) -> tuple[list[dict[str, str]], list[str]]:
 def _write_csv(path: Path, rows: list[dict[str, Any]], fields: list[str]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fields)
+        writer = csv.DictWriter(handle, fieldnames=fields, lineterminator="\n")
         writer.writeheader()
         writer.writerows({field: row.get(field, "") for field in fields} for row in rows)
 
@@ -720,13 +722,155 @@ def _build_report(summaries: list[dict[str, Any]], versions: Counter, site_count
     return "\n".join(lines) + "\n"
 
 
+
+def _detail_records_from_private(path: Path) -> list[dict[str, Any]]:
+    """Decode the old local-only detail rows without exposing them publicly."""
+    with path.open(newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+    detail = [row for row in rows if row["section"] in {"lead_support", "intersection_support"}]
+    rows_per_record = len(STAGE_ORDER) * (len(EEG_CHANNELS) + 5)
+    if not detail or len(detail) % rows_per_record:
+        raise ValueError("private stage-support detail rows do not have the expected record block size")
+    records = []
+    for start in range(0, len(detail), rows_per_record):
+        block = detail[start:start + rows_per_record]
+        site = block[0]["site_id"]
+        if any(row["site_id"] != site for row in block):
+            raise ValueError("private detail block crosses site boundary")
+        stage_counts = {}
+        for offset, stage in enumerate(STAGE_ORDER):
+            chunk = block[offset * 11:(offset + 1) * 11]
+            if chunk[0]["stage_group"] != stage or any(row["stage_group"] != stage for row in chunk):
+                raise ValueError("private detail block stage order is not the expected fixed order")
+            intersections = {row["metric"]: int(row["count"]) for row in chunk[6:]}
+            leads = {row["metric"]: int(row["count"]) for row in chunk[:6]}
+            stage_counts[stage] = {
+                "lead": leads,
+                "pair": {key.removeprefix("pair_"): value for key, value in intersections.items() if key.startswith("pair_")},
+                "four_lead": intersections["F3_F4_O1_O2"],
+                "six_lead": intersections["all_six"],
+            }
+        records.append({"site_id": site, "stage_counts": stage_counts})
+    return records
+
+
+def _support_row(site: str, stage: str, threshold: int, metric: str, count: int, total: int, notes: str) -> dict[str, Any]:
+    return {
+        "section": "aggregate_stage_support",
+        "site_id": site,
+        "stage_group": stage,
+        "threshold": threshold,
+        "metric": metric,
+        "count": count,
+        "total": total,
+        "proportion": count / total if total else 0,
+        "notes": notes,
+    }
+
+
+def aggregate_private_stage_support(private_path: Path, public_path: Path) -> dict[str, Any]:
+    """Create a public aggregate-only stage-support CSV from the private detail file."""
+    with private_path.open(newline="", encoding="utf-8") as handle:
+        all_rows = list(csv.DictReader(handle))
+    records = _detail_records_from_private(private_path)
+    aggregate_sections = {"stage_distribution", "stage_threshold", "stage_raw_distribution", "candidate_feature_support"}
+    public_rows = [row for row in all_rows if row["section"] in aggregate_sections]
+    public_rows = [dict(row) for row in public_rows]
+    sites = ["ALL"] + sorted({record["site_id"] for record in records})
+    for site in sites:
+        subset = records if site == "ALL" else [r for r in records if r["site_id"] == site]
+        total = len(subset)
+        for threshold in THRESHOLDS:
+            for stage in STAGE_ORDER:
+                six = sum(r["stage_counts"][stage]["six_lead"] >= threshold for r in subset)
+                public_rows.append(_support_row(site, stage, threshold, "EEG54_six_lead", six, total, "aggregate of same-epoch six-lead intersections"))
+            for stage in ("N2", "REM"):
+                asym = sum(all(r["stage_counts"][stage]["pair"][f"{left}-{right}"] >= threshold for left, right in EEG_PAIRS) for r in subset)
+                public_rows.append(_support_row(site, stage, threshold, "spatial_asymmetry_all_pairs", asym, total, "all three same-epoch left/right pair intersections"))
+            for stage in ("N2", "N3", "REM"):
+                gradient = sum(r["stage_counts"][stage]["four_lead"] >= threshold for r in subset)
+                public_rows.append(_support_row(site, stage, threshold, "spatial_ap_gradient_four_lead", gradient, total, "same-epoch F3/F4/O1/O2 intersection"))
+            required = 0
+            for r in subset:
+                ok = all(r["stage_counts"][stage]["six_lead"] >= threshold for stage in STAGE_ORDER)
+                ok = ok and all(r["stage_counts"][stage]["pair"][f"{left}-{right}"] >= threshold for stage in ("N2", "REM") for left, right in EEG_PAIRS)
+                ok = ok and all(r["stage_counts"][stage]["four_lead"] >= threshold for stage in ("N2", "N3", "REM"))
+                required += ok
+            public_rows.append(_support_row(site, "multiple", threshold, "all_required_EEG_spatial", required, total, "all planned EEG54 and spatial candidate supports meet threshold"))
+    public_path.parent.mkdir(parents=True, exist_ok=True)
+    _write_csv(public_path, public_rows, ["section", "site_id", "stage_group", "threshold", "metric", "count", "total", "proportion", "notes"])
+    if any(row["section"] in {"lead_support", "intersection_support"} for row in public_rows):
+        raise AssertionError("public stage-support output contains record-level sections")
+    return {"private_rows": len(all_rows), "private_records": len(records), "public_rows": len(public_rows), "public_path": str(public_path)}
+
+
+def _aggregate_value(rows: list[dict[str, Any]], site: str, stage: str, threshold: int, metric: str) -> str:
+    for row in rows:
+        if row["section"] == "aggregate_stage_support" and row["site_id"] == site and row["stage_group"] == stage and int(row["threshold"]) == threshold and row["metric"] == metric:
+            return f"{row['count']}/{row['total']} ({float(row['proportion']):.3f})"
+    return "NA"
+
+
+def _review_coverage_table(rows: list[dict[str, Any]]) -> str:
+    lines = [
+        "## G1-A-R aggregate EEG/spatial support table",
+        "",
+        "The following table is aggregate-only and is provided for G1-B review. It reports EEG lead-quality support, not stage_valid coverage. No threshold is selected.",
+        "",
+        "| site | epochs | Wake EEG54 | REM EEG54 | N2 EEG54 | N3 EEG54 | NREM EEG54 | All-stage EEG54 | REM asym | N2 asym | REM AP | N2 AP | N3 AP | all planned EEG/spatial |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+    for site in ("I0002", "I0006", "S0001", "ALL"):
+        for threshold in (5, 10, 20):
+            values = [
+                _aggregate_value(rows, site, stage, threshold, "EEG54_six_lead") for stage in ("Wake", "REM", "N2", "N3", "NREM", "All-stage")
+            ]
+            values += [_aggregate_value(rows, site, stage, threshold, "spatial_asymmetry_all_pairs") for stage in ("REM", "N2")]
+            values += [_aggregate_value(rows, site, stage, threshold, "spatial_ap_gradient_four_lead") for stage in ("REM", "N2", "N3")]
+            values += [_aggregate_value(rows, site, "multiple", threshold, "all_required_EEG_spatial")]
+            total = next((r["total"] for r in rows if r["section"] == "aggregate_stage_support" and r["site_id"] == site and int(r["threshold"]) == threshold and r["metric"] == "all_required_EEG_spatial"), "NA")
+            lines.append("| " + " | ".join([site, str(threshold), *values]) + " |")
+    return "\n".join(lines)
+
+
+def run_review_fix(private_path: Path = PRIVATE_STAGE_SUPPORT, output_root: Path | None = None) -> dict[str, Any]:
+    """Regenerate only the approved G1-A-R outputs from local private evidence."""
+    output_root = output_root or ROOT / "reproduction/siren_a"
+    audit_dir = output_root / "audit"
+    docs_dir = output_root / "docs"
+    public_path = audit_dir / "g1a_stage_support.csv"
+    summary = aggregate_private_stage_support(private_path, public_path)
+    manifest = build_draft_manifest()
+    _write_csv(docs_dir / "G1A_FEATURE_MANIFEST_DRAFT.csv", manifest, list(_base_row().keys()))
+    with (docs_dir / "G1A_AUDIT_REPORT.md").open(encoding="utf-8") as handle:
+        report = handle.read()
+    marker = "\n## G1-A-R correction record\n"
+    if marker in report:
+        report = report.split(marker, 1)[0].rstrip() + "\n"
+    report = report.replace("Per-record distributions, site summaries, threshold comparisons, six-lead counts, pair intersections, and F3/F4/O1/O2 intersections are in `audit/g1a_stage_support.csv`.", "Aggregate distributions, site summaries, threshold comparisons, six-lead counts, pair intersections, and F3/F4/O1/O2 intersections are in `audit/g1a_stage_support.csv`; detailed record-level evidence is retained only under the local ignored `audit/private/` directory.")
+    report += "\n\n## G1-A-R correction record\n\n"
+    report += "The public stage-support CSV was regenerated from the preserved local detail file and now contains aggregate rows only. The prior committed version remains in Git history; ordinary replacement/deletion does not erase content from past commits.\n\n"
+    with public_path.open(newline="", encoding="utf-8") as handle:
+        public_rows = list(csv.DictReader(handle))
+    report += _review_coverage_table(public_rows) + "\n"
+    report += "\n`MIN_VALID_EPOCHS`, small-n IQR handling, Demo5 encoding, BMI missing representation, and final missing semantics remain unfrozen.\n"
+    (docs_dir / "G1A_AUDIT_REPORT.md").write_text(report, encoding="utf-8")
+    with (docs_dir / "G1A_DECISION_REQUESTS.md").open(encoding="utf-8") as handle:
+        decisions = handle.read()
+    marker = "\n## G1-A-R aggregate evidence\n"
+    if marker in decisions:
+        decisions = decisions.split(marker, 1)[0].rstrip() + "\n"
+    decisions += "\n\n## G1-A-R aggregate evidence\n\nUse the aggregate-only `audit/g1a_stage_support.csv` and the site-split 5/10/20 epoch table in `G1A_AUDIT_REPORT.md` for G1-B review. These values distinguish EEG lead-quality intersections from `stage_valid`; they do not select `MIN_VALID_EPOCHS`. All listed decisions remain open.\n"
+    (docs_dir / "G1A_DECISION_REQUESTS.md").write_text(decisions, encoding="utf-8")
+    summary.update({"manifest_rows": len(manifest), "manifest_unique_feature_ids": len({row["unique_feature_id"] for row in manifest})})
+    return summary
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--npz-root", type=Path, default=NPZ_ROOT)
-    parser.add_argument("--demographics", type=Path, default=DEMOGRAPHICS_PATH)
+    parser.add_argument("--private-stage-support", type=Path, default=PRIVATE_STAGE_SUPPORT)
+    # Legacy input retained for API compatibility; G1-A-R does not rescan NPZ or demographics.
     parser.add_argument("--output-root", type=Path, default=ROOT / "reproduction/siren_a")
     args = parser.parse_args()
-    print(json.dumps(run_audit(args.npz_root, args.demographics, args.output_root), indent=2, ensure_ascii=False))
+    print(json.dumps(run_review_fix(args.private_stage_support, args.output_root), indent=2, ensure_ascii=False))
 
 
 if __name__ == "__main__":

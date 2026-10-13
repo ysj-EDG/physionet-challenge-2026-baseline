@@ -27,3 +27,8 @@ Existing BMI helper maps invalid/nonfinite values to zero; 5062 rows are nonfini
 Review CAISR20 missing semantics, lawful zero versus unavailable fills in EMG/Resp, HRV window-level validity and alignment, and any source unit that remains `source-defined`. These are marked `PENDING_G1B_REVIEW` in the CSV manifest.
 
 Labels, model performance, and LOSO metrics were not used.
+
+
+## G1-A-R aggregate evidence
+
+Use the aggregate-only `audit/g1a_stage_support.csv` and the site-split 5/10/20 epoch table in `G1A_AUDIT_REPORT.md` for G1-B review. These values distinguish EEG lead-quality intersections from `stage_valid`; they do not select `MIN_VALID_EPOCHS`. All listed decisions remain open.

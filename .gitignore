@@ -69,3 +69,4 @@ reports/milestones/*
 !reports/weekly/
 reports/weekly/*
 !reports/weekly/*.md
+reproduction/siren_a/audit/private/
