@@ -39,18 +39,45 @@ def _scalar(array, key, errors):
 
 
 def _check_triplet(values, mask, support, name, shape, errors):
+    shape_ok = values.shape == mask.shape == support.shape == shape
+    dtype_ok = (values.dtype == np.dtype(np.float64)
+                and mask.dtype == np.dtype(bool)
+                and support.dtype == np.dtype(np.int64))
     if values.shape != shape: errors.append(f"{name}: values shape")
     if mask.shape != shape: errors.append(f"{name}: mask shape")
     if support.shape != shape: errors.append(f"{name}: support shape")
     if values.dtype != np.dtype(np.float64): errors.append(f"{name}: values dtype")
     if mask.dtype != np.dtype(bool): errors.append(f"{name}: mask dtype")
     if support.dtype != np.dtype(np.int64): errors.append(f"{name}: support dtype")
-    if values.shape == mask.shape:
-        if np.isinf(values).any(): errors.append(f"{name}: Inf")
-        if not np.isfinite(values[mask]).all(): errors.append(f"{name}: nonfinite valid")
-        if not np.isnan(values[~mask]).all(): errors.append(f"{name}: invalid not NaN")
-    if np.issubdtype(support.dtype, np.integer) and np.any(support < 0):
-        errors.append(f"{name}: negative support")
+    if not (shape_ok and dtype_ok):
+        return False
+    if np.isinf(values).any(): errors.append(f"{name}: Inf")
+    if not np.isfinite(values[mask]).all(): errors.append(f"{name}: nonfinite valid")
+    if not np.isnan(values[~mask]).all(): errors.append(f"{name}: invalid not NaN")
+    if np.any(support < 0): errors.append(f"{name}: negative support")
+    return True
+
+
+def _check_support_semantics(mask, support, manifest, errors):
+    first = {}
+    for row in manifest.rows:
+        first.setdefault(row["unique_feature_id"], row)
+    pooled = {"EEG54_stage_spectral", "spatial_asymmetry_candidate",
+              "spatial_ap_gradient_candidate", "HRV11", "EMG24", "Resp14"}
+    static = {"CAISR20", "Demo5"}
+    for position, uid in enumerate(manifest.unique_ids):
+        family = first[uid]["family"]
+        if family in pooled:
+            if mask[position] and support[position] < 5:
+                errors.append(f"unique: {uid} valid pooled support < 5")
+            if not mask[position] and support[position] >= 5:
+                errors.append(f"unique: {uid} invalid pooled support >= 5")
+        elif family in static:
+            expected = 1 if mask[position] else 0
+            if support[position] != expected:
+                errors.append(f"unique: {uid} static support != {expected}")
+        else:
+            errors.append(f"unique: unsupported family {family}")
 
 
 def validate_cache_arrays(arrays, expected_provenance, manifest):
@@ -74,7 +101,9 @@ def validate_cache_arrays(arrays, expected_provenance, manifest):
     unique_values = np.asarray(arrays["unique_values"])
     unique_mask = np.asarray(arrays["unique_valid_mask"])
     unique_support = np.asarray(arrays["unique_support_count"])
-    _check_triplet(unique_values, unique_mask, unique_support, "unique", (807,), errors)
+    unique_safe = _check_triplet(unique_values, unique_mask, unique_support, "unique", (807,), errors)
+    if unique_safe:
+        _check_support_semantics(unique_mask, unique_support, manifest, errors)
     index = {uid: position for position, uid in enumerate(manifest.unique_ids)}
     for view, size in manifest.view_sizes.items():
         values = np.asarray(arrays[f"{view}_values"])
@@ -111,7 +140,10 @@ def validate_existing_cache(path, expected_provenance, manifest):
         arrays = read_cache(path)
     except Exception as exc:
         return ValidationResult(False, (f"cache unreadable: {type(exc).__name__}",))
-    return validate_cache_arrays(arrays, expected_provenance, manifest)
+    try:
+        return validate_cache_arrays(arrays, expected_provenance, manifest)
+    except Exception as exc:
+        return ValidationResult(False, (f"cache validation error: {type(exc).__name__}",))
 
 
 def decide_resume_action(path, expected_provenance, manifest):

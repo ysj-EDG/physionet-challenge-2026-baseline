@@ -35,7 +35,15 @@ PROVENANCE = {
 def valid_payload():
     values = np.arange(807, dtype=np.float64)
     masks = np.ones(807, dtype=bool)
-    support = np.ones(807, dtype=np.int64)
+    first_row = {}
+    for row in MANIFEST.rows:
+        first_row.setdefault(row["unique_feature_id"], row)
+    pooled = {"EEG54_stage_spectral", "spatial_asymmetry_candidate",
+              "spatial_ap_gradient_candidate", "HRV11", "EMG24", "Resp14"}
+    support = np.asarray([
+        5 if first_row[uid]["family"] in pooled else 1
+        for uid in MANIFEST.unique_ids
+    ], dtype=np.int64)
     payload = {
         "unique_feature_ids": np.asarray(MANIFEST.unique_ids),
         "unique_values": values,
@@ -135,6 +143,64 @@ class G2B0SafetyTests(unittest.TestCase):
                 result = validate_existing_cache(path, PROVENANCE, MANIFEST)
                 self.assertFalse(result.valid, name)
                 self.assertEqual(decide_resume_action(path, PROVENANCE, MANIFEST), Action.STOP_INVALID)
+
+    def _write_mutated(self, root, name, mutate):
+        payload = valid_payload(); mutate(payload)
+        path = root / f"{name}.npz"; write_cache_atomic(path, payload)
+        result = validate_existing_cache(path, PROVENANCE, MANIFEST)
+        self.assertFalse(result.valid, (name, result.errors))
+        self.assertEqual(decide_resume_action(path, PROVENANCE, MANIFEST), Action.STOP_INVALID)
+        return result
+
+    def test_invalid_mask_dtypes_and_shape_return_stop_invalid_without_exception(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._write_mutated(root, "float-mask", lambda p: p.__setitem__(
+                "unique_valid_mask", p["unique_valid_mask"].astype(np.float64)))
+            self._write_mutated(root, "int-mask", lambda p: p.__setitem__(
+                "unique_valid_mask", p["unique_valid_mask"].astype(np.int64)))
+            self._write_mutated(root, "bad-shape", lambda p: p.__setitem__(
+                "unique_valid_mask", p["unique_valid_mask"][:-1]))
+
+    def test_negative_and_family_inconsistent_support_are_rejected_even_if_views_match(self):
+        index = {uid: i for i, uid in enumerate(MANIFEST.unique_ids)}
+        first = {}
+        for row in MANIFEST.rows: first.setdefault(row["unique_feature_id"], row)
+        by_family = {}
+        for uid, row in first.items(): by_family.setdefault(row["family"], index[uid])
+
+        def synchronize(payload, position, value):
+            payload["unique_support_count"][position] = value
+            uid = MANIFEST.unique_ids[position]
+            for view in MANIFEST.view_sizes:
+                rows = [r for r in MANIFEST.rows if r["view_id"] == view]
+                for offset, row in enumerate(rows):
+                    if row["unique_feature_id"] == uid:
+                        payload[f"{view}_support_count"][offset] = value
+
+        cases = (
+            ("negative", by_family["EEG54_stage_spectral"], -1, None),
+            ("valid-eeg-zero", by_family["EEG54_stage_spectral"], 0, None),
+            ("invalid-eeg-five", by_family["EEG54_stage_spectral"], 5, False),
+            ("valid-caisr-zero", by_family["CAISR20"], 0, None),
+            ("invalid-demo-one", by_family["Demo5"], 1, False),
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for name, position, support, make_invalid in cases:
+                def mutate(payload, position=position, support=support, make_invalid=make_invalid):
+                    if make_invalid is False:
+                        payload["unique_valid_mask"][position] = False
+                        payload["unique_values"][position] = np.nan
+                        uid = MANIFEST.unique_ids[position]
+                        for view in MANIFEST.view_sizes:
+                            rows = [r for r in MANIFEST.rows if r["view_id"] == view]
+                            for offset, row in enumerate(rows):
+                                if row["unique_feature_id"] == uid:
+                                    payload[f"{view}_valid_mask"][offset] = False
+                                    payload[f"{view}_values"][offset] = np.nan
+                    synchronize(payload, position, support)
+                with self.subTest(name=name): self._write_mutated(root, name, mutate)
 
 
 if __name__ == "__main__":

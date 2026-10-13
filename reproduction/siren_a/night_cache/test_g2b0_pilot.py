@@ -46,7 +46,10 @@ class G2B0PilotTests(unittest.TestCase):
     def test_four_synthetic_boundaries_are_feature_local(self):
         scenarios = []
         no_hrv = record(); no_hrv["hrv_success"][:] = False; scenarios.append(("no_hrv", no_hrv))
-        missing_annotation = record(); missing_annotation["annotation_status"] = "missing"; scenarios.append(("annotation_missing", missing_annotation))
+        missing_annotation = record(); missing_annotation["annotation_status"] = "missing"
+        missing_annotation["stage_code_aligned"][:] = np.nan
+        missing_annotation["stage_valid"][:] = False
+        scenarios.append(("annotation_missing", missing_annotation))
         race_unavailable = record(); race_unavailable["x_static"][4:9] = 0; race_unavailable["x_static"][7] = 1; scenarios.append(("race_unavailable", race_unavailable))
         incomplete = record(); incomplete["stage_probability_channels_present"][0] = False; scenarios.append(("probability_incomplete", incomplete))
         for expected, rec in scenarios:
@@ -61,7 +64,9 @@ class G2B0PilotTests(unittest.TestCase):
         rec["eeg_clean_subsegment_count"][:] = 0
         self.assertFalse(boundary_flags(rec)["no_hrv"])
         rec["annotation_status"] = "missing"
-        self.assertFalse(boundary_flags(rec)["annotation_missing"])
+        rec["stage_code_aligned"][:] = np.nan
+        rec["stage_valid"][:] = False
+        self.assertTrue(boundary_flags(rec)["annotation_missing"])
         rec["stage_probability_channels_present"][0] = False
         self.assertFalse(boundary_flags(rec)["probability_incomplete"])
 
@@ -87,7 +92,9 @@ class G2B0PilotTests(unittest.TestCase):
     def test_targeted_selector_adds_only_new_boundary_coverage(self):
         fixtures = []
         no_hrv = record(); no_hrv["hrv_success"][:] = False; fixtures.append((Path("/x/I0002/a.npz"), no_hrv))
-        annotation = record(); annotation["annotation_status"] = "missing"; fixtures.append((Path("/x/I0006/b.npz"), annotation))
+        annotation = record(); annotation["annotation_status"] = "missing"
+        annotation["stage_code_aligned"][:] = np.nan; annotation["stage_valid"][:] = False
+        fixtures.append((Path("/x/I0006/b.npz"), annotation))
         race = record(); race["x_static"][4:9] = 0; race["x_static"][7] = 1; fixtures.append((Path("/x/S0001/c.npz"), race))
         incomplete = record(); incomplete["stage_probability_channels_present"][0] = False; fixtures.append((Path("/x/S0001/d.npz"), incomplete))
         ordinary = record(); fixtures.append((Path("/x/S0001/e.npz"), ordinary))
@@ -98,6 +105,24 @@ class G2B0PilotTests(unittest.TestCase):
         self.assertTrue(all(coverage[name] for name in ("no_hrv", "annotation_missing", "race_unavailable", "probability_incomplete")))
         self.assertEqual(len(selected), 4)
         self.assertEqual(budget.distinct_count, 5)
+
+    def test_annotation_missing_keeps_record_and_only_stage_dependent_families_missing(self):
+        rec = record(); rec["annotation_status"] = "missing"
+        rec["stage_code_aligned"][:] = np.nan; rec["stage_valid"][:] = False
+        result = compute_night_features(rec, MANIFEST)
+        first = {}
+        for row in MANIFEST.rows: first.setdefault(row["unique_feature_id"], row)
+        families = {}
+        for i, uid in enumerate(result.unique_ids):
+            families.setdefault(first[uid]["family"], []).append(i)
+        for family in ("EEG54_stage_spectral", "spatial_asymmetry_candidate",
+                       "spatial_ap_gradient_candidate", "CAISR20"):
+            self.assertFalse(result.unique_feature_valid_mask[families[family]].any(), family)
+        for family in ("HRV11", "EMG24", "Resp14", "Demo5"):
+            self.assertTrue(result.unique_feature_valid_mask[families[family]].any(), family)
+        self.assertEqual(result.unique_feature_values.shape, (807,))
+        self.assertFalse(boundary_flags(rec)["no_hrv"])
+        self.assertTrue(boundary_flags(rec)["annotation_missing"])
 
     def test_inventory_is_name_only_and_rejects_suffix_symlink_or_count_error(self):
         with tempfile.TemporaryDirectory() as directory:

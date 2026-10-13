@@ -91,7 +91,7 @@ def boundary_flags(record):
                   or not _probability_lengths_match(record))
     return {
         "no_hrv": not bool(hrv_valid.any()) and has_eeg_output,
-        "annotation_missing": record["annotation_status"] == "missing" and has_eeg_output,
+        "annotation_missing": record["annotation_status"] == "missing",
         "race_unavailable": bool(np.asarray(record["x_static"])[7] == 1),
         "probability_incomplete": bool(incomplete) and record["annotation_status"] == "available",
         "non9_probability_out_of_range": bool(non9_oor.any()),
@@ -150,9 +150,14 @@ def assert_boundary_effects(category, result):
         unaffected = [index for index, uid in enumerate(ids) if uid.startswith("eeg_")]
         ok = len(target) == 22 and not valid[target].any() and valid[unaffected].any()
     elif category == "annotation_missing":
-        target = [index for index, uid in enumerate(ids) if uid.startswith("caisr_")]
-        unaffected = [index for index, uid in enumerate(ids) if uid.startswith("eeg_")]
-        ok = len(target) == 20 and not valid[target].any() and valid[unaffected].any()
+        eeg = [index for index, uid in enumerate(ids) if uid.startswith("eeg_")]
+        spatial = [index for index, uid in enumerate(ids) if uid.startswith("spatial_")]
+        caisr = [index for index, uid in enumerate(ids) if uid.startswith("caisr_")]
+        independent = [index for index, uid in enumerate(ids)
+                       if uid.startswith(("hrv_", "emg_", "resp_", "demo_"))]
+        ok = (len(eeg) == 648 and len(spatial) == 36 and len(caisr) == 20
+              and not valid[eeg].any() and not valid[spatial].any()
+              and not valid[caisr].any() and valid[independent].any())
     elif category == "race_unavailable":
         target = [positions[name] for name in ("demo_race_white", "demo_race_black", "demo_race_asian")]
         ok = not valid[target].any()
