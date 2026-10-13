@@ -31,4 +31,4 @@ Labels, model performance, and LOSO metrics were not used.
 
 ## G1-A-R aggregate evidence
 
-Use the aggregate-only `audit/g1a_stage_support.csv` and the site-split 5/10/20 epoch table in `G1A_AUDIT_REPORT.md` for G1-B review. These values distinguish EEG lead-quality intersections from `stage_valid`; they do not select `MIN_VALID_EPOCHS`. All listed decisions remain open.
+Use the aggregate-only `audit/g1a_stage_support.csv` and the G1-A-R2 site-split 5/10/20 epoch table in `G1A_AUDIT_REPORT.md` for G1-B review. EEG648 actual support uses independent per-lead counts over Wake, REM, N2, N3, NREM, and All-stage; Spatial36 retains same-epoch intersections. The joint6 result is conservative QC only. N1 remains an audit stage and NREM component, not an independent EEG648 output. No threshold is selected and all listed decisions remain open.

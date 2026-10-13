@@ -827,419 +827,515 @@ candidate_feature_support,S0001,multiple,60,EEG54_all_six_leads,2666,5139,0.5187
 candidate_feature_support,S0001,multiple,60,spatial_asymmetry_candidate,3812,5139,0.7417785561393268,all N2/REM lead pairs support candidate
 candidate_feature_support,S0001,multiple,60,spatial_ap_gradient_candidate,2835,5139,0.5516637478108581,all N2/N3/REM four-lead intersections support candidate
 candidate_feature_support,S0001,multiple,60,at_least_one_required_feature_insufficient,2473,5139,0.48122202763183497,required set is documented above; no threshold selected
-aggregate_stage_support,ALL,Wake,1,EEG54_six_lead,6448,6600,0.9769696969696969,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,REM,1,EEG54_six_lead,6231,6600,0.9440909090909091,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,N1,1,EEG54_six_lead,6399,6600,0.9695454545454546,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,N2,1,EEG54_six_lead,6417,6600,0.9722727272727273,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,N3,1,EEG54_six_lead,5956,6600,0.9024242424242425,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,NREM,1,EEG54_six_lead,6424,6600,0.9733333333333334,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,All-stage,1,EEG54_six_lead,6451,6600,0.9774242424242424,aggregate of same-epoch six-lead intersections
+aggregate_stage_support,ALL,Wake,1,EEG54_six_lead,6448,6600,0.9769696969696969,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,REM,1,EEG54_six_lead,6231,6600,0.9440909090909091,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,N1,1,EEG54_six_lead,6399,6600,0.9695454545454546,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,N2,1,EEG54_six_lead,6417,6600,0.9722727272727273,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,N3,1,EEG54_six_lead,5956,6600,0.9024242424242425,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,NREM,1,EEG54_six_lead,6424,6600,0.9733333333333334,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,All-stage,1,EEG54_six_lead,6451,6600,0.9774242424242424,auxiliary QC: same-epoch six-lead intersection
 aggregate_stage_support,ALL,N2,1,spatial_asymmetry_all_pairs,6419,6600,0.9725757575757575,all three same-epoch left/right pair intersections
 aggregate_stage_support,ALL,REM,1,spatial_asymmetry_all_pairs,6233,6600,0.9443939393939393,all three same-epoch left/right pair intersections
 aggregate_stage_support,ALL,N2,1,spatial_ap_gradient_four_lead,6424,6600,0.9733333333333334,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,ALL,N3,1,spatial_ap_gradient_four_lead,5967,6600,0.9040909090909091,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,ALL,REM,1,spatial_ap_gradient_four_lead,6244,6600,0.946060606060606,same-epoch F3/F4/O1/O2 intersection
-aggregate_stage_support,ALL,multiple,1,all_required_EEG_spatial,5826,6600,0.8827272727272727,all planned EEG54 and spatial candidate supports meet threshold
-aggregate_stage_support,ALL,Wake,2,EEG54_six_lead,6439,6600,0.9756060606060606,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,REM,2,EEG54_six_lead,6179,6600,0.9362121212121212,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,N1,2,EEG54_six_lead,6384,6600,0.9672727272727273,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,N2,2,EEG54_six_lead,6408,6600,0.9709090909090909,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,N3,2,EEG54_six_lead,5878,6600,0.8906060606060606,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,NREM,2,EEG54_six_lead,6413,6600,0.9716666666666667,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,All-stage,2,EEG54_six_lead,6444,6600,0.9763636363636363,aggregate of same-epoch six-lead intersections
+aggregate_stage_support,ALL,multiple,1,EEG54_individual_leads_all_valid,5834,6600,0.8839393939393939,all 6 model stage groups x 6 leads independently meet threshold; N1 is not an output group
+aggregate_stage_support,ALL,multiple,1,Spatial36_all_combinations_valid,5834,6600,0.8839393939393939,all approved same-epoch pair and four-lead spatial combinations meet threshold
+aggregate_stage_support,ALL,multiple,1,all_required_EEG_spatial_actual,5831,6600,0.8834848484848485,EEG648 individual-lead support and all Spatial36 combinations meet threshold
+aggregate_stage_support,ALL,multiple,1,all_required_EEG_spatial_joint6_conservative,5829,6600,0.8831818181818182,auxiliary QC: joint-six-lead support in 6 model stage groups plus all Spatial36 combinations
+aggregate_stage_support,ALL,Wake,2,EEG54_six_lead,6439,6600,0.9756060606060606,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,REM,2,EEG54_six_lead,6179,6600,0.9362121212121212,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,N1,2,EEG54_six_lead,6384,6600,0.9672727272727273,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,N2,2,EEG54_six_lead,6408,6600,0.9709090909090909,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,N3,2,EEG54_six_lead,5878,6600,0.8906060606060606,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,NREM,2,EEG54_six_lead,6413,6600,0.9716666666666667,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,All-stage,2,EEG54_six_lead,6444,6600,0.9763636363636363,auxiliary QC: same-epoch six-lead intersection
 aggregate_stage_support,ALL,N2,2,spatial_asymmetry_all_pairs,6411,6600,0.9713636363636363,all three same-epoch left/right pair intersections
 aggregate_stage_support,ALL,REM,2,spatial_asymmetry_all_pairs,6179,6600,0.9362121212121212,all three same-epoch left/right pair intersections
 aggregate_stage_support,ALL,N2,2,spatial_ap_gradient_four_lead,6415,6600,0.9719696969696969,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,ALL,N3,2,spatial_ap_gradient_four_lead,5889,6600,0.8922727272727272,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,ALL,REM,2,spatial_ap_gradient_four_lead,6188,6600,0.9375757575757576,same-epoch F3/F4/O1/O2 intersection
-aggregate_stage_support,ALL,multiple,2,all_required_EEG_spatial,5727,6600,0.8677272727272727,all planned EEG54 and spatial candidate supports meet threshold
-aggregate_stage_support,ALL,Wake,3,EEG54_six_lead,6431,6600,0.9743939393939394,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,REM,3,EEG54_six_lead,6142,6600,0.9306060606060607,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,N1,3,EEG54_six_lead,6370,6600,0.9651515151515152,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,N2,3,EEG54_six_lead,6405,6600,0.9704545454545455,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,N3,3,EEG54_six_lead,5813,6600,0.8807575757575757,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,NREM,3,EEG54_six_lead,6411,6600,0.9713636363636363,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,All-stage,3,EEG54_six_lead,6441,6600,0.975909090909091,aggregate of same-epoch six-lead intersections
+aggregate_stage_support,ALL,multiple,2,EEG54_individual_leads_all_valid,5735,6600,0.8689393939393939,all 6 model stage groups x 6 leads independently meet threshold; N1 is not an output group
+aggregate_stage_support,ALL,multiple,2,Spatial36_all_combinations_valid,5735,6600,0.8689393939393939,all approved same-epoch pair and four-lead spatial combinations meet threshold
+aggregate_stage_support,ALL,multiple,2,all_required_EEG_spatial_actual,5731,6600,0.8683333333333333,EEG648 individual-lead support and all Spatial36 combinations meet threshold
+aggregate_stage_support,ALL,multiple,2,all_required_EEG_spatial_joint6_conservative,5730,6600,0.8681818181818182,auxiliary QC: joint-six-lead support in 6 model stage groups plus all Spatial36 combinations
+aggregate_stage_support,ALL,Wake,3,EEG54_six_lead,6431,6600,0.9743939393939394,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,REM,3,EEG54_six_lead,6142,6600,0.9306060606060607,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,N1,3,EEG54_six_lead,6370,6600,0.9651515151515152,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,N2,3,EEG54_six_lead,6405,6600,0.9704545454545455,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,N3,3,EEG54_six_lead,5813,6600,0.8807575757575757,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,NREM,3,EEG54_six_lead,6411,6600,0.9713636363636363,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,All-stage,3,EEG54_six_lead,6441,6600,0.975909090909091,auxiliary QC: same-epoch six-lead intersection
 aggregate_stage_support,ALL,N2,3,spatial_asymmetry_all_pairs,6411,6600,0.9713636363636363,all three same-epoch left/right pair intersections
 aggregate_stage_support,ALL,REM,3,spatial_asymmetry_all_pairs,6144,6600,0.9309090909090909,all three same-epoch left/right pair intersections
 aggregate_stage_support,ALL,N2,3,spatial_ap_gradient_four_lead,6412,6600,0.9715151515151516,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,ALL,N3,3,spatial_ap_gradient_four_lead,5824,6600,0.8824242424242424,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,ALL,REM,3,spatial_ap_gradient_four_lead,6153,6600,0.9322727272727273,same-epoch F3/F4/O1/O2 intersection
-aggregate_stage_support,ALL,multiple,3,all_required_EEG_spatial,5643,6600,0.855,all planned EEG54 and spatial candidate supports meet threshold
-aggregate_stage_support,ALL,Wake,5,EEG54_six_lead,6425,6600,0.9734848484848485,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,REM,5,EEG54_six_lead,6082,6600,0.9215151515151515,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,N1,5,EEG54_six_lead,6348,6600,0.9618181818181818,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,N2,5,EEG54_six_lead,6400,6600,0.9696969696969697,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,N3,5,EEG54_six_lead,5731,6600,0.8683333333333333,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,NREM,5,EEG54_six_lead,6405,6600,0.9704545454545455,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,All-stage,5,EEG54_six_lead,6436,6600,0.9751515151515151,aggregate of same-epoch six-lead intersections
+aggregate_stage_support,ALL,multiple,3,EEG54_individual_leads_all_valid,5654,6600,0.8566666666666667,all 6 model stage groups x 6 leads independently meet threshold; N1 is not an output group
+aggregate_stage_support,ALL,multiple,3,Spatial36_all_combinations_valid,5651,6600,0.8562121212121212,all approved same-epoch pair and four-lead spatial combinations meet threshold
+aggregate_stage_support,ALL,multiple,3,all_required_EEG_spatial_actual,5649,6600,0.855909090909091,EEG648 individual-lead support and all Spatial36 combinations meet threshold
+aggregate_stage_support,ALL,multiple,3,all_required_EEG_spatial_joint6_conservative,5647,6600,0.8556060606060606,auxiliary QC: joint-six-lead support in 6 model stage groups plus all Spatial36 combinations
+aggregate_stage_support,ALL,Wake,5,EEG54_six_lead,6425,6600,0.9734848484848485,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,REM,5,EEG54_six_lead,6082,6600,0.9215151515151515,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,N1,5,EEG54_six_lead,6348,6600,0.9618181818181818,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,N2,5,EEG54_six_lead,6400,6600,0.9696969696969697,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,N3,5,EEG54_six_lead,5731,6600,0.8683333333333333,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,NREM,5,EEG54_six_lead,6405,6600,0.9704545454545455,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,All-stage,5,EEG54_six_lead,6436,6600,0.9751515151515151,auxiliary QC: same-epoch six-lead intersection
 aggregate_stage_support,ALL,N2,5,spatial_asymmetry_all_pairs,6402,6600,0.97,all three same-epoch left/right pair intersections
 aggregate_stage_support,ALL,REM,5,spatial_asymmetry_all_pairs,6088,6600,0.9224242424242424,all three same-epoch left/right pair intersections
 aggregate_stage_support,ALL,N2,5,spatial_ap_gradient_four_lead,6406,6600,0.9706060606060606,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,ALL,N3,5,spatial_ap_gradient_four_lead,5743,6600,0.8701515151515151,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,ALL,REM,5,spatial_ap_gradient_four_lead,6097,6600,0.9237878787878788,same-epoch F3/F4/O1/O2 intersection
-aggregate_stage_support,ALL,multiple,5,all_required_EEG_spatial,5533,6600,0.8383333333333334,all planned EEG54 and spatial candidate supports meet threshold
-aggregate_stage_support,ALL,Wake,10,EEG54_six_lead,6412,6600,0.9715151515151516,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,REM,10,EEG54_six_lead,5954,6600,0.9021212121212121,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,N1,10,EEG54_six_lead,6289,6600,0.9528787878787879,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,N2,10,EEG54_six_lead,6390,6600,0.9681818181818181,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,N3,10,EEG54_six_lead,5549,6600,0.8407575757575757,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,NREM,10,EEG54_six_lead,6397,6600,0.9692424242424242,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,All-stage,10,EEG54_six_lead,6431,6600,0.9743939393939394,aggregate of same-epoch six-lead intersections
+aggregate_stage_support,ALL,multiple,5,EEG54_individual_leads_all_valid,5549,6600,0.8407575757575757,all 6 model stage groups x 6 leads independently meet threshold; N1 is not an output group
+aggregate_stage_support,ALL,multiple,5,Spatial36_all_combinations_valid,5548,6600,0.8406060606060606,all approved same-epoch pair and four-lead spatial combinations meet threshold
+aggregate_stage_support,ALL,multiple,5,all_required_EEG_spatial_actual,5546,6600,0.8403030303030303,EEG648 individual-lead support and all Spatial36 combinations meet threshold
+aggregate_stage_support,ALL,multiple,5,all_required_EEG_spatial_joint6_conservative,5542,6600,0.8396969696969697,auxiliary QC: joint-six-lead support in 6 model stage groups plus all Spatial36 combinations
+aggregate_stage_support,ALL,Wake,10,EEG54_six_lead,6412,6600,0.9715151515151516,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,REM,10,EEG54_six_lead,5954,6600,0.9021212121212121,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,N1,10,EEG54_six_lead,6289,6600,0.9528787878787879,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,N2,10,EEG54_six_lead,6390,6600,0.9681818181818181,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,N3,10,EEG54_six_lead,5549,6600,0.8407575757575757,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,NREM,10,EEG54_six_lead,6397,6600,0.9692424242424242,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,All-stage,10,EEG54_six_lead,6431,6600,0.9743939393939394,auxiliary QC: same-epoch six-lead intersection
 aggregate_stage_support,ALL,N2,10,spatial_asymmetry_all_pairs,6391,6600,0.9683333333333334,all three same-epoch left/right pair intersections
 aggregate_stage_support,ALL,REM,10,spatial_asymmetry_all_pairs,5960,6600,0.9030303030303031,all three same-epoch left/right pair intersections
 aggregate_stage_support,ALL,N2,10,spatial_ap_gradient_four_lead,6395,6600,0.968939393939394,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,ALL,N3,10,spatial_ap_gradient_four_lead,5561,6600,0.8425757575757575,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,ALL,REM,10,spatial_ap_gradient_four_lead,5972,6600,0.9048484848484849,same-epoch F3/F4/O1/O2 intersection
-aggregate_stage_support,ALL,multiple,10,all_required_EEG_spatial,5274,6600,0.7990909090909091,all planned EEG54 and spatial candidate supports meet threshold
-aggregate_stage_support,ALL,Wake,20,EEG54_six_lead,6387,6600,0.9677272727272728,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,REM,20,EEG54_six_lead,5752,6600,0.8715151515151515,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,N1,20,EEG54_six_lead,6038,6600,0.9148484848484848,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,N2,20,EEG54_six_lead,6379,6600,0.9665151515151515,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,N3,20,EEG54_six_lead,5253,6600,0.7959090909090909,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,NREM,20,EEG54_six_lead,6383,6600,0.9671212121212122,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,All-stage,20,EEG54_six_lead,6416,6600,0.9721212121212122,aggregate of same-epoch six-lead intersections
+aggregate_stage_support,ALL,multiple,10,EEG54_individual_leads_all_valid,5313,6600,0.805,all 6 model stage groups x 6 leads independently meet threshold; N1 is not an output group
+aggregate_stage_support,ALL,multiple,10,Spatial36_all_combinations_valid,5313,6600,0.805,all approved same-epoch pair and four-lead spatial combinations meet threshold
+aggregate_stage_support,ALL,multiple,10,all_required_EEG_spatial_actual,5309,6600,0.8043939393939394,EEG648 individual-lead support and all Spatial36 combinations meet threshold
+aggregate_stage_support,ALL,multiple,10,all_required_EEG_spatial_joint6_conservative,5307,6600,0.8040909090909091,auxiliary QC: joint-six-lead support in 6 model stage groups plus all Spatial36 combinations
+aggregate_stage_support,ALL,Wake,20,EEG54_six_lead,6387,6600,0.9677272727272728,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,REM,20,EEG54_six_lead,5752,6600,0.8715151515151515,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,N1,20,EEG54_six_lead,6038,6600,0.9148484848484848,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,N2,20,EEG54_six_lead,6379,6600,0.9665151515151515,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,N3,20,EEG54_six_lead,5253,6600,0.7959090909090909,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,NREM,20,EEG54_six_lead,6383,6600,0.9671212121212122,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,All-stage,20,EEG54_six_lead,6416,6600,0.9721212121212122,auxiliary QC: same-epoch six-lead intersection
 aggregate_stage_support,ALL,N2,20,spatial_asymmetry_all_pairs,6380,6600,0.9666666666666667,all three same-epoch left/right pair intersections
 aggregate_stage_support,ALL,REM,20,spatial_asymmetry_all_pairs,5755,6600,0.871969696969697,all three same-epoch left/right pair intersections
 aggregate_stage_support,ALL,N2,20,spatial_ap_gradient_four_lead,6384,6600,0.9672727272727273,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,ALL,N3,20,spatial_ap_gradient_four_lead,5267,6600,0.798030303030303,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,ALL,REM,20,spatial_ap_gradient_four_lead,5767,6600,0.8737878787878788,same-epoch F3/F4/O1/O2 intersection
-aggregate_stage_support,ALL,multiple,20,all_required_EEG_spatial,4747,6600,0.7192424242424242,all planned EEG54 and spatial candidate supports meet threshold
-aggregate_stage_support,ALL,Wake,30,EEG54_six_lead,6349,6600,0.9619696969696969,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,REM,30,EEG54_six_lead,5556,6600,0.8418181818181818,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,N1,30,EEG54_six_lead,5511,6600,0.835,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,N2,30,EEG54_six_lead,6366,6600,0.9645454545454546,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,N3,30,EEG54_six_lead,4988,6600,0.7557575757575757,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,NREM,30,EEG54_six_lead,6378,6600,0.9663636363636363,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,All-stage,30,EEG54_six_lead,6409,6600,0.9710606060606061,aggregate of same-epoch six-lead intersections
+aggregate_stage_support,ALL,multiple,20,EEG54_individual_leads_all_valid,4929,6600,0.7468181818181818,all 6 model stage groups x 6 leads independently meet threshold; N1 is not an output group
+aggregate_stage_support,ALL,multiple,20,Spatial36_all_combinations_valid,4935,6600,0.7477272727272727,all approved same-epoch pair and four-lead spatial combinations meet threshold
+aggregate_stage_support,ALL,multiple,20,all_required_EEG_spatial_actual,4927,6600,0.7465151515151515,EEG648 individual-lead support and all Spatial36 combinations meet threshold
+aggregate_stage_support,ALL,multiple,20,all_required_EEG_spatial_joint6_conservative,4922,6600,0.7457575757575757,auxiliary QC: joint-six-lead support in 6 model stage groups plus all Spatial36 combinations
+aggregate_stage_support,ALL,Wake,30,EEG54_six_lead,6349,6600,0.9619696969696969,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,REM,30,EEG54_six_lead,5556,6600,0.8418181818181818,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,N1,30,EEG54_six_lead,5511,6600,0.835,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,N2,30,EEG54_six_lead,6366,6600,0.9645454545454546,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,N3,30,EEG54_six_lead,4988,6600,0.7557575757575757,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,NREM,30,EEG54_six_lead,6378,6600,0.9663636363636363,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,All-stage,30,EEG54_six_lead,6409,6600,0.9710606060606061,auxiliary QC: same-epoch six-lead intersection
 aggregate_stage_support,ALL,N2,30,spatial_asymmetry_all_pairs,6369,6600,0.965,all three same-epoch left/right pair intersections
 aggregate_stage_support,ALL,REM,30,spatial_asymmetry_all_pairs,5562,6600,0.8427272727272728,all three same-epoch left/right pair intersections
 aggregate_stage_support,ALL,N2,30,spatial_ap_gradient_four_lead,6373,6600,0.9656060606060606,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,ALL,N3,30,spatial_ap_gradient_four_lead,5007,6600,0.7586363636363637,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,ALL,REM,30,spatial_ap_gradient_four_lead,5573,6600,0.8443939393939394,same-epoch F3/F4/O1/O2 intersection
-aggregate_stage_support,ALL,multiple,30,all_required_EEG_spatial,4062,6600,0.6154545454545455,all planned EEG54 and spatial candidate supports meet threshold
-aggregate_stage_support,ALL,Wake,60,EEG54_six_lead,6051,6600,0.9168181818181819,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,REM,60,EEG54_six_lead,4726,6600,0.7160606060606061,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,N1,60,EEG54_six_lead,3108,6600,0.4709090909090909,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,N2,60,EEG54_six_lead,6337,6600,0.9601515151515152,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,N3,60,EEG54_six_lead,3987,6600,0.6040909090909091,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,NREM,60,EEG54_six_lead,6356,6600,0.963030303030303,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,ALL,All-stage,60,EEG54_six_lead,6393,6600,0.9686363636363636,aggregate of same-epoch six-lead intersections
+aggregate_stage_support,ALL,multiple,30,EEG54_individual_leads_all_valid,4591,6600,0.6956060606060606,all 6 model stage groups x 6 leads independently meet threshold; N1 is not an output group
+aggregate_stage_support,ALL,multiple,30,Spatial36_all_combinations_valid,4610,6600,0.6984848484848485,all approved same-epoch pair and four-lead spatial combinations meet threshold
+aggregate_stage_support,ALL,multiple,30,all_required_EEG_spatial_actual,4590,6600,0.6954545454545454,EEG648 individual-lead support and all Spatial36 combinations meet threshold
+aggregate_stage_support,ALL,multiple,30,all_required_EEG_spatial_joint6_conservative,4583,6600,0.6943939393939393,auxiliary QC: joint-six-lead support in 6 model stage groups plus all Spatial36 combinations
+aggregate_stage_support,ALL,Wake,60,EEG54_six_lead,6051,6600,0.9168181818181819,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,REM,60,EEG54_six_lead,4726,6600,0.7160606060606061,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,N1,60,EEG54_six_lead,3108,6600,0.4709090909090909,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,N2,60,EEG54_six_lead,6337,6600,0.9601515151515152,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,N3,60,EEG54_six_lead,3987,6600,0.6040909090909091,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,NREM,60,EEG54_six_lead,6356,6600,0.963030303030303,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,ALL,All-stage,60,EEG54_six_lead,6393,6600,0.9686363636363636,auxiliary QC: same-epoch six-lead intersection
 aggregate_stage_support,ALL,N2,60,spatial_asymmetry_all_pairs,6341,6600,0.9607575757575758,all three same-epoch left/right pair intersections
 aggregate_stage_support,ALL,REM,60,spatial_asymmetry_all_pairs,4729,6600,0.7165151515151515,all three same-epoch left/right pair intersections
 aggregate_stage_support,ALL,N2,60,spatial_ap_gradient_four_lead,6346,6600,0.9615151515151515,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,ALL,N3,60,spatial_ap_gradient_four_lead,4008,6600,0.6072727272727273,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,ALL,REM,60,spatial_ap_gradient_four_lead,4746,6600,0.7190909090909091,same-epoch F3/F4/O1/O2 intersection
-aggregate_stage_support,ALL,multiple,60,all_required_EEG_spatial,1506,6600,0.22818181818181818,all planned EEG54 and spatial candidate supports meet threshold
-aggregate_stage_support,I0002,Wake,1,EEG54_six_lead,277,319,0.8683385579937304,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,REM,1,EEG54_six_lead,266,319,0.8338557993730408,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,N1,1,EEG54_six_lead,275,319,0.8620689655172413,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,N2,1,EEG54_six_lead,277,319,0.8683385579937304,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,N3,1,EEG54_six_lead,261,319,0.8181818181818182,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,NREM,1,EEG54_six_lead,277,319,0.8683385579937304,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,All-stage,1,EEG54_six_lead,277,319,0.8683385579937304,aggregate of same-epoch six-lead intersections
+aggregate_stage_support,ALL,multiple,60,EEG54_individual_leads_all_valid,3178,6600,0.4815151515151515,all 6 model stage groups x 6 leads independently meet threshold; N1 is not an output group
+aggregate_stage_support,ALL,multiple,60,Spatial36_all_combinations_valid,3356,6600,0.5084848484848485,all approved same-epoch pair and four-lead spatial combinations meet threshold
+aggregate_stage_support,ALL,multiple,60,all_required_EEG_spatial_actual,3175,6600,0.4810606060606061,EEG648 individual-lead support and all Spatial36 combinations meet threshold
+aggregate_stage_support,ALL,multiple,60,all_required_EEG_spatial_joint6_conservative,3153,6600,0.4777272727272727,auxiliary QC: joint-six-lead support in 6 model stage groups plus all Spatial36 combinations
+aggregate_stage_support,I0002,Wake,1,EEG54_six_lead,277,319,0.8683385579937304,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,REM,1,EEG54_six_lead,266,319,0.8338557993730408,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,N1,1,EEG54_six_lead,275,319,0.8620689655172413,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,N2,1,EEG54_six_lead,277,319,0.8683385579937304,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,N3,1,EEG54_six_lead,261,319,0.8181818181818182,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,NREM,1,EEG54_six_lead,277,319,0.8683385579937304,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,All-stage,1,EEG54_six_lead,277,319,0.8683385579937304,auxiliary QC: same-epoch six-lead intersection
 aggregate_stage_support,I0002,N2,1,spatial_asymmetry_all_pairs,277,319,0.8683385579937304,all three same-epoch left/right pair intersections
 aggregate_stage_support,I0002,REM,1,spatial_asymmetry_all_pairs,266,319,0.8338557993730408,all three same-epoch left/right pair intersections
 aggregate_stage_support,I0002,N2,1,spatial_ap_gradient_four_lead,277,319,0.8683385579937304,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,I0002,N3,1,spatial_ap_gradient_four_lead,261,319,0.8181818181818182,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,I0002,REM,1,spatial_ap_gradient_four_lead,266,319,0.8338557993730408,same-epoch F3/F4/O1/O2 intersection
-aggregate_stage_support,I0002,multiple,1,all_required_EEG_spatial,254,319,0.7962382445141066,all planned EEG54 and spatial candidate supports meet threshold
-aggregate_stage_support,I0002,Wake,2,EEG54_six_lead,277,319,0.8683385579937304,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,REM,2,EEG54_six_lead,265,319,0.8307210031347962,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,N1,2,EEG54_six_lead,275,319,0.8620689655172413,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,N2,2,EEG54_six_lead,277,319,0.8683385579937304,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,N3,2,EEG54_six_lead,258,319,0.8087774294670846,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,NREM,2,EEG54_six_lead,277,319,0.8683385579937304,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,All-stage,2,EEG54_six_lead,277,319,0.8683385579937304,aggregate of same-epoch six-lead intersections
+aggregate_stage_support,I0002,multiple,1,EEG54_individual_leads_all_valid,254,319,0.7962382445141066,all 6 model stage groups x 6 leads independently meet threshold; N1 is not an output group
+aggregate_stage_support,I0002,multiple,1,Spatial36_all_combinations_valid,254,319,0.7962382445141066,all approved same-epoch pair and four-lead spatial combinations meet threshold
+aggregate_stage_support,I0002,multiple,1,all_required_EEG_spatial_actual,254,319,0.7962382445141066,EEG648 individual-lead support and all Spatial36 combinations meet threshold
+aggregate_stage_support,I0002,multiple,1,all_required_EEG_spatial_joint6_conservative,254,319,0.7962382445141066,auxiliary QC: joint-six-lead support in 6 model stage groups plus all Spatial36 combinations
+aggregate_stage_support,I0002,Wake,2,EEG54_six_lead,277,319,0.8683385579937304,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,REM,2,EEG54_six_lead,265,319,0.8307210031347962,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,N1,2,EEG54_six_lead,275,319,0.8620689655172413,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,N2,2,EEG54_six_lead,277,319,0.8683385579937304,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,N3,2,EEG54_six_lead,258,319,0.8087774294670846,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,NREM,2,EEG54_six_lead,277,319,0.8683385579937304,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,All-stage,2,EEG54_six_lead,277,319,0.8683385579937304,auxiliary QC: same-epoch six-lead intersection
 aggregate_stage_support,I0002,N2,2,spatial_asymmetry_all_pairs,277,319,0.8683385579937304,all three same-epoch left/right pair intersections
 aggregate_stage_support,I0002,REM,2,spatial_asymmetry_all_pairs,265,319,0.8307210031347962,all three same-epoch left/right pair intersections
 aggregate_stage_support,I0002,N2,2,spatial_ap_gradient_four_lead,277,319,0.8683385579937304,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,I0002,N3,2,spatial_ap_gradient_four_lead,258,319,0.8087774294670846,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,I0002,REM,2,spatial_ap_gradient_four_lead,265,319,0.8307210031347962,same-epoch F3/F4/O1/O2 intersection
-aggregate_stage_support,I0002,multiple,2,all_required_EEG_spatial,251,319,0.786833855799373,all planned EEG54 and spatial candidate supports meet threshold
-aggregate_stage_support,I0002,Wake,3,EEG54_six_lead,277,319,0.8683385579937304,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,REM,3,EEG54_six_lead,263,319,0.8244514106583072,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,N1,3,EEG54_six_lead,275,319,0.8620689655172413,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,N2,3,EEG54_six_lead,277,319,0.8683385579937304,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,N3,3,EEG54_six_lead,252,319,0.7899686520376176,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,NREM,3,EEG54_six_lead,277,319,0.8683385579937304,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,All-stage,3,EEG54_six_lead,277,319,0.8683385579937304,aggregate of same-epoch six-lead intersections
+aggregate_stage_support,I0002,multiple,2,EEG54_individual_leads_all_valid,251,319,0.786833855799373,all 6 model stage groups x 6 leads independently meet threshold; N1 is not an output group
+aggregate_stage_support,I0002,multiple,2,Spatial36_all_combinations_valid,251,319,0.786833855799373,all approved same-epoch pair and four-lead spatial combinations meet threshold
+aggregate_stage_support,I0002,multiple,2,all_required_EEG_spatial_actual,251,319,0.786833855799373,EEG648 individual-lead support and all Spatial36 combinations meet threshold
+aggregate_stage_support,I0002,multiple,2,all_required_EEG_spatial_joint6_conservative,251,319,0.786833855799373,auxiliary QC: joint-six-lead support in 6 model stage groups plus all Spatial36 combinations
+aggregate_stage_support,I0002,Wake,3,EEG54_six_lead,277,319,0.8683385579937304,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,REM,3,EEG54_six_lead,263,319,0.8244514106583072,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,N1,3,EEG54_six_lead,275,319,0.8620689655172413,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,N2,3,EEG54_six_lead,277,319,0.8683385579937304,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,N3,3,EEG54_six_lead,252,319,0.7899686520376176,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,NREM,3,EEG54_six_lead,277,319,0.8683385579937304,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,All-stage,3,EEG54_six_lead,277,319,0.8683385579937304,auxiliary QC: same-epoch six-lead intersection
 aggregate_stage_support,I0002,N2,3,spatial_asymmetry_all_pairs,277,319,0.8683385579937304,all three same-epoch left/right pair intersections
 aggregate_stage_support,I0002,REM,3,spatial_asymmetry_all_pairs,263,319,0.8244514106583072,all three same-epoch left/right pair intersections
 aggregate_stage_support,I0002,N2,3,spatial_ap_gradient_four_lead,277,319,0.8683385579937304,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,I0002,N3,3,spatial_ap_gradient_four_lead,252,319,0.7899686520376176,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,I0002,REM,3,spatial_ap_gradient_four_lead,263,319,0.8244514106583072,same-epoch F3/F4/O1/O2 intersection
-aggregate_stage_support,I0002,multiple,3,all_required_EEG_spatial,244,319,0.7648902821316614,all planned EEG54 and spatial candidate supports meet threshold
-aggregate_stage_support,I0002,Wake,5,EEG54_six_lead,277,319,0.8683385579937304,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,REM,5,EEG54_six_lead,261,319,0.8181818181818182,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,N1,5,EEG54_six_lead,272,319,0.8526645768025078,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,N2,5,EEG54_six_lead,277,319,0.8683385579937304,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,N3,5,EEG54_six_lead,246,319,0.7711598746081505,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,NREM,5,EEG54_six_lead,277,319,0.8683385579937304,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,All-stage,5,EEG54_six_lead,277,319,0.8683385579937304,aggregate of same-epoch six-lead intersections
+aggregate_stage_support,I0002,multiple,3,EEG54_individual_leads_all_valid,244,319,0.7648902821316614,all 6 model stage groups x 6 leads independently meet threshold; N1 is not an output group
+aggregate_stage_support,I0002,multiple,3,Spatial36_all_combinations_valid,244,319,0.7648902821316614,all approved same-epoch pair and four-lead spatial combinations meet threshold
+aggregate_stage_support,I0002,multiple,3,all_required_EEG_spatial_actual,244,319,0.7648902821316614,EEG648 individual-lead support and all Spatial36 combinations meet threshold
+aggregate_stage_support,I0002,multiple,3,all_required_EEG_spatial_joint6_conservative,244,319,0.7648902821316614,auxiliary QC: joint-six-lead support in 6 model stage groups plus all Spatial36 combinations
+aggregate_stage_support,I0002,Wake,5,EEG54_six_lead,277,319,0.8683385579937304,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,REM,5,EEG54_six_lead,261,319,0.8181818181818182,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,N1,5,EEG54_six_lead,272,319,0.8526645768025078,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,N2,5,EEG54_six_lead,277,319,0.8683385579937304,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,N3,5,EEG54_six_lead,246,319,0.7711598746081505,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,NREM,5,EEG54_six_lead,277,319,0.8683385579937304,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,All-stage,5,EEG54_six_lead,277,319,0.8683385579937304,auxiliary QC: same-epoch six-lead intersection
 aggregate_stage_support,I0002,N2,5,spatial_asymmetry_all_pairs,277,319,0.8683385579937304,all three same-epoch left/right pair intersections
 aggregate_stage_support,I0002,REM,5,spatial_asymmetry_all_pairs,262,319,0.8213166144200627,all three same-epoch left/right pair intersections
 aggregate_stage_support,I0002,N2,5,spatial_ap_gradient_four_lead,277,319,0.8683385579937304,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,I0002,N3,5,spatial_ap_gradient_four_lead,246,319,0.7711598746081505,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,I0002,REM,5,spatial_ap_gradient_four_lead,262,319,0.8213166144200627,same-epoch F3/F4/O1/O2 intersection
-aggregate_stage_support,I0002,multiple,5,all_required_EEG_spatial,239,319,0.7492163009404389,all planned EEG54 and spatial candidate supports meet threshold
-aggregate_stage_support,I0002,Wake,10,EEG54_six_lead,277,319,0.8683385579937304,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,REM,10,EEG54_six_lead,252,319,0.7899686520376176,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,N1,10,EEG54_six_lead,267,319,0.8369905956112853,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,N2,10,EEG54_six_lead,277,319,0.8683385579937304,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,N3,10,EEG54_six_lead,242,319,0.7586206896551724,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,NREM,10,EEG54_six_lead,277,319,0.8683385579937304,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,All-stage,10,EEG54_six_lead,277,319,0.8683385579937304,aggregate of same-epoch six-lead intersections
+aggregate_stage_support,I0002,multiple,5,EEG54_individual_leads_all_valid,239,319,0.7492163009404389,all 6 model stage groups x 6 leads independently meet threshold; N1 is not an output group
+aggregate_stage_support,I0002,multiple,5,Spatial36_all_combinations_valid,239,319,0.7492163009404389,all approved same-epoch pair and four-lead spatial combinations meet threshold
+aggregate_stage_support,I0002,multiple,5,all_required_EEG_spatial_actual,239,319,0.7492163009404389,EEG648 individual-lead support and all Spatial36 combinations meet threshold
+aggregate_stage_support,I0002,multiple,5,all_required_EEG_spatial_joint6_conservative,239,319,0.7492163009404389,auxiliary QC: joint-six-lead support in 6 model stage groups plus all Spatial36 combinations
+aggregate_stage_support,I0002,Wake,10,EEG54_six_lead,277,319,0.8683385579937304,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,REM,10,EEG54_six_lead,252,319,0.7899686520376176,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,N1,10,EEG54_six_lead,267,319,0.8369905956112853,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,N2,10,EEG54_six_lead,277,319,0.8683385579937304,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,N3,10,EEG54_six_lead,242,319,0.7586206896551724,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,NREM,10,EEG54_six_lead,277,319,0.8683385579937304,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,All-stage,10,EEG54_six_lead,277,319,0.8683385579937304,auxiliary QC: same-epoch six-lead intersection
 aggregate_stage_support,I0002,N2,10,spatial_asymmetry_all_pairs,277,319,0.8683385579937304,all three same-epoch left/right pair intersections
 aggregate_stage_support,I0002,REM,10,spatial_asymmetry_all_pairs,252,319,0.7899686520376176,all three same-epoch left/right pair intersections
 aggregate_stage_support,I0002,N2,10,spatial_ap_gradient_four_lead,277,319,0.8683385579937304,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,I0002,N3,10,spatial_ap_gradient_four_lead,242,319,0.7586206896551724,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,I0002,REM,10,spatial_ap_gradient_four_lead,252,319,0.7899686520376176,same-epoch F3/F4/O1/O2 intersection
-aggregate_stage_support,I0002,multiple,10,all_required_EEG_spatial,227,319,0.7115987460815048,all planned EEG54 and spatial candidate supports meet threshold
-aggregate_stage_support,I0002,Wake,20,EEG54_six_lead,277,319,0.8683385579937304,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,REM,20,EEG54_six_lead,240,319,0.7523510971786834,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,N1,20,EEG54_six_lead,255,319,0.799373040752351,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,N2,20,EEG54_six_lead,274,319,0.8589341692789969,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,N3,20,EEG54_six_lead,227,319,0.7115987460815048,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,NREM,20,EEG54_six_lead,275,319,0.8620689655172413,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,All-stage,20,EEG54_six_lead,277,319,0.8683385579937304,aggregate of same-epoch six-lead intersections
+aggregate_stage_support,I0002,multiple,10,EEG54_individual_leads_all_valid,228,319,0.7147335423197492,all 6 model stage groups x 6 leads independently meet threshold; N1 is not an output group
+aggregate_stage_support,I0002,multiple,10,Spatial36_all_combinations_valid,228,319,0.7147335423197492,all approved same-epoch pair and four-lead spatial combinations meet threshold
+aggregate_stage_support,I0002,multiple,10,all_required_EEG_spatial_actual,228,319,0.7147335423197492,EEG648 individual-lead support and all Spatial36 combinations meet threshold
+aggregate_stage_support,I0002,multiple,10,all_required_EEG_spatial_joint6_conservative,228,319,0.7147335423197492,auxiliary QC: joint-six-lead support in 6 model stage groups plus all Spatial36 combinations
+aggregate_stage_support,I0002,Wake,20,EEG54_six_lead,277,319,0.8683385579937304,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,REM,20,EEG54_six_lead,240,319,0.7523510971786834,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,N1,20,EEG54_six_lead,255,319,0.799373040752351,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,N2,20,EEG54_six_lead,274,319,0.8589341692789969,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,N3,20,EEG54_six_lead,227,319,0.7115987460815048,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,NREM,20,EEG54_six_lead,275,319,0.8620689655172413,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,All-stage,20,EEG54_six_lead,277,319,0.8683385579937304,auxiliary QC: same-epoch six-lead intersection
 aggregate_stage_support,I0002,N2,20,spatial_asymmetry_all_pairs,274,319,0.8589341692789969,all three same-epoch left/right pair intersections
 aggregate_stage_support,I0002,REM,20,spatial_asymmetry_all_pairs,240,319,0.7523510971786834,all three same-epoch left/right pair intersections
 aggregate_stage_support,I0002,N2,20,spatial_ap_gradient_four_lead,274,319,0.8589341692789969,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,I0002,N3,20,spatial_ap_gradient_four_lead,227,319,0.7115987460815048,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,I0002,REM,20,spatial_ap_gradient_four_lead,240,319,0.7523510971786834,same-epoch F3/F4/O1/O2 intersection
-aggregate_stage_support,I0002,multiple,20,all_required_EEG_spatial,200,319,0.6269592476489029,all planned EEG54 and spatial candidate supports meet threshold
-aggregate_stage_support,I0002,Wake,30,EEG54_six_lead,277,319,0.8683385579937304,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,REM,30,EEG54_six_lead,229,319,0.7178683385579937,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,N1,30,EEG54_six_lead,234,319,0.7335423197492164,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,N2,30,EEG54_six_lead,273,319,0.8557993730407524,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,N3,30,EEG54_six_lead,213,319,0.6677115987460815,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,NREM,30,EEG54_six_lead,273,319,0.8557993730407524,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,All-stage,30,EEG54_six_lead,277,319,0.8683385579937304,aggregate of same-epoch six-lead intersections
+aggregate_stage_support,I0002,multiple,20,EEG54_individual_leads_all_valid,206,319,0.64576802507837,all 6 model stage groups x 6 leads independently meet threshold; N1 is not an output group
+aggregate_stage_support,I0002,multiple,20,Spatial36_all_combinations_valid,206,319,0.64576802507837,all approved same-epoch pair and four-lead spatial combinations meet threshold
+aggregate_stage_support,I0002,multiple,20,all_required_EEG_spatial_actual,206,319,0.64576802507837,EEG648 individual-lead support and all Spatial36 combinations meet threshold
+aggregate_stage_support,I0002,multiple,20,all_required_EEG_spatial_joint6_conservative,206,319,0.64576802507837,auxiliary QC: joint-six-lead support in 6 model stage groups plus all Spatial36 combinations
+aggregate_stage_support,I0002,Wake,30,EEG54_six_lead,277,319,0.8683385579937304,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,REM,30,EEG54_six_lead,229,319,0.7178683385579937,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,N1,30,EEG54_six_lead,234,319,0.7335423197492164,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,N2,30,EEG54_six_lead,273,319,0.8557993730407524,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,N3,30,EEG54_six_lead,213,319,0.6677115987460815,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,NREM,30,EEG54_six_lead,273,319,0.8557993730407524,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,All-stage,30,EEG54_six_lead,277,319,0.8683385579937304,auxiliary QC: same-epoch six-lead intersection
 aggregate_stage_support,I0002,N2,30,spatial_asymmetry_all_pairs,273,319,0.8557993730407524,all three same-epoch left/right pair intersections
 aggregate_stage_support,I0002,REM,30,spatial_asymmetry_all_pairs,229,319,0.7178683385579937,all three same-epoch left/right pair intersections
 aggregate_stage_support,I0002,N2,30,spatial_ap_gradient_four_lead,273,319,0.8557993730407524,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,I0002,N3,30,spatial_ap_gradient_four_lead,213,319,0.6677115987460815,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,I0002,REM,30,spatial_ap_gradient_four_lead,229,319,0.7178683385579937,same-epoch F3/F4/O1/O2 intersection
-aggregate_stage_support,I0002,multiple,30,all_required_EEG_spatial,169,319,0.5297805642633229,all planned EEG54 and spatial candidate supports meet threshold
-aggregate_stage_support,I0002,Wake,60,EEG54_six_lead,268,319,0.8401253918495298,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,REM,60,EEG54_six_lead,192,319,0.6018808777429467,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,N1,60,EEG54_six_lead,95,319,0.29780564263322884,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,N2,60,EEG54_six_lead,272,319,0.8526645768025078,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,N3,60,EEG54_six_lead,179,319,0.5611285266457681,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,NREM,60,EEG54_six_lead,272,319,0.8526645768025078,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0002,All-stage,60,EEG54_six_lead,277,319,0.8683385579937304,aggregate of same-epoch six-lead intersections
+aggregate_stage_support,I0002,multiple,30,EEG54_individual_leads_all_valid,191,319,0.5987460815047022,all 6 model stage groups x 6 leads independently meet threshold; N1 is not an output group
+aggregate_stage_support,I0002,multiple,30,Spatial36_all_combinations_valid,191,319,0.5987460815047022,all approved same-epoch pair and four-lead spatial combinations meet threshold
+aggregate_stage_support,I0002,multiple,30,all_required_EEG_spatial_actual,191,319,0.5987460815047022,EEG648 individual-lead support and all Spatial36 combinations meet threshold
+aggregate_stage_support,I0002,multiple,30,all_required_EEG_spatial_joint6_conservative,191,319,0.5987460815047022,auxiliary QC: joint-six-lead support in 6 model stage groups plus all Spatial36 combinations
+aggregate_stage_support,I0002,Wake,60,EEG54_six_lead,268,319,0.8401253918495298,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,REM,60,EEG54_six_lead,192,319,0.6018808777429467,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,N1,60,EEG54_six_lead,95,319,0.29780564263322884,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,N2,60,EEG54_six_lead,272,319,0.8526645768025078,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,N3,60,EEG54_six_lead,179,319,0.5611285266457681,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,NREM,60,EEG54_six_lead,272,319,0.8526645768025078,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0002,All-stage,60,EEG54_six_lead,277,319,0.8683385579937304,auxiliary QC: same-epoch six-lead intersection
 aggregate_stage_support,I0002,N2,60,spatial_asymmetry_all_pairs,272,319,0.8526645768025078,all three same-epoch left/right pair intersections
 aggregate_stage_support,I0002,REM,60,spatial_asymmetry_all_pairs,192,319,0.6018808777429467,all three same-epoch left/right pair intersections
 aggregate_stage_support,I0002,N2,60,spatial_ap_gradient_four_lead,272,319,0.8526645768025078,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,I0002,N3,60,spatial_ap_gradient_four_lead,179,319,0.5611285266457681,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,I0002,REM,60,spatial_ap_gradient_four_lead,192,319,0.6018808777429467,same-epoch F3/F4/O1/O2 intersection
-aggregate_stage_support,I0002,multiple,60,all_required_EEG_spatial,43,319,0.13479623824451412,all planned EEG54 and spatial candidate supports meet threshold
-aggregate_stage_support,I0006,Wake,1,EEG54_six_lead,1138,1142,0.9964973730297724,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,REM,1,EEG54_six_lead,1086,1142,0.9509632224168126,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,N1,1,EEG54_six_lead,1128,1142,0.9877408056042032,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,N2,1,EEG54_six_lead,1129,1142,0.98861646234676,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,N3,1,EEG54_six_lead,981,1142,0.8590192644483362,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,NREM,1,EEG54_six_lead,1130,1142,0.989492119089317,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,All-stage,1,EEG54_six_lead,1138,1142,0.9964973730297724,aggregate of same-epoch six-lead intersections
+aggregate_stage_support,I0002,multiple,60,EEG54_individual_leads_all_valid,138,319,0.43260188087774293,all 6 model stage groups x 6 leads independently meet threshold; N1 is not an output group
+aggregate_stage_support,I0002,multiple,60,Spatial36_all_combinations_valid,142,319,0.445141065830721,all approved same-epoch pair and four-lead spatial combinations meet threshold
+aggregate_stage_support,I0002,multiple,60,all_required_EEG_spatial_actual,137,319,0.42946708463949845,EEG648 individual-lead support and all Spatial36 combinations meet threshold
+aggregate_stage_support,I0002,multiple,60,all_required_EEG_spatial_joint6_conservative,136,319,0.4263322884012539,auxiliary QC: joint-six-lead support in 6 model stage groups plus all Spatial36 combinations
+aggregate_stage_support,I0006,Wake,1,EEG54_six_lead,1138,1142,0.9964973730297724,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,REM,1,EEG54_six_lead,1086,1142,0.9509632224168126,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,N1,1,EEG54_six_lead,1128,1142,0.9877408056042032,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,N2,1,EEG54_six_lead,1129,1142,0.98861646234676,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,N3,1,EEG54_six_lead,981,1142,0.8590192644483362,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,NREM,1,EEG54_six_lead,1130,1142,0.989492119089317,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,All-stage,1,EEG54_six_lead,1138,1142,0.9964973730297724,auxiliary QC: same-epoch six-lead intersection
 aggregate_stage_support,I0006,N2,1,spatial_asymmetry_all_pairs,1129,1142,0.98861646234676,all three same-epoch left/right pair intersections
 aggregate_stage_support,I0006,REM,1,spatial_asymmetry_all_pairs,1086,1142,0.9509632224168126,all three same-epoch left/right pair intersections
 aggregate_stage_support,I0006,N2,1,spatial_ap_gradient_four_lead,1130,1142,0.989492119089317,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,I0006,N3,1,spatial_ap_gradient_four_lead,983,1142,0.8607705779334501,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,I0006,REM,1,spatial_ap_gradient_four_lead,1089,1142,0.9535901926444834,same-epoch F3/F4/O1/O2 intersection
-aggregate_stage_support,I0006,multiple,1,all_required_EEG_spatial,949,1142,0.8309982486865148,all planned EEG54 and spatial candidate supports meet threshold
-aggregate_stage_support,I0006,Wake,2,EEG54_six_lead,1135,1142,0.9938704028021016,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,REM,2,EEG54_six_lead,1072,1142,0.9387040280210157,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,N1,2,EEG54_six_lead,1125,1142,0.9851138353765324,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,N2,2,EEG54_six_lead,1129,1142,0.98861646234676,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,N3,2,EEG54_six_lead,956,1142,0.8371278458844134,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,NREM,2,EEG54_six_lead,1129,1142,0.98861646234676,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,All-stage,2,EEG54_six_lead,1136,1142,0.9947460595446584,aggregate of same-epoch six-lead intersections
+aggregate_stage_support,I0006,multiple,1,EEG54_individual_leads_all_valid,949,1142,0.8309982486865148,all 6 model stage groups x 6 leads independently meet threshold; N1 is not an output group
+aggregate_stage_support,I0006,multiple,1,Spatial36_all_combinations_valid,950,1142,0.8318739054290718,all approved same-epoch pair and four-lead spatial combinations meet threshold
+aggregate_stage_support,I0006,multiple,1,all_required_EEG_spatial_actual,949,1142,0.8309982486865148,EEG648 individual-lead support and all Spatial36 combinations meet threshold
+aggregate_stage_support,I0006,multiple,1,all_required_EEG_spatial_joint6_conservative,949,1142,0.8309982486865148,auxiliary QC: joint-six-lead support in 6 model stage groups plus all Spatial36 combinations
+aggregate_stage_support,I0006,Wake,2,EEG54_six_lead,1135,1142,0.9938704028021016,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,REM,2,EEG54_six_lead,1072,1142,0.9387040280210157,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,N1,2,EEG54_six_lead,1125,1142,0.9851138353765324,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,N2,2,EEG54_six_lead,1129,1142,0.98861646234676,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,N3,2,EEG54_six_lead,956,1142,0.8371278458844134,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,NREM,2,EEG54_six_lead,1129,1142,0.98861646234676,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,All-stage,2,EEG54_six_lead,1136,1142,0.9947460595446584,auxiliary QC: same-epoch six-lead intersection
 aggregate_stage_support,I0006,N2,2,spatial_asymmetry_all_pairs,1129,1142,0.98861646234676,all three same-epoch left/right pair intersections
 aggregate_stage_support,I0006,REM,2,spatial_asymmetry_all_pairs,1072,1142,0.9387040280210157,all three same-epoch left/right pair intersections
 aggregate_stage_support,I0006,N2,2,spatial_ap_gradient_four_lead,1130,1142,0.989492119089317,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,I0006,N3,2,spatial_ap_gradient_four_lead,957,1142,0.8380035026269702,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,I0006,REM,2,spatial_ap_gradient_four_lead,1074,1142,0.9404553415061296,same-epoch F3/F4/O1/O2 intersection
-aggregate_stage_support,I0006,multiple,2,all_required_EEG_spatial,917,1142,0.8029772329246935,all planned EEG54 and spatial candidate supports meet threshold
-aggregate_stage_support,I0006,Wake,3,EEG54_six_lead,1133,1142,0.9921190893169878,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,REM,3,EEG54_six_lead,1066,1142,0.9334500875656743,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,N1,3,EEG54_six_lead,1122,1142,0.9824868651488616,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,N2,3,EEG54_six_lead,1129,1142,0.98861646234676,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,N3,3,EEG54_six_lead,939,1142,0.8222416812609457,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,NREM,3,EEG54_six_lead,1129,1142,0.98861646234676,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,All-stage,3,EEG54_six_lead,1136,1142,0.9947460595446584,aggregate of same-epoch six-lead intersections
+aggregate_stage_support,I0006,multiple,2,EEG54_individual_leads_all_valid,918,1142,0.8038528896672504,all 6 model stage groups x 6 leads independently meet threshold; N1 is not an output group
+aggregate_stage_support,I0006,multiple,2,Spatial36_all_combinations_valid,918,1142,0.8038528896672504,all approved same-epoch pair and four-lead spatial combinations meet threshold
+aggregate_stage_support,I0006,multiple,2,all_required_EEG_spatial_actual,918,1142,0.8038528896672504,EEG648 individual-lead support and all Spatial36 combinations meet threshold
+aggregate_stage_support,I0006,multiple,2,all_required_EEG_spatial_joint6_conservative,918,1142,0.8038528896672504,auxiliary QC: joint-six-lead support in 6 model stage groups plus all Spatial36 combinations
+aggregate_stage_support,I0006,Wake,3,EEG54_six_lead,1133,1142,0.9921190893169878,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,REM,3,EEG54_six_lead,1066,1142,0.9334500875656743,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,N1,3,EEG54_six_lead,1122,1142,0.9824868651488616,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,N2,3,EEG54_six_lead,1129,1142,0.98861646234676,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,N3,3,EEG54_six_lead,939,1142,0.8222416812609457,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,NREM,3,EEG54_six_lead,1129,1142,0.98861646234676,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,All-stage,3,EEG54_six_lead,1136,1142,0.9947460595446584,auxiliary QC: same-epoch six-lead intersection
 aggregate_stage_support,I0006,N2,3,spatial_asymmetry_all_pairs,1129,1142,0.98861646234676,all three same-epoch left/right pair intersections
 aggregate_stage_support,I0006,REM,3,spatial_asymmetry_all_pairs,1066,1142,0.9334500875656743,all three same-epoch left/right pair intersections
 aggregate_stage_support,I0006,N2,3,spatial_ap_gradient_four_lead,1130,1142,0.989492119089317,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,I0006,N3,3,spatial_ap_gradient_four_lead,940,1142,0.8231173380035026,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,I0006,REM,3,spatial_ap_gradient_four_lead,1068,1142,0.9352014010507881,same-epoch F3/F4/O1/O2 intersection
-aggregate_stage_support,I0006,multiple,3,all_required_EEG_spatial,898,1142,0.7863397548161121,all planned EEG54 and spatial candidate supports meet threshold
-aggregate_stage_support,I0006,Wake,5,EEG54_six_lead,1133,1142,0.9921190893169878,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,REM,5,EEG54_six_lead,1055,1142,0.9238178633975481,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,N1,5,EEG54_six_lead,1118,1142,0.978984238178634,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,N2,5,EEG54_six_lead,1129,1142,0.98861646234676,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,N3,5,EEG54_six_lead,914,1142,0.8003502626970228,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,NREM,5,EEG54_six_lead,1129,1142,0.98861646234676,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,All-stage,5,EEG54_six_lead,1135,1142,0.9938704028021016,aggregate of same-epoch six-lead intersections
+aggregate_stage_support,I0006,multiple,3,EEG54_individual_leads_all_valid,899,1142,0.787215411558669,all 6 model stage groups x 6 leads independently meet threshold; N1 is not an output group
+aggregate_stage_support,I0006,multiple,3,Spatial36_all_combinations_valid,899,1142,0.787215411558669,all approved same-epoch pair and four-lead spatial combinations meet threshold
+aggregate_stage_support,I0006,multiple,3,all_required_EEG_spatial_actual,899,1142,0.787215411558669,EEG648 individual-lead support and all Spatial36 combinations meet threshold
+aggregate_stage_support,I0006,multiple,3,all_required_EEG_spatial_joint6_conservative,899,1142,0.787215411558669,auxiliary QC: joint-six-lead support in 6 model stage groups plus all Spatial36 combinations
+aggregate_stage_support,I0006,Wake,5,EEG54_six_lead,1133,1142,0.9921190893169878,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,REM,5,EEG54_six_lead,1055,1142,0.9238178633975481,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,N1,5,EEG54_six_lead,1118,1142,0.978984238178634,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,N2,5,EEG54_six_lead,1129,1142,0.98861646234676,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,N3,5,EEG54_six_lead,914,1142,0.8003502626970228,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,NREM,5,EEG54_six_lead,1129,1142,0.98861646234676,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,All-stage,5,EEG54_six_lead,1135,1142,0.9938704028021016,auxiliary QC: same-epoch six-lead intersection
 aggregate_stage_support,I0006,N2,5,spatial_asymmetry_all_pairs,1129,1142,0.98861646234676,all three same-epoch left/right pair intersections
 aggregate_stage_support,I0006,REM,5,spatial_asymmetry_all_pairs,1055,1142,0.9238178633975481,all three same-epoch left/right pair intersections
 aggregate_stage_support,I0006,N2,5,spatial_ap_gradient_four_lead,1130,1142,0.989492119089317,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,I0006,N3,5,spatial_ap_gradient_four_lead,915,1142,0.8012259194395797,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,I0006,REM,5,spatial_ap_gradient_four_lead,1057,1142,0.925569176882662,same-epoch F3/F4/O1/O2 intersection
-aggregate_stage_support,I0006,multiple,5,all_required_EEG_spatial,872,1142,0.7635726795096323,all planned EEG54 and spatial candidate supports meet threshold
-aggregate_stage_support,I0006,Wake,10,EEG54_six_lead,1132,1142,0.9912434325744308,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,REM,10,EEG54_six_lead,1029,1142,0.9010507880910683,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,N1,10,EEG54_six_lead,1105,1142,0.967600700525394,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,N2,10,EEG54_six_lead,1129,1142,0.98861646234676,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,N3,10,EEG54_six_lead,854,1142,0.7478108581436077,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,NREM,10,EEG54_six_lead,1129,1142,0.98861646234676,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,All-stage,10,EEG54_six_lead,1135,1142,0.9938704028021016,aggregate of same-epoch six-lead intersections
+aggregate_stage_support,I0006,multiple,5,EEG54_individual_leads_all_valid,874,1142,0.7653239929947461,all 6 model stage groups x 6 leads independently meet threshold; N1 is not an output group
+aggregate_stage_support,I0006,multiple,5,Spatial36_all_combinations_valid,874,1142,0.7653239929947461,all approved same-epoch pair and four-lead spatial combinations meet threshold
+aggregate_stage_support,I0006,multiple,5,all_required_EEG_spatial_actual,874,1142,0.7653239929947461,EEG648 individual-lead support and all Spatial36 combinations meet threshold
+aggregate_stage_support,I0006,multiple,5,all_required_EEG_spatial_joint6_conservative,874,1142,0.7653239929947461,auxiliary QC: joint-six-lead support in 6 model stage groups plus all Spatial36 combinations
+aggregate_stage_support,I0006,Wake,10,EEG54_six_lead,1132,1142,0.9912434325744308,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,REM,10,EEG54_six_lead,1029,1142,0.9010507880910683,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,N1,10,EEG54_six_lead,1105,1142,0.967600700525394,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,N2,10,EEG54_six_lead,1129,1142,0.98861646234676,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,N3,10,EEG54_six_lead,854,1142,0.7478108581436077,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,NREM,10,EEG54_six_lead,1129,1142,0.98861646234676,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,All-stage,10,EEG54_six_lead,1135,1142,0.9938704028021016,auxiliary QC: same-epoch six-lead intersection
 aggregate_stage_support,I0006,N2,10,spatial_asymmetry_all_pairs,1129,1142,0.98861646234676,all three same-epoch left/right pair intersections
 aggregate_stage_support,I0006,REM,10,spatial_asymmetry_all_pairs,1029,1142,0.9010507880910683,all three same-epoch left/right pair intersections
 aggregate_stage_support,I0006,N2,10,spatial_ap_gradient_four_lead,1130,1142,0.989492119089317,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,I0006,N3,10,spatial_ap_gradient_four_lead,855,1142,0.7486865148861647,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,I0006,REM,10,spatial_ap_gradient_four_lead,1032,1142,0.9036777583187391,same-epoch F3/F4/O1/O2 intersection
-aggregate_stage_support,I0006,multiple,10,all_required_EEG_spatial,794,1142,0.6952714535901926,all planned EEG54 and spatial candidate supports meet threshold
-aggregate_stage_support,I0006,Wake,20,EEG54_six_lead,1131,1142,0.9903677758318739,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,REM,20,EEG54_six_lead,966,1142,0.8458844133099825,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,N1,20,EEG54_six_lead,1032,1142,0.9036777583187391,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,N2,20,EEG54_six_lead,1128,1142,0.9877408056042032,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,N3,20,EEG54_six_lead,779,1142,0.6821366024518388,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,NREM,20,EEG54_six_lead,1128,1142,0.9877408056042032,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,All-stage,20,EEG54_six_lead,1134,1142,0.9929947460595446,aggregate of same-epoch six-lead intersections
+aggregate_stage_support,I0006,multiple,10,EEG54_individual_leads_all_valid,805,1142,0.7049036777583187,all 6 model stage groups x 6 leads independently meet threshold; N1 is not an output group
+aggregate_stage_support,I0006,multiple,10,Spatial36_all_combinations_valid,805,1142,0.7049036777583187,all approved same-epoch pair and four-lead spatial combinations meet threshold
+aggregate_stage_support,I0006,multiple,10,all_required_EEG_spatial_actual,805,1142,0.7049036777583187,EEG648 individual-lead support and all Spatial36 combinations meet threshold
+aggregate_stage_support,I0006,multiple,10,all_required_EEG_spatial_joint6_conservative,805,1142,0.7049036777583187,auxiliary QC: joint-six-lead support in 6 model stage groups plus all Spatial36 combinations
+aggregate_stage_support,I0006,Wake,20,EEG54_six_lead,1131,1142,0.9903677758318739,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,REM,20,EEG54_six_lead,966,1142,0.8458844133099825,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,N1,20,EEG54_six_lead,1032,1142,0.9036777583187391,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,N2,20,EEG54_six_lead,1128,1142,0.9877408056042032,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,N3,20,EEG54_six_lead,779,1142,0.6821366024518388,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,NREM,20,EEG54_six_lead,1128,1142,0.9877408056042032,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,All-stage,20,EEG54_six_lead,1134,1142,0.9929947460595446,auxiliary QC: same-epoch six-lead intersection
 aggregate_stage_support,I0006,N2,20,spatial_asymmetry_all_pairs,1128,1142,0.9877408056042032,all three same-epoch left/right pair intersections
 aggregate_stage_support,I0006,REM,20,spatial_asymmetry_all_pairs,966,1142,0.8458844133099825,all three same-epoch left/right pair intersections
 aggregate_stage_support,I0006,N2,20,spatial_ap_gradient_four_lead,1129,1142,0.98861646234676,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,I0006,N3,20,spatial_ap_gradient_four_lead,781,1142,0.6838879159369528,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,I0006,REM,20,spatial_ap_gradient_four_lead,967,1142,0.8467600700525394,same-epoch F3/F4/O1/O2 intersection
-aggregate_stage_support,I0006,multiple,20,all_required_EEG_spatial,651,1142,0.5700525394045534,all planned EEG54 and spatial candidate supports meet threshold
-aggregate_stage_support,I0006,Wake,30,EEG54_six_lead,1122,1142,0.9824868651488616,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,REM,30,EEG54_six_lead,917,1142,0.8029772329246935,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,N1,30,EEG54_six_lead,871,1142,0.7626970227670753,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,N2,30,EEG54_six_lead,1128,1142,0.9877408056042032,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,N3,30,EEG54_six_lead,731,1142,0.6401050788091068,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,NREM,30,EEG54_six_lead,1128,1142,0.9877408056042032,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,All-stage,30,EEG54_six_lead,1134,1142,0.9929947460595446,aggregate of same-epoch six-lead intersections
+aggregate_stage_support,I0006,multiple,20,EEG54_individual_leads_all_valid,704,1142,0.6164623467600701,all 6 model stage groups x 6 leads independently meet threshold; N1 is not an output group
+aggregate_stage_support,I0006,multiple,20,Spatial36_all_combinations_valid,706,1142,0.6182136602451839,all approved same-epoch pair and four-lead spatial combinations meet threshold
+aggregate_stage_support,I0006,multiple,20,all_required_EEG_spatial_actual,704,1142,0.6164623467600701,EEG648 individual-lead support and all Spatial36 combinations meet threshold
+aggregate_stage_support,I0006,multiple,20,all_required_EEG_spatial_joint6_conservative,704,1142,0.6164623467600701,auxiliary QC: joint-six-lead support in 6 model stage groups plus all Spatial36 combinations
+aggregate_stage_support,I0006,Wake,30,EEG54_six_lead,1122,1142,0.9824868651488616,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,REM,30,EEG54_six_lead,917,1142,0.8029772329246935,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,N1,30,EEG54_six_lead,871,1142,0.7626970227670753,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,N2,30,EEG54_six_lead,1128,1142,0.9877408056042032,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,N3,30,EEG54_six_lead,731,1142,0.6401050788091068,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,NREM,30,EEG54_six_lead,1128,1142,0.9877408056042032,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,All-stage,30,EEG54_six_lead,1134,1142,0.9929947460595446,auxiliary QC: same-epoch six-lead intersection
 aggregate_stage_support,I0006,N2,30,spatial_asymmetry_all_pairs,1128,1142,0.9877408056042032,all three same-epoch left/right pair intersections
 aggregate_stage_support,I0006,REM,30,spatial_asymmetry_all_pairs,917,1142,0.8029772329246935,all three same-epoch left/right pair intersections
 aggregate_stage_support,I0006,N2,30,spatial_ap_gradient_four_lead,1129,1142,0.98861646234676,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,I0006,N3,30,spatial_ap_gradient_four_lead,732,1142,0.6409807355516638,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,I0006,REM,30,spatial_ap_gradient_four_lead,918,1142,0.8038528896672504,same-epoch F3/F4/O1/O2 intersection
-aggregate_stage_support,I0006,multiple,30,all_required_EEG_spatial,505,1142,0.44220665499124345,all planned EEG54 and spatial candidate supports meet threshold
-aggregate_stage_support,I0006,Wake,60,EEG54_six_lead,1068,1142,0.9352014010507881,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,REM,60,EEG54_six_lead,723,1142,0.6330998248686515,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,N1,60,EEG54_six_lead,344,1142,0.30122591943957966,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,N2,60,EEG54_six_lead,1125,1142,0.9851138353765324,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,N3,60,EEG54_six_lead,522,1142,0.45709281961471104,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,NREM,60,EEG54_six_lead,1128,1142,0.9877408056042032,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,I0006,All-stage,60,EEG54_six_lead,1134,1142,0.9929947460595446,aggregate of same-epoch six-lead intersections
+aggregate_stage_support,I0006,multiple,30,EEG54_individual_leads_all_valid,639,1142,0.5595446584938704,all 6 model stage groups x 6 leads independently meet threshold; N1 is not an output group
+aggregate_stage_support,I0006,multiple,30,Spatial36_all_combinations_valid,642,1142,0.5621716287215411,all approved same-epoch pair and four-lead spatial combinations meet threshold
+aggregate_stage_support,I0006,multiple,30,all_required_EEG_spatial_actual,639,1142,0.5595446584938704,EEG648 individual-lead support and all Spatial36 combinations meet threshold
+aggregate_stage_support,I0006,multiple,30,all_required_EEG_spatial_joint6_conservative,636,1142,0.5569176882661997,auxiliary QC: joint-six-lead support in 6 model stage groups plus all Spatial36 combinations
+aggregate_stage_support,I0006,Wake,60,EEG54_six_lead,1068,1142,0.9352014010507881,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,REM,60,EEG54_six_lead,723,1142,0.6330998248686515,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,N1,60,EEG54_six_lead,344,1142,0.30122591943957966,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,N2,60,EEG54_six_lead,1125,1142,0.9851138353765324,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,N3,60,EEG54_six_lead,522,1142,0.45709281961471104,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,NREM,60,EEG54_six_lead,1128,1142,0.9877408056042032,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,I0006,All-stage,60,EEG54_six_lead,1134,1142,0.9929947460595446,auxiliary QC: same-epoch six-lead intersection
 aggregate_stage_support,I0006,N2,60,spatial_asymmetry_all_pairs,1125,1142,0.9851138353765324,all three same-epoch left/right pair intersections
 aggregate_stage_support,I0006,REM,60,spatial_asymmetry_all_pairs,723,1142,0.6330998248686515,all three same-epoch left/right pair intersections
 aggregate_stage_support,I0006,N2,60,spatial_ap_gradient_four_lead,1127,1142,0.9868651488616462,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,I0006,N3,60,spatial_ap_gradient_four_lead,524,1142,0.45884413309982486,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,I0006,REM,60,spatial_ap_gradient_four_lead,724,1142,0.6339754816112084,same-epoch F3/F4/O1/O2 intersection
-aggregate_stage_support,I0006,multiple,60,all_required_EEG_spatial,85,1142,0.07443082311733801,all planned EEG54 and spatial candidate supports meet threshold
-aggregate_stage_support,S0001,Wake,1,EEG54_six_lead,5033,5139,0.9793734189531037,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,REM,1,EEG54_six_lead,4879,5139,0.9494064993189336,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,N1,1,EEG54_six_lead,4996,5139,0.9721735746254135,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,N2,1,EEG54_six_lead,5011,5139,0.9750924304339366,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,N3,1,EEG54_six_lead,4714,5139,0.91729908542518,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,NREM,1,EEG54_six_lead,5017,5139,0.9762599727573458,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,All-stage,1,EEG54_six_lead,5036,5139,0.9799571901148083,aggregate of same-epoch six-lead intersections
+aggregate_stage_support,I0006,multiple,60,EEG54_individual_leads_all_valid,353,1142,0.30910683012259194,all 6 model stage groups x 6 leads independently meet threshold; N1 is not an output group
+aggregate_stage_support,I0006,multiple,60,Spatial36_all_combinations_valid,389,1142,0.340630472854641,all approved same-epoch pair and four-lead spatial combinations meet threshold
+aggregate_stage_support,I0006,multiple,60,all_required_EEG_spatial_actual,352,1142,0.30823117338003503,EEG648 individual-lead support and all Spatial36 combinations meet threshold
+aggregate_stage_support,I0006,multiple,60,all_required_EEG_spatial_joint6_conservative,351,1142,0.3073555166374781,auxiliary QC: joint-six-lead support in 6 model stage groups plus all Spatial36 combinations
+aggregate_stage_support,S0001,Wake,1,EEG54_six_lead,5033,5139,0.9793734189531037,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,REM,1,EEG54_six_lead,4879,5139,0.9494064993189336,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,N1,1,EEG54_six_lead,4996,5139,0.9721735746254135,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,N2,1,EEG54_six_lead,5011,5139,0.9750924304339366,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,N3,1,EEG54_six_lead,4714,5139,0.91729908542518,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,NREM,1,EEG54_six_lead,5017,5139,0.9762599727573458,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,All-stage,1,EEG54_six_lead,5036,5139,0.9799571901148083,auxiliary QC: same-epoch six-lead intersection
 aggregate_stage_support,S0001,N2,1,spatial_asymmetry_all_pairs,5013,5139,0.9754816112084063,all three same-epoch left/right pair intersections
 aggregate_stage_support,S0001,REM,1,spatial_asymmetry_all_pairs,4881,5139,0.9497956800934034,all three same-epoch left/right pair intersections
 aggregate_stage_support,S0001,N2,1,spatial_ap_gradient_four_lead,5017,5139,0.9762599727573458,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,S0001,N3,1,spatial_ap_gradient_four_lead,4723,5139,0.9190503989102938,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,S0001,REM,1,spatial_ap_gradient_four_lead,4889,5139,0.9513524031912823,same-epoch F3/F4/O1/O2 intersection
-aggregate_stage_support,S0001,multiple,1,all_required_EEG_spatial,4623,5139,0.8995913601868067,all planned EEG54 and spatial candidate supports meet threshold
-aggregate_stage_support,S0001,Wake,2,EEG54_six_lead,5027,5139,0.9782058766296945,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,REM,2,EEG54_six_lead,4842,5139,0.9422066549912435,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,N1,2,EEG54_six_lead,4984,5139,0.969838489978595,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,N2,2,EEG54_six_lead,5002,5139,0.9733411169488227,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,N3,2,EEG54_six_lead,4664,5139,0.9075695660634364,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,NREM,2,EEG54_six_lead,5007,5139,0.974314068884997,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,All-stage,2,EEG54_six_lead,5031,5139,0.978984238178634,aggregate of same-epoch six-lead intersections
+aggregate_stage_support,S0001,multiple,1,EEG54_individual_leads_all_valid,4631,5139,0.9011480832846858,all 6 model stage groups x 6 leads independently meet threshold; N1 is not an output group
+aggregate_stage_support,S0001,multiple,1,Spatial36_all_combinations_valid,4630,5139,0.9009534928974509,all approved same-epoch pair and four-lead spatial combinations meet threshold
+aggregate_stage_support,S0001,multiple,1,all_required_EEG_spatial_actual,4628,5139,0.9005643121229812,EEG648 individual-lead support and all Spatial36 combinations meet threshold
+aggregate_stage_support,S0001,multiple,1,all_required_EEG_spatial_joint6_conservative,4626,5139,0.9001751313485113,auxiliary QC: joint-six-lead support in 6 model stage groups plus all Spatial36 combinations
+aggregate_stage_support,S0001,Wake,2,EEG54_six_lead,5027,5139,0.9782058766296945,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,REM,2,EEG54_six_lead,4842,5139,0.9422066549912435,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,N1,2,EEG54_six_lead,4984,5139,0.969838489978595,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,N2,2,EEG54_six_lead,5002,5139,0.9733411169488227,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,N3,2,EEG54_six_lead,4664,5139,0.9075695660634364,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,NREM,2,EEG54_six_lead,5007,5139,0.974314068884997,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,All-stage,2,EEG54_six_lead,5031,5139,0.978984238178634,auxiliary QC: same-epoch six-lead intersection
 aggregate_stage_support,S0001,N2,2,spatial_asymmetry_all_pairs,5005,5139,0.9739248881105274,all three same-epoch left/right pair intersections
 aggregate_stage_support,S0001,REM,2,spatial_asymmetry_all_pairs,4842,5139,0.9422066549912435,all three same-epoch left/right pair intersections
 aggregate_stage_support,S0001,N2,2,spatial_ap_gradient_four_lead,5008,5139,0.974508659272232,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,S0001,N3,2,spatial_ap_gradient_four_lead,4674,5139,0.9095154699357851,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,S0001,REM,2,spatial_ap_gradient_four_lead,4849,5139,0.9435687877018876,same-epoch F3/F4/O1/O2 intersection
-aggregate_stage_support,S0001,multiple,2,all_required_EEG_spatial,4559,5139,0.887137575403775,all planned EEG54 and spatial candidate supports meet threshold
-aggregate_stage_support,S0001,Wake,3,EEG54_six_lead,5021,5139,0.9770383343062853,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,REM,3,EEG54_six_lead,4813,5139,0.9365635337614322,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,N1,3,EEG54_six_lead,4973,5139,0.9676979957190115,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,N2,3,EEG54_six_lead,4999,5139,0.9727573457871181,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,N3,3,EEG54_six_lead,4622,5139,0.899396769799572,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,NREM,3,EEG54_six_lead,5005,5139,0.9739248881105274,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,All-stage,3,EEG54_six_lead,5028,5139,0.9784004670169294,aggregate of same-epoch six-lead intersections
+aggregate_stage_support,S0001,multiple,2,EEG54_individual_leads_all_valid,4566,5139,0.8884997081144191,all 6 model stage groups x 6 leads independently meet threshold; N1 is not an output group
+aggregate_stage_support,S0001,multiple,2,Spatial36_all_combinations_valid,4566,5139,0.8884997081144191,all approved same-epoch pair and four-lead spatial combinations meet threshold
+aggregate_stage_support,S0001,multiple,2,all_required_EEG_spatial_actual,4562,5139,0.8877213465654796,EEG648 individual-lead support and all Spatial36 combinations meet threshold
+aggregate_stage_support,S0001,multiple,2,all_required_EEG_spatial_joint6_conservative,4561,5139,0.8875267561782448,auxiliary QC: joint-six-lead support in 6 model stage groups plus all Spatial36 combinations
+aggregate_stage_support,S0001,Wake,3,EEG54_six_lead,5021,5139,0.9770383343062853,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,REM,3,EEG54_six_lead,4813,5139,0.9365635337614322,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,N1,3,EEG54_six_lead,4973,5139,0.9676979957190115,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,N2,3,EEG54_six_lead,4999,5139,0.9727573457871181,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,N3,3,EEG54_six_lead,4622,5139,0.899396769799572,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,NREM,3,EEG54_six_lead,5005,5139,0.9739248881105274,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,All-stage,3,EEG54_six_lead,5028,5139,0.9784004670169294,auxiliary QC: same-epoch six-lead intersection
 aggregate_stage_support,S0001,N2,3,spatial_asymmetry_all_pairs,5005,5139,0.9739248881105274,all three same-epoch left/right pair intersections
 aggregate_stage_support,S0001,REM,3,spatial_asymmetry_all_pairs,4815,5139,0.9369527145359019,all three same-epoch left/right pair intersections
 aggregate_stage_support,S0001,N2,3,spatial_ap_gradient_four_lead,5005,5139,0.9739248881105274,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,S0001,N3,3,spatial_ap_gradient_four_lead,4632,5139,0.9013426736719206,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,S0001,REM,3,spatial_ap_gradient_four_lead,4822,5139,0.938314847246546,same-epoch F3/F4/O1/O2 intersection
-aggregate_stage_support,S0001,multiple,3,all_required_EEG_spatial,4501,5139,0.8758513329441525,all planned EEG54 and spatial candidate supports meet threshold
-aggregate_stage_support,S0001,Wake,5,EEG54_six_lead,5015,5139,0.9758707919828761,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,REM,5,EEG54_six_lead,4766,5139,0.9274177855613933,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,N1,5,EEG54_six_lead,4958,5139,0.9647791399104885,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,N2,5,EEG54_six_lead,4994,5139,0.9717843938509437,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,N3,5,EEG54_six_lead,4571,5139,0.8894726600505936,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,NREM,5,EEG54_six_lead,4999,5139,0.9727573457871181,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,All-stage,5,EEG54_six_lead,5024,5139,0.9776221054679899,aggregate of same-epoch six-lead intersections
+aggregate_stage_support,S0001,multiple,3,EEG54_individual_leads_all_valid,4511,5139,0.8777972368165012,all 6 model stage groups x 6 leads independently meet threshold; N1 is not an output group
+aggregate_stage_support,S0001,multiple,3,Spatial36_all_combinations_valid,4508,5139,0.8772134656547966,all approved same-epoch pair and four-lead spatial combinations meet threshold
+aggregate_stage_support,S0001,multiple,3,all_required_EEG_spatial_actual,4506,5139,0.8768242848803269,EEG648 individual-lead support and all Spatial36 combinations meet threshold
+aggregate_stage_support,S0001,multiple,3,all_required_EEG_spatial_joint6_conservative,4504,5139,0.8764351041058571,auxiliary QC: joint-six-lead support in 6 model stage groups plus all Spatial36 combinations
+aggregate_stage_support,S0001,Wake,5,EEG54_six_lead,5015,5139,0.9758707919828761,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,REM,5,EEG54_six_lead,4766,5139,0.9274177855613933,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,N1,5,EEG54_six_lead,4958,5139,0.9647791399104885,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,N2,5,EEG54_six_lead,4994,5139,0.9717843938509437,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,N3,5,EEG54_six_lead,4571,5139,0.8894726600505936,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,NREM,5,EEG54_six_lead,4999,5139,0.9727573457871181,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,All-stage,5,EEG54_six_lead,5024,5139,0.9776221054679899,auxiliary QC: same-epoch six-lead intersection
 aggregate_stage_support,S0001,N2,5,spatial_asymmetry_all_pairs,4996,5139,0.9721735746254135,all three same-epoch left/right pair intersections
 aggregate_stage_support,S0001,REM,5,spatial_asymmetry_all_pairs,4771,5139,0.9283907374975676,all three same-epoch left/right pair intersections
 aggregate_stage_support,S0001,N2,5,spatial_ap_gradient_four_lead,4999,5139,0.9727573457871181,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,S0001,N3,5,spatial_ap_gradient_four_lead,4582,5139,0.8916131543101771,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,S0001,REM,5,spatial_ap_gradient_four_lead,4778,5139,0.9297528702082117,same-epoch F3/F4/O1/O2 intersection
-aggregate_stage_support,S0001,multiple,5,all_required_EEG_spatial,4422,5139,0.8604786923525978,all planned EEG54 and spatial candidate supports meet threshold
-aggregate_stage_support,S0001,Wake,10,EEG54_six_lead,5003,5139,0.9735357073360577,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,REM,10,EEG54_six_lead,4673,5139,0.9093208795485503,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,N1,10,EEG54_six_lead,4917,5139,0.9568009340338587,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,N2,10,EEG54_six_lead,4984,5139,0.969838489978595,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,N3,10,EEG54_six_lead,4453,5139,0.8665109943568787,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,NREM,10,EEG54_six_lead,4991,5139,0.9712006226892391,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,All-stage,10,EEG54_six_lead,5019,5139,0.9766491535318156,aggregate of same-epoch six-lead intersections
+aggregate_stage_support,S0001,multiple,5,EEG54_individual_leads_all_valid,4436,5139,0.863202957773886,all 6 model stage groups x 6 leads independently meet threshold; N1 is not an output group
+aggregate_stage_support,S0001,multiple,5,Spatial36_all_combinations_valid,4435,5139,0.8630083673866511,all approved same-epoch pair and four-lead spatial combinations meet threshold
+aggregate_stage_support,S0001,multiple,5,all_required_EEG_spatial_actual,4433,5139,0.8626191866121814,EEG648 individual-lead support and all Spatial36 combinations meet threshold
+aggregate_stage_support,S0001,multiple,5,all_required_EEG_spatial_joint6_conservative,4429,5139,0.8618408250632419,auxiliary QC: joint-six-lead support in 6 model stage groups plus all Spatial36 combinations
+aggregate_stage_support,S0001,Wake,10,EEG54_six_lead,5003,5139,0.9735357073360577,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,REM,10,EEG54_six_lead,4673,5139,0.9093208795485503,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,N1,10,EEG54_six_lead,4917,5139,0.9568009340338587,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,N2,10,EEG54_six_lead,4984,5139,0.969838489978595,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,N3,10,EEG54_six_lead,4453,5139,0.8665109943568787,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,NREM,10,EEG54_six_lead,4991,5139,0.9712006226892391,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,All-stage,10,EEG54_six_lead,5019,5139,0.9766491535318156,auxiliary QC: same-epoch six-lead intersection
 aggregate_stage_support,S0001,N2,10,spatial_asymmetry_all_pairs,4985,5139,0.9700330803658299,all three same-epoch left/right pair intersections
 aggregate_stage_support,S0001,REM,10,spatial_asymmetry_all_pairs,4679,5139,0.9104884218719596,all three same-epoch left/right pair intersections
 aggregate_stage_support,S0001,N2,10,spatial_ap_gradient_four_lead,4988,5139,0.9706168515275345,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,S0001,N3,10,spatial_ap_gradient_four_lead,4464,5139,0.8686514886164624,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,S0001,REM,10,spatial_ap_gradient_four_lead,4688,5139,0.9122397353570734,same-epoch F3/F4/O1/O2 intersection
-aggregate_stage_support,S0001,multiple,10,all_required_EEG_spatial,4253,5139,0.8275929169099047,all planned EEG54 and spatial candidate supports meet threshold
-aggregate_stage_support,S0001,Wake,20,EEG54_six_lead,4979,5139,0.9688655380424207,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,REM,20,EEG54_six_lead,4546,5139,0.8846079003697217,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,N1,20,EEG54_six_lead,4751,5139,0.9244989297528702,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,N2,20,EEG54_six_lead,4977,5139,0.968476357267951,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,N3,20,EEG54_six_lead,4247,5139,0.8264253745864955,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,NREM,20,EEG54_six_lead,4980,5139,0.9690601284296556,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,All-stage,20,EEG54_six_lead,5005,5139,0.9739248881105274,aggregate of same-epoch six-lead intersections
+aggregate_stage_support,S0001,multiple,10,EEG54_individual_leads_all_valid,4280,5139,0.8328468573652461,all 6 model stage groups x 6 leads independently meet threshold; N1 is not an output group
+aggregate_stage_support,S0001,multiple,10,Spatial36_all_combinations_valid,4280,5139,0.8328468573652461,all approved same-epoch pair and four-lead spatial combinations meet threshold
+aggregate_stage_support,S0001,multiple,10,all_required_EEG_spatial_actual,4276,5139,0.8320684958163067,EEG648 individual-lead support and all Spatial36 combinations meet threshold
+aggregate_stage_support,S0001,multiple,10,all_required_EEG_spatial_joint6_conservative,4274,5139,0.8316793150418369,auxiliary QC: joint-six-lead support in 6 model stage groups plus all Spatial36 combinations
+aggregate_stage_support,S0001,Wake,20,EEG54_six_lead,4979,5139,0.9688655380424207,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,REM,20,EEG54_six_lead,4546,5139,0.8846079003697217,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,N1,20,EEG54_six_lead,4751,5139,0.9244989297528702,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,N2,20,EEG54_six_lead,4977,5139,0.968476357267951,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,N3,20,EEG54_six_lead,4247,5139,0.8264253745864955,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,NREM,20,EEG54_six_lead,4980,5139,0.9690601284296556,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,All-stage,20,EEG54_six_lead,5005,5139,0.9739248881105274,auxiliary QC: same-epoch six-lead intersection
 aggregate_stage_support,S0001,N2,20,spatial_asymmetry_all_pairs,4978,5139,0.9686709476551858,all three same-epoch left/right pair intersections
 aggregate_stage_support,S0001,REM,20,spatial_asymmetry_all_pairs,4549,5139,0.8851916715314263,all three same-epoch left/right pair intersections
 aggregate_stage_support,S0001,N2,20,spatial_ap_gradient_four_lead,4981,5139,0.9692547188168904,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,S0001,N3,20,spatial_ap_gradient_four_lead,4259,5139,0.8287604592333139,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,S0001,REM,20,spatial_ap_gradient_four_lead,4560,5139,0.8873321657910099,same-epoch F3/F4/O1/O2 intersection
-aggregate_stage_support,S0001,multiple,20,all_required_EEG_spatial,3896,5139,0.7581241486670558,all planned EEG54 and spatial candidate supports meet threshold
-aggregate_stage_support,S0001,Wake,30,EEG54_six_lead,4950,5139,0.9632224168126094,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,REM,30,EEG54_six_lead,4410,5139,0.8581436077057794,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,N1,30,EEG54_six_lead,4406,5139,0.8573652461568398,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,N2,30,EEG54_six_lead,4965,5139,0.9661412726211325,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,N3,30,EEG54_six_lead,4044,5139,0.7869235259778167,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,NREM,30,EEG54_six_lead,4977,5139,0.968476357267951,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,All-stage,30,EEG54_six_lead,4998,5139,0.9725627553998832,aggregate of same-epoch six-lead intersections
+aggregate_stage_support,S0001,multiple,20,EEG54_individual_leads_all_valid,4019,5139,0.7820587662969449,all 6 model stage groups x 6 leads independently meet threshold; N1 is not an output group
+aggregate_stage_support,S0001,multiple,20,Spatial36_all_combinations_valid,4023,5139,0.7828371278458844,all approved same-epoch pair and four-lead spatial combinations meet threshold
+aggregate_stage_support,S0001,multiple,20,all_required_EEG_spatial_actual,4017,5139,0.7816695855224752,EEG648 individual-lead support and all Spatial36 combinations meet threshold
+aggregate_stage_support,S0001,multiple,20,all_required_EEG_spatial_joint6_conservative,4012,5139,0.7806966335863008,auxiliary QC: joint-six-lead support in 6 model stage groups plus all Spatial36 combinations
+aggregate_stage_support,S0001,Wake,30,EEG54_six_lead,4950,5139,0.9632224168126094,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,REM,30,EEG54_six_lead,4410,5139,0.8581436077057794,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,N1,30,EEG54_six_lead,4406,5139,0.8573652461568398,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,N2,30,EEG54_six_lead,4965,5139,0.9661412726211325,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,N3,30,EEG54_six_lead,4044,5139,0.7869235259778167,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,NREM,30,EEG54_six_lead,4977,5139,0.968476357267951,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,All-stage,30,EEG54_six_lead,4998,5139,0.9725627553998832,auxiliary QC: same-epoch six-lead intersection
 aggregate_stage_support,S0001,N2,30,spatial_asymmetry_all_pairs,4968,5139,0.9667250437828371,all three same-epoch left/right pair intersections
 aggregate_stage_support,S0001,REM,30,spatial_asymmetry_all_pairs,4416,5139,0.8593111500291886,all three same-epoch left/right pair intersections
 aggregate_stage_support,S0001,N2,30,spatial_ap_gradient_four_lead,4971,5139,0.9673088149445418,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,S0001,N3,30,spatial_ap_gradient_four_lead,4062,5139,0.7904261529480444,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,S0001,REM,30,spatial_ap_gradient_four_lead,4426,5139,0.8612570539015373,same-epoch F3/F4/O1/O2 intersection
-aggregate_stage_support,S0001,multiple,30,all_required_EEG_spatial,3388,5139,0.6592722319517416,all planned EEG54 and spatial candidate supports meet threshold
-aggregate_stage_support,S0001,Wake,60,EEG54_six_lead,4715,5139,0.9174936758124149,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,REM,60,EEG54_six_lead,3811,5139,0.7415839657520918,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,N1,60,EEG54_six_lead,2669,5139,0.5193617435298696,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,N2,60,EEG54_six_lead,4940,5139,0.9612765129402607,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,N3,60,EEG54_six_lead,3286,5139,0.6394240124537848,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,NREM,60,EEG54_six_lead,4956,5139,0.9643899591360187,aggregate of same-epoch six-lead intersections
-aggregate_stage_support,S0001,All-stage,60,EEG54_six_lead,4982,5139,0.9694493092041253,aggregate of same-epoch six-lead intersections
+aggregate_stage_support,S0001,multiple,30,EEG54_individual_leads_all_valid,3761,5139,0.7318544463903484,all 6 model stage groups x 6 leads independently meet threshold; N1 is not an output group
+aggregate_stage_support,S0001,multiple,30,Spatial36_all_combinations_valid,3777,5139,0.7349678925861063,all approved same-epoch pair and four-lead spatial combinations meet threshold
+aggregate_stage_support,S0001,multiple,30,all_required_EEG_spatial_actual,3760,5139,0.7316598560031135,EEG648 individual-lead support and all Spatial36 combinations meet threshold
+aggregate_stage_support,S0001,multiple,30,all_required_EEG_spatial_joint6_conservative,3756,5139,0.7308814944541739,auxiliary QC: joint-six-lead support in 6 model stage groups plus all Spatial36 combinations
+aggregate_stage_support,S0001,Wake,60,EEG54_six_lead,4715,5139,0.9174936758124149,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,REM,60,EEG54_six_lead,3811,5139,0.7415839657520918,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,N1,60,EEG54_six_lead,2669,5139,0.5193617435298696,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,N2,60,EEG54_six_lead,4940,5139,0.9612765129402607,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,N3,60,EEG54_six_lead,3286,5139,0.6394240124537848,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,NREM,60,EEG54_six_lead,4956,5139,0.9643899591360187,auxiliary QC: same-epoch six-lead intersection
+aggregate_stage_support,S0001,All-stage,60,EEG54_six_lead,4982,5139,0.9694493092041253,auxiliary QC: same-epoch six-lead intersection
 aggregate_stage_support,S0001,N2,60,spatial_asymmetry_all_pairs,4944,5139,0.9620548744892002,all three same-epoch left/right pair intersections
 aggregate_stage_support,S0001,REM,60,spatial_asymmetry_all_pairs,3814,5139,0.7421677369137964,all three same-epoch left/right pair intersections
 aggregate_stage_support,S0001,N2,60,spatial_ap_gradient_four_lead,4947,5139,0.9626386456509048,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,S0001,N3,60,spatial_ap_gradient_four_lead,3305,5139,0.6431212298112473,same-epoch F3/F4/O1/O2 intersection
 aggregate_stage_support,S0001,REM,60,spatial_ap_gradient_four_lead,3830,5139,0.7452811831095544,same-epoch F3/F4/O1/O2 intersection
-aggregate_stage_support,S0001,multiple,60,all_required_EEG_spatial,1378,5139,0.2681455536096517,all planned EEG54 and spatial candidate supports meet threshold
+aggregate_stage_support,S0001,multiple,60,EEG54_individual_leads_all_valid,2687,5139,0.5228643705000973,all 6 model stage groups x 6 leads independently meet threshold; N1 is not an output group
+aggregate_stage_support,S0001,multiple,60,Spatial36_all_combinations_valid,2825,5139,0.5497178439385094,all approved same-epoch pair and four-lead spatial combinations meet threshold
+aggregate_stage_support,S0001,multiple,60,all_required_EEG_spatial_actual,2686,5139,0.5226697801128625,EEG648 individual-lead support and all Spatial36 combinations meet threshold
+aggregate_stage_support,S0001,multiple,60,all_required_EEG_spatial_joint6_conservative,2666,5139,0.518777972368165,auxiliary QC: joint-six-lead support in 6 model stage groups plus all Spatial36 combinations
