@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import csv
+import importlib.util
 import unittest
 from collections import Counter
 from pathlib import Path
@@ -71,6 +72,48 @@ def stage_mask(codes: np.ndarray, stage_valid: np.ndarray, stage: str) -> np.nda
 
 def relative_power(band: np.ndarray, beta: np.ndarray, p0: np.ndarray) -> np.ndarray:
     return np.asarray(band) + np.asarray(beta) - np.asarray(p0)
+
+
+def stage_entropy_source_valid(metadata: dict, entropy_value: float) -> bool:
+    """Test reference for the conservative G1-B-R posterior-source contract."""
+    if metadata["annotation_status"] != "available" or not np.isfinite(entropy_value):
+        return False
+    stage = np.asarray(metadata["stage_code_aligned"], dtype=float)
+    stage_valid = np.asarray(metadata["stage_valid"], dtype=bool)
+    if stage.shape != stage_valid.shape or not np.any(
+        stage_valid & np.isin(stage, [1, 2, 3, 4])
+    ):
+        return False
+    probability = np.asarray(metadata["stage_probability"], dtype=float)
+    probability_valid = np.asarray(metadata["stage_probability_valid"], dtype=bool)
+    present = np.asarray(metadata["stage_probability_channels_present"], dtype=bool)
+    length = len(stage_valid)
+    if probability.shape != (length, 5) or probability_valid.shape != (length,):
+        return False
+    if present.shape != (5,) or not present.all() or not probability_valid.all():
+        return False
+    aliases = (
+        ("caisr_prob_n1",), ("caisr_prob_n2",), ("caisr_prob_n3",),
+        ("caisr_prob_r", "caisr_prob_rem"),
+        ("caisr_prob_w", "caisr_prob_wake"),
+    )
+    lengths = metadata["annotation_signal_lengths"]
+    if any(not any(lengths.get(key) == length for key in keys) for keys in aliases):
+        return False
+    if not np.isfinite(probability).all():
+        return False
+    if np.any((probability < 0.0) | (probability > 1.0)):
+        return False
+    return bool(np.all(probability.sum(axis=1) > 0.0))
+
+
+def algorithmic_mixin_from_source():
+    """Load the dependency-free algorithmic extractor directly from its source."""
+    path = ROOT.parents[1] / "per_epoch_features" / "feature_extractor_algorithmic.py"
+    spec = importlib.util.spec_from_file_location("g1br_algorithmic_actual", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.AlgorithmicMixin()
 
 
 class G1BContractTests(unittest.TestCase):
@@ -226,8 +269,96 @@ class G1BContractTests(unittest.TestCase):
             [11, 12, 13, 14, 16, 17, 18, 19, 20, 32, 34, 87,
              96, 97, 98, 126, 127, 141, 168, 173],
         )
-        self.assertTrue(all("individual zero is valid" in r["missing_semantics"] for r in caisr))
-        self.assertTrue(all("all-zero x_static[10:196] sentinel" in r["missing_semantics"] for r in caisr))
+        ordinary = [r for r in caisr if r["unique_feature_id"] != "caisr_sleep_mean_stage_entropy"]
+        self.assertEqual(len(ordinary), 19)
+        self.assertTrue(all("individual zero is valid" in r["missing_semantics"] for r in ordinary))
+        self.assertTrue(all("all-zero x_static[10:196]" not in r["validity_expression"] for r in caisr))
+        self.assertTrue(all("all-zero x_static[10:196] sentinel" not in r["missing_semantics"] for r in caisr))
+
+    def test_stage_entropy_distinguishes_missing_partial_complete_and_zero_entropy(self):
+        extractor = algorithmic_mixin_from_source()
+        stages = np.array([5, 2, 2, 4, 1.0])
+        base_algo = {
+            "stage_caisr": stages.copy(),
+            "__extraction_mode__": "timegrid_v2",
+            "__sampling_frequencies__": {},
+            "__aligned_stage_code__": stages.copy(),
+        }
+        base_metadata = {
+            "annotation_status": "available",
+            "stage_code_aligned": stages,
+            "stage_valid": np.ones(5, dtype=bool),
+            "stage_probability": np.full((5, 5), np.nan),
+            "stage_probability_valid": np.zeros(5, dtype=bool),
+            "stage_probability_channels_present": np.zeros(5, dtype=bool),
+            "annotation_signal_lengths": {},
+        }
+        missing_entropy = float(extractor.extract_all_algorithmic_features(base_algo)[77])
+        self.assertEqual(missing_entropy, 0.0)
+        self.assertFalse(stage_entropy_source_valid(base_metadata, missing_entropy))
+
+        partial = dict(base_metadata)
+        partial["stage_probability"] = np.column_stack(
+            [np.ones(5), np.full((5, 4), np.nan)]
+        )
+        partial["stage_probability_channels_present"] = np.array([1, 0, 0, 0, 0], dtype=bool)
+        partial["annotation_signal_lengths"] = {"caisr_prob_n1": 5}
+        self.assertFalse(stage_entropy_source_valid(partial, 0.0))
+
+        complete = dict(base_metadata)
+        complete["stage_probability"] = np.tile([0, 0, 1, 0, 0], (5, 1))
+        complete["stage_probability_valid"] = np.ones(5, dtype=bool)
+        complete["stage_probability_channels_present"] = np.ones(5, dtype=bool)
+        complete["annotation_signal_lengths"] = {
+            "caisr_prob_n1": 5, "caisr_prob_n2": 5, "caisr_prob_n3": 5,
+            "caisr_prob_r": 5, "caisr_prob_w": 5,
+        }
+        complete_algo = dict(base_algo)
+        for key, column in (
+            ("caisr_prob_n1", 0), ("caisr_prob_n2", 1),
+            ("caisr_prob_n3", 2), ("caisr_prob_r", 3),
+            ("caisr_prob_w", 4),
+        ):
+            complete_algo[key] = complete["stage_probability"][:, column]
+        valid_entropy = float(extractor.extract_all_algorithmic_features(complete_algo)[77])
+        self.assertAlmostEqual(valid_entropy, 0.0, places=9)
+        self.assertTrue(stage_entropy_source_valid(complete, valid_entropy))
+
+        all_zero_probability = dict(complete)
+        all_zero_probability["stage_probability"] = np.zeros((5, 5))
+        self.assertFalse(stage_entropy_source_valid(all_zero_probability, np.log(5.0)))
+
+        clipped_sentinel = dict(complete)
+        clipped_sentinel["stage_probability"] = complete["stage_probability"].copy()
+        clipped_sentinel["stage_probability"][0, :] = 9.0
+        self.assertTrue(clipped_sentinel["stage_probability_valid"].all())
+        self.assertFalse(stage_entropy_source_valid(clipped_sentinel, 0.0))
+
+    def test_missing_annotation_injection_can_produce_nonzero_algorithmic_block(self):
+        extractor = algorithmic_mixin_from_source()
+        injected = {
+            "__extraction_mode__": "timegrid_v2",
+            "__sampling_frequencies__": {},
+            "__aligned_stage_code__": np.full(5, np.nan),
+        }
+        block = extractor.extract_all_algorithmic_features(injected)
+        self.assertTrue(injected)
+        self.assertFalse(np.all(block == 0.0))
+        self.assertEqual(block[0], 150.0)
+        self.assertIn("annotation_status", self.spec)
+        self.assertNotIn("emits an all-zero `x_static[10:196]` block", self.spec)
+
+    def test_entropy_manifest_requires_complete_probability_provenance(self):
+        entropy = next(r for r in self.rows if r["unique_feature_id"] == "caisr_sleep_mean_stage_entropy")
+        for token in (
+            "stage_probability_channels_present", "stage_probability_valid",
+            "stage_probability", "annotation_signal_lengths_json",
+        ):
+            self.assertIn(token, entropy["validity_expression"])
+        self.assertIn("valid sleep stage", entropy["validity_expression"])
+        self.assertIn("row sum > 0", entropy["validity_expression"])
+        self.assertIn("default zero is missing", entropy["missing_semantics"])
+        self.assertIn("legitimate zero entropy remains valid", entropy["missing_semantics"])
 
     def test_no_record_exclusion_or_patient_data_in_contract(self):
         lower = self.spec.lower()

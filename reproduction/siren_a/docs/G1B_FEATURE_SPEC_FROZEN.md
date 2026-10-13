@@ -44,7 +44,11 @@ All required leads, all listed finite source values, stage validity, and lead qu
 
 ### CAISR20
 
-The 20 static columns and order are copied exactly from `data2_caisr20_results/feature_manifest.csv`. Sleep features require available annotation and valid stage support. Arousal, respiratory, and limb features additionally require their respective `arousal_valid`, `resp_event_valid`, or `limb_event_valid` source support. The existing extractor emits an all-zero `x_static[10:196]` block when algorithmic annotations are absent; that documented whole-block pattern is missing. Individual zero-valued CAISR features remain legal whenever their required source metadata is valid, including genuine zero event burdens and safe-division results.
+The 20 static columns and order are copied exactly from `data2_caisr20_results/feature_manifest.csv`. Sleep features require `annotation_status == available` and valid stage support. Arousal, respiratory, and limb features additionally require their respective `arousal_valid`, `resp_event_valid`, or `limb_event_valid` source support. Individual zero-valued CAISR features remain legal whenever their required source metadata is valid, including genuine zero event burdens and safe-division results. No single-value or whole-block zero pattern participates in formal CAISR validity.
+
+`caisr_sleep_mean_stage_entropy` (`x_static[87]`) has a stricter posterior-source contract. It is valid only when annotation is available; at least one valid sleep-stage epoch (codes 1-4) exists; all five N1/N2/N3/REM/W probability channels are present; the probability matrix and validity vector have schema shapes `(T,5)` and `(T,)`; each selected probability source length in `annotation_signal_lengths_json` equals `T`; every probability row is marked valid, finite, bounded in `[0,1]`, and has positive sum; and `x_static[87]` is finite. Here `T = len(stage_valid) = len(stage_code_aligned)`. REM and Wake aliases accepted by the extractor are resolved before checking source lengths.
+
+This conservative rule is necessary because the upstream entropy extractor fills absent channels with zero, converts nonfinite values to zero, clips values, and replaces all-zero rows with a uniform distribution before normalization. A default output of zero from absent posterior inputs is missing. A mathematically legitimate zero or near-zero entropy remains valid when the complete posterior-source contract holds. The stored `x_static[87]` value is never recomputed or altered.
 
 ### HRV22
 
