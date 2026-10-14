@@ -1,0 +1,7 @@
+holdout_site,train_site,protocol,train_count,test_count,index_verified,reference_verified,percentile_verified,quantized_verified,views_verified,audit_verified,source_valid_positions,rank_valid_positions,percentile_mismatch_count,level_mismatch_count,view_mismatch_count,audit_mismatch_count,max_quantization_error,below_reference_count,above_reference_count,status
+I0002,S0001,transductive,5139,319,True,True,True,True,True,True,4240572,4240572,0,0,0,0,0.0019607843137255387,0,0,PASS
+I0002,S0001,inductive,5139,319,True,True,True,True,True,True,4240572,4240572,0,0,0,0,0.0019607843137255387,351,537,PASS
+I0006,S0001,transductive,5139,1142,True,True,True,True,True,True,4883256,4883256,0,0,0,0,0.0019607843137255387,0,0,PASS
+I0006,S0001,inductive,5139,1142,True,True,True,True,True,True,4883256,4883256,0,0,0,0,0.0019607843137255387,226,220,PASS
+S0001,I0006,transductive,1142,5139,True,True,True,True,True,True,4883256,4883256,0,0,0,0,0.0019607843137255387,0,0,PASS
+S0001,I0006,inductive,1142,5139,True,True,True,True,True,True,4883256,4883256,0,0,0,0,0.0019607843137255387,9473,19747,PASS
