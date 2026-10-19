@@ -31,6 +31,8 @@ Every source is opened with `numpy.load(..., allow_pickle=False)`. The loader re
 
 The loader exposes an allowlisted `SourceRecord` and deliberately omits `y`. The source identity includes the canonical resolved source path, record key, file size, file SHA256, source schemas, required field names, shapes, and dtypes. A family declares its required keys so unrelated source fields do not enter its recipe.
 
+The record key is deterministic, cross-site unique, and safe for use as one filename component. The loader first verifies that NPZ `site_id` and `record_id` agree with the source's `<site_id>/<record_id>.npz` relative location. It then canonicalizes the exact tuple `{"namespace":"timegrid_v2.1.0","site_id":<site_id>,"record_id":<record_id>}` as sorted compact UTF-8 JSON and sets `record_key` to `rec_` followed by the full lowercase SHA256 hex digest. Raw identifiers never appear in the cache filename. An inventory and the cache validator both maintain the canonical identity tuple behind each key; the same key associated with a different tuple or different source identity is `STOP_INVALID`, never an overwrite or automatic rename. Duplicate paths, duplicate canonical tuples with different files, unsafe/noncanonical keys, and path-versus-NPZ identity disagreement are hard errors before calculation.
+
 The frozen column slices remain unchanged:
 
 - EEG54: `X_seq[:, 0:54]`.
@@ -81,10 +83,12 @@ Each recipe ID is the SHA256 of canonical JSON containing only inputs that can c
 - Formula identifiers and all numerical parameters.
 - Required source fields, column definitions, and validity rules.
 - Relevant preprocessing semantics inherited from the source.
-- SHA256 fingerprints of the family module and explicitly declared numerical helper dependencies.
+- SHA256 fingerprints of the family extractor and explicitly declared transitive numerical code units. At minimum this covers the exact NPZ source-adapter callable that materializes family inputs, the stage/time-grid validity callables used by the family, shared aggregation callables, family-specific numerical helpers, and explicitly referenced numerical constants.
 - Versions of NumPy and any third-party numerical package used by that family.
 
-The repository Git commit is recorded as provenance but is not recipe material. Cache-writing code, documentation, other families, training code, and unrelated repository changes cannot invalidate a family recipe.
+The declarative recipe material also embeds the source-adapter contract version, exact required source fields and columns, stage-code mapping, stage scopes, adjacency definition, validity expressions, minimum supports, missingness rules, and normalized processing parameters. Each dependency is named as a module-qualified symbol or explicit constant. Its function/class definition is canonicalized from the Python AST without comments, docstrings, or source-location metadata before hashing; every numerical helper it calls must be separately declared. The registry rejects an unresolved symbol, an undeclared numerical helper detected by its dependency audit, or a missing constant fingerprint. This ensures changes to source adaptation, stage validity, or shared calculations invalidate every affected family without making unrelated functions in the same file part of the recipe.
+
+The repository Git commit is recorded as provenance but is not recipe material. Cache serialization, atomic-publication code, CLI/reporting code, documentation, tests, other families, training code, and unrelated repository changes cannot invalidate a family recipe unless they are explicitly declared as numerical dependencies. Tests must prove both directions: changing a declared numerical dependency changes the recipe, while changing an unrelated file does not.
 
 Cache payloads use non-object NumPy arrays and canonical JSON strings. They include cache schema, completion status, family and recipe identities, ordered feature IDs, all `FeatureResult` fields, source identity, processing parameters, code provenance, runtime versions, and a logical payload SHA256. The payload digest covers typed array shapes/dtypes/bytes and canonical metadata, excluding only the digest field itself.
 
@@ -182,7 +186,7 @@ Synthetic tests cover:
 7. Low support yields `NaN`, false validity, and a reason.
 8. Valid physiological zero remains valid.
 9. Transition-row normalization and missing rows.
-10. CAISR code/order and bout-static mapping.
+10. CAISR code/order and bout-static mapping, including a synthetic aligned stage grid with invalid gaps whose directly calculated per-stage bout P50/P95 values must equal the values read through the exact `x_static` static indices and stage reorder.
 11. Independent EMG and Resp masks.
 12. Source NPZ SHA256 and stat metadata do not change.
 
@@ -192,7 +196,9 @@ Cache tests use isolated temporary roots:
 - Changing one EEG-tail parameter creates only a new EEG-tail recipe; every other recipe and cache remains reusable.
 - Removing one family result from a disposable test copy rebuilds only that family.
 
-The real smoke selects one record from the verified NPZ inventory using only schema, stage support, and modality availability. It reads no label and no EDF. Selection first uses existing aggregate/audit evidence where possible and otherwise inspects only a bounded number of NPZ metadata records. The source file is SHA256-snapshotted before and after. The smoke performs one build, one cache readback, and one resume. Patient-level values remain only under the private cache/report root; committed reports contain aggregate counts and a few anonymous examples.
+The real smoke selects one record from the verified NPZ inventory using only schema, stage support, and modality availability. It reads no label and no EDF. Selection first uses existing aggregate/audit evidence where possible and otherwise inspects only a bounded number of NPZ metadata records. The source file is SHA256-snapshotted before and after. The smoke performs one build, one cache readback, and one resume.
+
+All real single-patient feature values, Q88 thresholds, Q95 values, drift values, concentration values, entry rates, transition probabilities, stage statistics, record identity mappings, and per-column support details remain only in the private cache/report root and are never committed or copied into public reports. Tracked reports may contain aggregate dimension/valid/missing counts, elapsed time, byte counts, resume decisions, source immutability results, and explicitly labeled synthetic numerical examples only. “Anonymous” real-patient numerical examples are not considered public-safe.
 
 ## 9. Failure behavior and deliverables
 
