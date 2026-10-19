@@ -17,7 +17,9 @@
 - Batch 1 reads only existing `timegrid_v2.1.0 / validity_v0.2` NPZs. It never calls `TimegridV2Extractor.extract_all()`, reads an EDF, recomputes old epoch features, or reads `y`, disease labels, TTE, predictions, or scores.
 - Preserve finite valid zero; represent every invalid output as `NaN`, `valid_mask=False`, an explicit reason, and a nonnegative support count.
 - Final cache granularity is exactly one record × one family × one recipe. Do not cache complete overnight waveforms.
+- Build record-level `SourceIdentity` once from the source itself, independent of requested family IDs, order, count, or required-field union. Validate each family's declared `FamilyInputContract` separately and bind it to a family-specific `FamilyInputIdentity`.
 - Recipe identity includes only actual numerical inputs and declared transitive module-qualified numerical code units/constants; Git HEAD remains provenance only.
+- A core source/record identity failure stops the complete record. A family-only missing field, malformed family field, or unrecoverable family validity rule returns `REQUIRES_INPUT_REVIEW` for that family without publishing its cache and without blocking input-complete sibling families. No error path may substitute zeros, skip validity checks, or publish fabricated valid outputs.
 - Tracked/public reports contain aggregate data and labeled synthetic examples only. Every real smoke value, threshold, support detail, and identity mapping stays outside Git.
 - Use `PYTHONNOUSERSITE=1 /database/home/gaohaojie/.conda/envs/sleepfm_env/bin/python`. Do not install, upgrade, or downgrade dependencies; use standard-library `unittest`, because this environment has no `pytest`.
 - Never run all 6,600 records, full EDF extraction, historical G1–G5 regression, training, ranking, LOSO, or view generation.
@@ -28,10 +30,10 @@
 
 ## Review Focus
 
-1. Path/NPZ identity disagreement, cross-site duplicate IDs, and a forced record-key collision must fail before computation; Task 1 tests all three.
+1. Path/NPZ identity disagreement, cross-site duplicate IDs, and a forced record-key collision must fail before computation; Task 1 tests all three. The same NPZ must also produce byte-identical record identity when loaded for one family or all six.
 2. Upstream finite zero fills must remain invalid when modality metadata says invalid, while valid physiological zero remains valid; Tasks 4, 6, 8, and 9 pin this behavior.
 3. Wake, invalid epochs, and non-30-second time gaps must break temporal and CAISR adjacency without compressing the grid; Tasks 5 and 7 exercise each boundary.
-4. Corrupt, stale, wrong-order, source-mismatched, or concurrently published caches must become `STOP_INVALID` or a no-clobber race result, never an overwrite; Task 3 tests these cases.
+4. Corrupt, stale, wrong-order, source-mismatched, or concurrently published caches must become family-local `STOP_INVALID` or a no-clobber race result, never an overwrite. Core source/record identity failures become record-level `STOP_RECORD`; family-input failures become isolated `REQUIRES_INPUT_REVIEW`. Tasks 1, 3, and 10 test these boundaries and request-order-independent reuse.
 5. No real patient value or threshold may enter a tracked report, even if identifiers are hashed; Task 12 validates a public-report allowlist and private-report location.
 
 ---
@@ -96,14 +98,15 @@ Private caches, source inventories with identities, smoke values, and smoke thre
 - Create: `per_epoch_features/extensions/tests/test_contracts_sources.py`
 
 **Interfaces:**
-- Produces: `SourceIdentity`, `SourceRecord`, `FeatureResult`, `FeatureLabError`, `SourceContractError`, `RecordKeyCollisionError`, `validate_feature_result(result)`.
+- Produces: request-independent `SourceIdentity`, `SourceRecord`, `FamilyInputContract`, `FamilyInputIdentity`, `FeatureResult`, `FamilyRunResult`, `RecordRunSummary`, `FeatureLabError`, `RecordFatalError`, `FamilyInputReviewError`, `FamilyComputeError`, `SourceContractError`, `RecordKeyCollisionError` (a record-fatal error), and `validate_feature_result(result)`.
 - Produces: `record_key_for(site_id: str, record_id: str) -> str`.
-- Produces: `load_source_npz(path: Path, source_root: Path, required_fields: Collection[str]) -> SourceRecord`.
+- Produces: `load_source_npz(path: Path, source_root: Path) -> SourceRecord` without accepting a request-dependent required-field union.
+- Produces: `validate_family_input(source: SourceRecord, contract: FamilyInputContract) -> FamilyInputIdentity`.
 - Produces: `build_source_inventory(paths: Iterable[Path], source_root: Path) -> tuple[SourceIdentity, ...]`.
 
 - [ ] **Step 1: Write failing contract and source tests**
 
-Add tests asserting that the same canonical tuple always yields `rec_[0-9a-f]{64}`, equal record IDs at two sites yield different keys, hostile identifier characters never enter the key, and a monkeypatched digest collision with different tuples raises `RecordKeyCollisionError`. Add synthetic NPZ tests for path/scalar mismatch, duplicate canonical identity with different file SHA, forbidden/absent fields, exact array shapes, `allow_pickle=False`, and the absence of `y` from `SourceRecord.arrays`. Add a `FeatureResult` invariant test covering finite-valid, NaN-invalid, valid zero, lengths, unique IDs, supports, and missing reasons.
+Add tests asserting that the same canonical tuple always yields `rec_[0-9a-f]{64}`, equal record IDs at two sites yield different keys, hostile identifier characters never enter the key, and a monkeypatched digest collision with different tuples raises `RecordKeyCollisionError`. For one synthetic NPZ, load family A alone, A before B, B before A, and A+B together; assert byte-identical `SourceIdentity` and byte-identical family-A `FamilyInputIdentity` in every case. Add synthetic NPZ tests for path/scalar mismatch, duplicate canonical identity with different file SHA, `allow_pickle=False`, and the absence of `y` from `SourceRecord.arrays`; these core errors must raise `RecordFatalError`. Separately assert that a missing or malformed family-only field and unrecoverable family validity produce `FamilyInputReviewError` only for that family, without mutating the source. Add a `FeatureResult` invariant test covering finite-valid, NaN-invalid, valid zero, lengths, unique IDs, supports, and missing reasons.
 
 - [ ] **Step 2: Run the focused test and confirm RED**
 
@@ -113,7 +116,7 @@ Expected: import failure for the not-yet-created contracts/source interfaces.
 
 - [ ] **Step 3: Implement the minimal source and result contracts**
 
-Use canonical compact sorted JSON over namespace/site/record and the full SHA256 digest. Validate `<site>/<record>.npz` against NPZ scalars before reading arrays into the allowlist. Hash source bytes in chunks, store exact required shapes/dtypes, copy arrays needed after closing the NPZ, and never access `z["y"]`.
+Use canonical compact sorted JSON over namespace/site/record and the full SHA256 digest. Validate `<site>/<record>.npz` against NPZ scalars before materializing the allowlisted source catalog. Hash source bytes in chunks, copy permitted arrays needed after closing the NPZ, and never access `z["y"]`. Keep requested families and their field union out of `SourceIdentity`; validate exact required shapes/dtypes only through each family's contract.
 
 - [ ] **Step 4: Run the focused test and confirm GREEN**
 
@@ -123,7 +126,7 @@ Expected: all Task 1 tests pass; a before/after SHA and stat check proves the sy
 
 Stage only the six Task 1 files and commit `feat(featurelab): add strict read-only source contracts`.
 
-**Acceptance:** deterministic safe keys, explicit collision detection, strict v2.1/v0.2 loading, no label exposure, and validated missingness invariants.
+**Acceptance:** deterministic safe keys, explicit collision detection, strict v2.1/v0.2 loading, no label exposure, request-order-independent source/family identities, record-fatal versus family-review error classification, and validated missingness invariants.
 
 ---
 
@@ -177,11 +180,11 @@ Commit the five explicit Task 2 paths as `feat(featurelab): define numerical rec
 **Interfaces:**
 - Consumes: `SourceRecord`, `FeatureResult`, `FamilySpec`, and `RecipeIdentity`.
 - Produces: `ResumeAction = BUILD_NEW | SKIP_VERIFIED | STOP_INVALID`.
-- Produces: `cache_path(root, family_id, recipe_id, record_key) -> Path`, `read_cache`, `decide_resume_action`, `write_cache_atomic`, and `run_record(source_path, source_root, cache_root, family_ids, config_overrides) -> RunSummary`.
+- Produces: `cache_path(root, family_id, recipe_id, record_key) -> Path`, `read_cache`, `decide_resume_action`, `write_cache_atomic`, and `run_record(source_path, source_root, cache_root, family_ids, config_overrides) -> RecordRunSummary`.
 
 - [ ] **Step 1: Write failing cache and runner tests with dummy families**
 
-Cover exact feature order, schema/version, family/recipe/source mismatch, typed logical payload hash, truncated/corrupt files, incomplete status, no-clobber publication, temporary-file cleanup, and a simulated concurrent winner. Assert that one existing invalid target stops only before overwrite and that requesting one family never invokes an unrequested extractor.
+Cover exact feature order, schema/version, family/recipe/source mismatch, typed logical payload hash, truncated/corrupt files, incomplete status, no-clobber publication, temporary-file cleanup, and a simulated concurrent winner. Assert that one existing invalid target stops only that family before overwrite and that requesting one family never invokes an unrequested extractor. Run dummy family A alone and then A+B, and on a clean cache run A+B then A; require A to return `SKIP_VERIFIED`, never erroneous `STOP_INVALID`, with the same source/family-input identities. Remove a B-only input/validity field and require B=`REQUIRES_INPUT_REVIEW`, no B cache publication, and normal A build/skip. A core record-identity mismatch must return `STOP_RECORD` and invoke neither family. A B compute exception or invalid pre-existing B cache must remain family-local while A continues.
 
 - [ ] **Step 2: Run the focused test and confirm RED**
 
@@ -193,7 +196,7 @@ Serialize non-object arrays and canonical JSON scalars. Write to a same-director
 
 - [ ] **Step 4: Add and pass dummy-family resume tests**
 
-First run must be `BUILD_NEW`; identical second run must be `SKIP_VERIFIED` with zero extractor calls; a missing dummy family must build alone.
+First run must be `BUILD_NEW`; identical second run must be `SKIP_VERIFIED` with zero extractor calls; a missing dummy family must build alone. `FamilyRunResult` must distinguish `BUILT`, `SKIP_VERIFIED`, `REQUIRES_INPUT_REVIEW`, `FAILED`, and `STOP_INVALID`; `RecordRunSummary` must distinguish `COMPLETE`, `PARTIAL`, and `STOP_RECORD` without fake values or counts for an uncomputed family.
 
 - [ ] **Step 5: Document the exact cache schema**
 
@@ -203,7 +206,7 @@ First run must be `BUILD_NEW`; identical second run must be `SKIP_VERIFIED` with
 
 Commit the four Task 3 paths as `feat(featurelab): add atomic family cache runner`.
 
-**Acceptance:** cache files are independently resumable, verifiable, no-clobber, and opaque to family internals.
+**Acceptance:** cache files are independently resumable, verifiable, no-clobber, and opaque to family internals; reuse is invariant to requested-family set/order, record-fatal errors stop the record, and family input/cache/compute failures are truthfully isolated.
 
 ---
 
@@ -253,13 +256,13 @@ Commit explicit Task 4 paths as `feat(featurelab): add EEG tail quantiles`.
 
 - [ ] **Step 1: Write failing position-preserving tests**
 
-Construct raw grids where removing Wake/NaN would change thirds, create 119- and 120-position windows, create windows with 95/96 valid sleep epochs, and insert a non-30-second timestamp gap. Assert strict `> Q88`, zero entries for constants, no transition across Wake/invalid/gap, first/last-third support of 19/20, and denominator conversion from legal 30-second pairs to hours.
+Construct raw grids where removing Wake/NaN would change thirds; create 119- and 120-position windows; create windows with 95/96 valid sleep epochs; and insert a non-30-second timestamp gap inside an otherwise qualifying 120-position window. Assert that a participating hour has exactly 120 consecutive stored positions, all 120 durations equal 30 seconds, and all 119 successive start-time differences equal 30 seconds. The broken-timestamp window must be rejected, while a clock-continuous window may retain Wake and invalid positions and participates only with at least 96 valid sleep epochs. Also assert strict `> Q88`, no full-night fallback when no qualifying hour exists, zero entries for constants, no transition across Wake/invalid/gap, first/last-third support of 19/20, and denominator conversion from legal 30-second pairs to hours.
 
 - [ ] **Step 2: Run `PYTHONNOUSERSITE=1 /database/home/gaohaojie/.conda/envs/sleepfm_env/bin/python -m unittest per_epoch_features.extensions.tests.test_eeg_temporal -v` and confirm RED**
 
 - [ ] **Step 3: Implement the four approved statistics on raw indices**
 
-Calculate the Q88 reference on all valid sleep observations, but never compress positions for thirds, windows, or adjacency.
+Calculate the Q88 reference on all valid sleep observations, but never compress positions for thirds, windows, or adjacency. Reject any 120-position hour candidate containing a non-30-second duration or start-time discontinuity before applying the at-least-96-valid-sleep rule.
 
 - [ ] **Step 4: Run the same focused command and confirm GREEN**
 
@@ -267,7 +270,7 @@ Calculate the Q88 reference on all valid sleep observations, but never compress 
 
 Commit explicit Task 5 paths as `feat(featurelab): add position-preserving EEG temporal features`.
 
-**Acceptance:** 96 columns, original time grid retained, one-hour coverage enforced, and transition rate based only on legal adjacent observation time.
+**Acceptance:** 96 columns, original time grid retained, each eligible hour is exactly 120 clock-contiguous 30-second positions with at least 96 valid sleep epochs, and transition rate is based only on legal adjacent observation time.
 
 ---
 
@@ -421,19 +424,23 @@ Assert ordered family dimensions 288/96/90/35/72/56, total 637, 637 globally uni
 
 Using a synthetic source and isolated cache root, assert that altering only EEG-tail quantiles changes only its recipe/path; the other five recipes and files remain identical and return `SKIP_VERIFIED`.
 
-- [ ] **Step 3: Run `test_manifest` and `test_cache_runner` with separate `python -m unittest ... -v` commands and confirm RED**
+- [ ] **Step 3: Add request-order and family-error-isolation integration tests**
 
-- [ ] **Step 4: Complete the explicit registry and manifest generator**
+Build each real family separately and then request all six; in a clean cache, build all six and then request each family separately. Every previously built family must return `SKIP_VERIFIED` with identical `SourceIdentity` and its own `FamilyInputIdentity`, never `STOP_INVALID`. In isolated fixture copies, remove one coherence-only field and then one EMG-only validity field; each affected family must return `REQUIRES_INPUT_REVIEW` with no result cache while every input-complete sibling continues. A deliberately inconsistent global record identity must return `STOP_RECORD` before any family extractor runs.
+
+- [ ] **Step 4: Run `test_manifest` and `test_cache_runner` with separate `python -m unittest ... -v` commands and confirm RED**
+
+- [ ] **Step 5: Complete the explicit registry and manifest generator**
 
 Declare each family's required source fields, validity material, config, feature definitions, and module-qualified numerical dependency symbols/constants. Generate the CSV deterministically; never modify the frozen manifest.
 
-- [ ] **Step 5: Run the same two focused commands and confirm GREEN**
+- [ ] **Step 6: Run the same two focused commands and confirm GREEN**
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 Force-add only the ignored audit CSV plus the explicit code/tests, then commit `feat(featurelab): register batch1 families and manifest`.
 
-**Acceptance:** registry, recipes, manifest, dimensions, future view mapping, and old-ID non-overlap close exactly at 637.
+**Acceptance:** registry, recipes, manifest, dimensions, future view mapping, and old-ID non-overlap close exactly at 637; single-family/all-family order preserves cache reuse, and family-input review remains isolated from valid siblings.
 
 ---
 
@@ -490,13 +497,13 @@ Assert selection reads at most 80 NPZ metadata records, never reads `y`, uses on
 
 - [ ] **Step 2: Write failing synthetic cache A/B/C tests**
 
-Test A: first six-family build followed by an identical run returns six `SKIP_VERIFIED` decisions and zero extractor calls. Test B: change only EEG-tail configuration and assert one new recipe/build while five families skip unchanged. Test C: copy caches to a temporary root, remove one family result there, and assert only that family rebuilds. All destructive simulation targets must be under `TemporaryDirectory`.
+Test A: first six-family build followed by an identical run returns six `SKIP_VERIFIED` decisions and zero extractor calls. Also run single-family-then-six-family and six-family-then-single-family sequences in isolated roots and require reusable families to skip without `STOP_INVALID`. Test B: change only EEG-tail configuration and assert one new recipe/build while five families skip unchanged. Test C: copy caches to a temporary root, remove one family result there, and assert only that family rebuilds. Add family-error isolation: remove one family-only input or validity field, require that family=`REQUIRES_INPUT_REVIEW` with no cache, and require the other complete families to continue; a global record-identity mismatch must return `STOP_RECORD` with no family execution. All destructive simulation targets must be under `TemporaryDirectory`.
 
 - [ ] **Step 3: Run `PYTHONNOUSERSITE=1 /database/home/gaohaojie/.conda/envs/sleepfm_env/bin/python -m unittest per_epoch_features.extensions.tests.test_smoke -v` and confirm RED**
 
 - [ ] **Step 4: Implement bounded smoke orchestration and public/private schemas**
 
-Keep real values and the record mapping only in the private report. Public output contains family dimensions, valid/missing counts, aggregate support summaries, elapsed seconds, cache bytes, resume decisions, and labeled synthetic examples.
+Keep real values and the record mapping only in the private report. Public output contains family dimensions, valid/missing counts only for computed families, aggregate support summaries, elapsed seconds, cache bytes, resume decisions, family/record status counts, and labeled synthetic examples. A `REQUIRES_INPUT_REVIEW`, `FAILED`, `STOP_INVALID`, or `STOP_RECORD` outcome must retain its exact status and reason category and must not be represented by fabricated values, supports, or successful counts.
 
 - [ ] **Step 5: Run every extension test once before real data**
 
@@ -528,7 +535,7 @@ Report only aggregates and labeled synthetic numerical examples. Include each fa
 
 Stage only `smoke.py`, its test, runner changes, and the public report; commit `test(featurelab): complete bounded batch1 smoke`.
 
-**Acceptance:** synthetic A/B/C pass, one real record is built/read/resumed without EDF or label access, six family caches validate, source NPZ is unchanged, and public artifacts contain no real-patient values.
+**Acceptance:** synthetic A/B/C plus request-order/error-isolation cases pass, one real record is built/read/resumed without EDF or label access, available family caches validate, source NPZ is unchanged, review/failure statuses remain explicit, and public artifacts contain no real-patient values.
 
 ---
 
@@ -558,11 +565,11 @@ Confirm no tracked EDF/NPZ/cache/patient table/private report/model/prediction/t
 
 - [ ] **Step 4: Verify workspace and cache evidence**
 
-Confirm FeatureLab branch/path/source commit, A worktree SHA and clean status, old NPZ hash equality, old 807 cache untouched, six cache files, family/recipe counts, cached bytes, six repeated skips, one-family invalidation, and one-family recovery.
+Confirm FeatureLab branch/path/source commit, A worktree SHA and clean status, old NPZ hash equality, old 807 cache untouched, expected cache files for every built family, family/recipe counts, cached bytes, repeated skips, single-family/six-family identity invariance, one-family invalidation, one-family recovery, isolated family-review behavior, and record-level stop behavior.
 
 - [ ] **Step 5: Update report statuses from evidence only**
 
-Use `COMPLETE/PASS` only for verified units; retain `REQUIRES_INPUT_REVIEW` or `NEEDS_REVIEW` verbatim for unresolved units. State Batch 2 is `READY_FOR_REVIEW`, not implemented.
+Use `COMPLETE/PASS` only for verified units; retain `REQUIRES_INPUT_REVIEW`, `FAILED`, `STOP_INVALID`, `STOP_RECORD`, or `NEEDS_REVIEW` verbatim for unresolved units. Never report placeholder values or counts for an uncomputed family. State Batch 2 is `READY_FOR_REVIEW`, not implemented.
 
 - [ ] **Step 6: Stage explicit paths and commit final report adjustments**
 

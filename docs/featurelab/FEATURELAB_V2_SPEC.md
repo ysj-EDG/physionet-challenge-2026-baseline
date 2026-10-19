@@ -29,9 +29,11 @@ Every source is opened with `numpy.load(..., allow_pickle=False)`. The loader re
 - All family-specific stage, time, channel, and validity arrays with their exact verified shapes.
 - `epoch_start_sec` and `epoch_duration_sec` consistent with `T`; adjacency additionally requires a 30-second difference in `epoch_start_sec`.
 
-The loader exposes an allowlisted `SourceRecord` and deliberately omits `y`. The source identity includes the canonical resolved source path, record key, file size, file SHA256, source schemas, required field names, shapes, and dtypes. A family declares its required keys so unrelated source fields do not enter its recipe.
+The loader exposes an allowlisted `SourceRecord` and deliberately omits `y`. Its `SourceIdentity` is record-level and independent of the requested family set, family order, and configuration. The identity digest is canonical JSON over the namespace, verified `site_id`, verified `record_id`, record key, source byte size, full source-file SHA256, extraction schema, and validity schema. The resolved source path is retained as provenance but is not part of the digest. Requested field names, family IDs, family-specific shapes/dtypes, and the number or order of families in one run are forbidden from `SourceIdentity`.
 
-The record key is deterministic, cross-site unique, and safe for use as one filename component. The loader first verifies that NPZ `site_id` and `record_id` agree with the source's `<site_id>/<record_id>.npz` relative location. It then canonicalizes the exact tuple `{"namespace":"timegrid_v2.1.0","site_id":<site_id>,"record_id":<record_id>}` as sorted compact UTF-8 JSON and sets `record_key` to `rec_` followed by the full lowercase SHA256 hex digest. Raw identifiers never appear in the cache filename. An inventory and the cache validator both maintain the canonical identity tuple behind each key; the same key associated with a different tuple or different source identity is `STOP_INVALID`, never an overwrite or automatic rename. Duplicate paths, duplicate canonical tuples with different files, unsafe/noncanonical keys, and path-versus-NPZ identity disagreement are hard errors before calculation.
+Each `FamilySpec` instead owns a stable `FamilyInputContract`: exact required fields, shape expressions, accepted dtypes, source columns, stage/time rules, and validity semantics. The contract is included in that family's Recipe. For one source and family, `FamilyInputIdentity` records the `SourceIdentity` digest, family-input-contract digest, and the actual required field shapes/dtypes verified for that record. Cache validation compares these two identities separately. Consequently, the same source NPZ, family, and Recipe has the same cache identity whether it is requested alone, before five other families, after them, or as part of all six.
+
+The record key is deterministic, cross-site unique, and safe for use as one filename component. The loader first verifies that NPZ `site_id` and `record_id` agree with the source's `<site_id>/<record_id>.npz` relative location. It then canonicalizes the exact tuple `{"namespace":"timegrid_v2.1.0","site_id":<site_id>,"record_id":<record_id>}` as sorted compact UTF-8 JSON and sets `record_key` to `rec_` followed by the full lowercase SHA256 hex digest. Raw identifiers never appear in the cache filename. An inventory and the cache validator both maintain the canonical identity tuple behind each key; the same key associated with a different tuple or source file is a record-level `STOP_RECORD`, never an overwrite or automatic rename. Duplicate paths, duplicate canonical tuples with different files, unsafe/noncanonical keys, and path-versus-NPZ identity disagreement are record-fatal errors before calculation. A correctly identified source encountering a mismatched existing family cache remains the family-level `STOP_INVALID` case defined below.
 
 The frozen column slices remain unchanged:
 
@@ -90,17 +92,27 @@ The declarative recipe material also embeds the source-adapter contract version,
 
 The repository Git commit is recorded as provenance but is not recipe material. Cache serialization, atomic-publication code, CLI/reporting code, documentation, tests, other families, training code, and unrelated repository changes cannot invalidate a family recipe unless they are explicitly declared as numerical dependencies. Tests must prove both directions: changing a declared numerical dependency changes the recipe, while changing an unrelated file does not.
 
-Cache payloads use non-object NumPy arrays and canonical JSON strings. They include cache schema, completion status, family and recipe identities, ordered feature IDs, all `FeatureResult` fields, source identity, processing parameters, code provenance, runtime versions, and a logical payload SHA256. The payload digest covers typed array shapes/dtypes/bytes and canonical metadata, excluding only the digest field itself.
+Cache payloads use non-object NumPy arrays and canonical JSON strings. They include cache schema, completion status, family and recipe identities, ordered feature IDs, all `FeatureResult` fields, request-independent `SourceIdentity`, the family-specific `FamilyInputIdentity`, processing parameters, code provenance, runtime versions, and a logical payload SHA256. The payload digest covers typed array shapes/dtypes/bytes and canonical metadata, excluding only the digest field itself. The requested family collection and execution order are never serialized as cache-validation identity.
 
 Resume decisions have exactly three outcomes:
 
 - `BUILD_NEW`: the final path is absent.
-- `SKIP_VERIFIED`: schema, completion marker, family, recipe, feature order, source identity, invariants, and payload hash all match.
+- `SKIP_VERIFIED`: schema, completion marker, family, recipe, feature order, request-independent source identity, family input identity, invariants, and payload hash all match.
 - `STOP_INVALID`: a final path exists but any check fails.
 
 Writers create a same-directory temporary file, flush and fsync it, reload and validate it, and publish with a no-clobber atomic operation. An existing final file is never replaced, removed, or repaired automatically. Temporary files never count as complete caches. A runner requested for one missing family computes only that family.
 
 No raw or preprocessed overnight waveform is cached in Batch 1.
+
+Errors are isolated at explicit boundaries:
+
+- `RecordFatalError` covers an unreadable/corrupt NPZ, invalid global extraction or validity schema identifiers, invalid or path-inconsistent record identity, source-content drift while loading, and record-key collision. The record result is `STOP_RECORD`; no requested family is computed or published.
+- `FamilyInputReviewError` covers a missing or malformed field required only by a family, an incompatible family-specific shape/dtype/column, or validity semantics that cannot be recovered reliably. That family receives `REQUIRES_INPUT_REVIEW`, publishes no final cache, and the runner continues with every other requested family whose inputs validate.
+- `FamilyComputeError` covers an unexpected numerical exception or invalid `FeatureResult` after family input validation. That family receives `FAILED`, publishes no final cache, and independent families continue, subject to the two-repair-cycle limit.
+- A corrupt or mismatched existing family cache remains family-level `STOP_INVALID`: it is never overwritten, but it does not convert intact sibling-family caches into failures.
+- Valid inputs with insufficient physiological/stage support are not exceptions. They produce the specified per-column NaNs, false masks, reasons, and supports and may be cached normally.
+
+`FamilyRunResult` records one of `BUILT`, `SKIP_VERIFIED`, `REQUIRES_INPUT_REVIEW`, `FAILED`, or `STOP_INVALID`, with a reason code and no fabricated values for failed/review states. `RecordRunSummary` records `COMPLETE`, `PARTIAL`, or `STOP_RECORD` plus every requested family's result. Missing inputs are never repaired with default zeros, validity checks are never skipped, and no review/failure state is counted as an implemented valid feature.
 
 ## 5. Batch 1 feature definitions
 
@@ -118,7 +130,7 @@ For the same 24 lead-band series, use only valid sleep epochs with stages N1, N2
 
 - `range80 = Q90 - Q10`, using linear quantiles.
 - `drift` splits the complete raw record positions into three contiguous index ranges, then selects valid sleep epochs inside the first and last thirds. Each side requires 20 observations. It is last-third mean minus first-third mean.
-- `tail_hour_concentration` sets a per-record reference threshold to sleep Q88 and uses strict `value > Q88`. It scans every 120-position window on the original 30-second grid. A window participates only with at least 96 valid sleep observations; the output is the maximum high-value count divided by that window's valid observation count.
+- `tail_hour_concentration` sets a per-record reference threshold to sleep Q88 and uses strict `value > Q88`. It scans every 120-row window on the original grid. A candidate is a real continuous hour only when all 120 `epoch_duration_sec` values equal 30 seconds and all 119 successive differences in `epoch_start_sec` equal 30 seconds. Any non-30-second timestamp break rejects the entire candidate window, even if it otherwise has enough observations. Wake and invalid epochs remain in their original positions and do not themselves break clock continuity, but only valid sleep epochs enter the numerator and denominator. A continuous candidate participates only with at least 96 valid sleep observations; the output is the maximum high-value count divided by that window's valid sleep observation count. If no continuous qualifying candidate exists, the output is invalid NaN rather than a full-night fallback.
 - `tail_entry_rate_per_hour` counts false-to-true transitions only across adjacent raw positions where both observations are valid sleep epochs and `epoch_start_sec` differs by exactly 30 seconds. Wake, invalid data, and time gaps break adjacency. The denominator is the number of legal pairs times 30 seconds, converted to hours. A constant series therefore has zero entries.
 
 The support field records the statistic-specific observation or legal-pair count.
@@ -202,7 +214,7 @@ All real single-patient feature values, Q88 thresholds, Q95 values, drift values
 
 ## 9. Failure behavior and deliverables
 
-Malformed source schemas and invalid existing cache files are hard stops for the affected record/family. Expected data insufficiency is per-column missingness, not a software error or record deletion. A family that cannot recover validity semantics is reported as `REQUIRES_INPUT_REVIEW`; other independent families continue.
+Record identity/global-source failures are `STOP_RECORD`. Family-specific source, validity, computation, and existing-cache failures remain isolated to that family with the status taxonomy above; other independent families continue and the record is `PARTIAL`. Expected physiological support insufficiency is per-column missingness, not a software error or record deletion. Reports list every family status and reason category without turning `REQUIRES_INPUT_REVIEW`, `FAILED`, or `STOP_INVALID` into `PASS`.
 
 Tracked deliverables are extension source, standard-library tests, this specification, cache schema documentation, Batch 1 aggregate report, Batch 2 review, and the candidate manifest. EDF, NPZ, patient values, demographics, model artifacts, predictions, identity maps, and temporary files are never committed.
 
