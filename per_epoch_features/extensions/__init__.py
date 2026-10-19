@@ -1,0 +1,51 @@
+"""Stable public contracts for the FeatureLab v2 extension package."""
+
+from .contracts import (
+    FamilyComputeError,
+    FamilyInputContract,
+    FamilyInputIdentity,
+    FamilyInputReviewError,
+    FamilyRunResult,
+    FamilyRunStatus,
+    FeatureLabError,
+    FeatureResult,
+    FieldRequirement,
+    RecordFatalError,
+    RecordKeyCollisionError,
+    RecordRunStatus,
+    RecordRunSummary,
+    SourceContractError,
+    SourceIdentity,
+    SourceRecord,
+    validate_feature_result,
+)
+from .sources import (
+    build_source_inventory,
+    load_source_npz,
+    record_key_for,
+    validate_family_input,
+)
+
+__all__ = (
+    "FamilyComputeError",
+    "FamilyInputContract",
+    "FamilyInputIdentity",
+    "FamilyInputReviewError",
+    "FamilyRunResult",
+    "FamilyRunStatus",
+    "FeatureLabError",
+    "FeatureResult",
+    "FieldRequirement",
+    "RecordFatalError",
+    "RecordKeyCollisionError",
+    "RecordRunStatus",
+    "RecordRunSummary",
+    "SourceContractError",
+    "SourceIdentity",
+    "SourceRecord",
+    "build_source_inventory",
+    "load_source_npz",
+    "record_key_for",
+    "validate_family_input",
+    "validate_feature_result",
+)
