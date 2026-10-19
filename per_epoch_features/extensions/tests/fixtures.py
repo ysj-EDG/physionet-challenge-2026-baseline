@@ -39,3 +39,46 @@ def write_source_npz(
     path.parent.mkdir(parents=True, exist_ok=True)
     np.savez(path, **(payload or source_payload(site_id=site_id, record_id=record_id)))
     return path
+
+
+def write_recipe_tree(root: Path) -> Path:
+    code_root = Path(root)
+    package = code_root / "pkg"
+    package.mkdir(parents=True)
+    (package / "family.py").write_text(
+        "from pkg.common import SCALE, aggregate\n"
+        "def extract_family(values):\n"
+        "    return aggregate(values) * SCALE\n"
+        "def unrelated(values):\n"
+        "    return values\n",
+        encoding="utf-8",
+    )
+    (package / "source.py").write_text(
+        "def materialize(source):\n"
+        "    return source\n",
+        encoding="utf-8",
+    )
+    (package / "common.py").write_text(
+        "SCALE = 2.0\n"
+        "def stage_valid(values):\n"
+        "    return values > 0\n"
+        "def adjacency(starts):\n"
+        "    return starts[1:] - starts[:-1] == 30\n"
+        "def aggregate(values):\n"
+        "    return sum(values) / len(values)\n"
+        "def hidden(values):\n"
+        "    return values\n",
+        encoding="utf-8",
+    )
+    (package / "other_family.py").write_text(
+        "def extract_family(values):\n"
+        "    return -values\n",
+        encoding="utf-8",
+    )
+    (code_root / "cache.py").write_text("CACHE_SCHEMA = 1\n", encoding="utf-8")
+    (code_root / "record_key.py").write_text(
+        "def record_key(value):\n    return value\n", encoding="utf-8"
+    )
+    (code_root / "README.md").write_text("synthetic recipe tree\n", encoding="utf-8")
+    (code_root / "test_family.py").write_text("TEST_ONLY = True\n", encoding="utf-8")
+    return code_root

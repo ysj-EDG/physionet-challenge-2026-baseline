@@ -1,0 +1,61 @@
+"""Declarative FeatureLab family specifications and ordered registry."""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any, Callable, Mapping
+
+from .contracts import FamilyInputContract, FeatureResult, SourceRecord
+
+FamilyExtractor = Callable[[SourceRecord, Mapping[str, object]], FeatureResult]
+
+
+@dataclass(frozen=True)
+class FeatureDefinition:
+    feature_id: str
+    source_field: str
+    source_columns: tuple[int, ...]
+    formula_id: str
+    parameters: Mapping[str, Any]
+    validity_expression: str
+    minimum_support: int
+    unit: str
+
+    def material(self) -> dict[str, Any]:
+        return {
+            "feature_id": self.feature_id,
+            "source_field": self.source_field,
+            "source_columns": list(self.source_columns),
+            "formula_id": self.formula_id,
+            "parameters": dict(self.parameters),
+            "validity_expression": self.validity_expression,
+            "minimum_support": self.minimum_support,
+            "unit": self.unit,
+        }
+
+
+@dataclass(frozen=True)
+class FamilySpec:
+    family_id: str
+    family_version: str
+    extractor_symbol: str
+    default_config: Mapping[str, Any]
+    input_contract: FamilyInputContract
+    feature_definitions: tuple[FeatureDefinition, ...]
+    numerical_symbols: tuple[str, ...]
+    numerical_constants: tuple[str, ...]
+    numerical_dependencies: Mapping[str, str]
+    extractor: FamilyExtractor | None = None
+
+
+_FAMILIES: tuple[FamilySpec, ...] = ()
+
+
+def list_families() -> tuple[FamilySpec, ...]:
+    return _FAMILIES
+
+
+def get_family(family_id: str) -> FamilySpec:
+    for spec in _FAMILIES:
+        if spec.family_id == family_id:
+            return spec
+    raise KeyError(f"Unknown feature family: {family_id}")
