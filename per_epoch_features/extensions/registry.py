@@ -54,6 +54,7 @@ _IMPLEMENTED_FAMILY_MODULES = (
     "extensions.eeg_coherence_stage",
     "extensions.caisr_stage",
     "extensions.emg_stage",
+    "extensions.resp_stage",
 )
 
 
