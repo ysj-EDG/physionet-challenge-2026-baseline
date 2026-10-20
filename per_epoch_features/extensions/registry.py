@@ -51,6 +51,7 @@ _FAMILIES: tuple[FamilySpec, ...] = ()
 _IMPLEMENTED_FAMILY_MODULES = (
     "extensions.eeg_tail",
     "extensions.eeg_temporal",
+    "extensions.eeg_coherence_stage",
 )
 
 
