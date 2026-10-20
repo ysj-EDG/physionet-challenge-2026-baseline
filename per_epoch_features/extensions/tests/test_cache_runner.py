@@ -383,6 +383,59 @@ class RunnerTests(unittest.TestCase):
             self.assertEqual(summary.family_results, ())
             self.assertEqual(CALL_COUNTS, {"a": 0, "b": 0})
 
+    def test_source_io_failures_stop_record_without_compute_or_cache(self) -> None:
+        cases = ("stat", "sha", "npz", "changed")
+        for case in cases:
+            with self.subTest(case), tempfile.TemporaryDirectory() as directory:
+                paths = self._paths(Path(directory))
+                source_path = paths[0].resolve()
+                original_stat = Path.stat
+                if case == "stat":
+                    def failing_stat(path, *args, **kwargs):
+                        if path == source_path:
+                            raise OSError("injected stat failure")
+                        return original_stat(path, *args, **kwargs)
+
+                    patcher = mock.patch.object(Path, "stat", new=failing_stat)
+                elif case == "sha":
+                    patcher = mock.patch(
+                        "extensions.sources._sha256_file",
+                        side_effect=OSError("injected SHA read failure"),
+                    )
+                elif case == "npz":
+                    patcher = mock.patch(
+                        "extensions.sources.np.load",
+                        side_effect=OSError("injected NPZ read failure"),
+                    )
+                else:
+                    patcher = mock.patch(
+                        "extensions.sources._sha256_file",
+                        side_effect=("a" * 64, "b" * 64),
+                    )
+                with patcher:
+                    summary = self._run(paths, ("dummy_a", "dummy_b"))
+                self.assertEqual(summary.status, RecordRunStatus.STOP_RECORD)
+                self.assertEqual(summary.family_results, ())
+                self.assertEqual(CALL_COUNTS, {"a": 0, "b": 0})
+                self.assertFalse(paths[2].exists())
+
+    def test_undecodable_family_field_is_review_local_with_allow_pickle_false(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            payload = source_payload()
+            payload["resp_feature_valid"] = np.asarray(
+                [{"invalid": "object"}] * payload["X_seq"].shape[0],
+                dtype=object,
+            )
+            paths = self._paths(Path(directory), payload=payload)
+            summary = self._run(paths, ("dummy_a", "dummy_b"))
+            self.assertEqual(summary.status, RecordRunStatus.PARTIAL)
+            self.assertEqual(
+                [item.status for item in summary.family_results],
+                [FamilyRunStatus.BUILT, FamilyRunStatus.REQUIRES_INPUT_REVIEW],
+            )
+            self.assertEqual(CALL_COUNTS, {"a": 1, "b": 0})
+            self.assertEqual(list((paths[2] / "dummy_b").glob("**/*.npz")), [])
+
     def test_compute_failure_is_family_local(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             paths = self._paths(Path(directory))

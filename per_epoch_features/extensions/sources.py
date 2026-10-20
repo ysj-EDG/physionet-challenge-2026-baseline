@@ -116,13 +116,16 @@ def load_source_npz(path: Path, source_root: Path) -> SourceRecord:
     try:
         resolved_path = Path(path).resolve(strict=True)
         resolved_root = Path(source_root).resolve(strict=True)
+        path_site, path_record = _relative_identity(resolved_path, resolved_root)
+        before = resolved_path.stat()
+        before_sha = _sha256_file(resolved_path)
+    except SourceContractError:
+        raise
     except OSError as exc:
-        raise SourceContractError("Source path or source root is unavailable") from exc
-    path_site, path_record = _relative_identity(resolved_path, resolved_root)
-    before = resolved_path.stat()
-    before_sha = _sha256_file(resolved_path)
+        raise SourceContractError("Source path, stat, or bytes are unavailable") from exc
 
     arrays: dict[str, np.ndarray] = {}
+    field_errors: dict[str, str] = {}
     try:
         with np.load(resolved_path, allow_pickle=False) as source:
             site_id = _scalar_text(source, "site_id")
@@ -138,14 +141,20 @@ def load_source_npz(path: Path, source_root: Path) -> SourceRecord:
             for name in sorted(SOURCE_FIELD_ALLOWLIST.intersection(source.files)):
                 if name in FORBIDDEN_FIELDS:
                     continue
-                arrays[name] = np.asarray(source[name]).copy()
+                try:
+                    arrays[name] = np.asarray(source[name]).copy()
+                except Exception as exc:
+                    field_errors[name] = type(exc).__name__
     except SourceContractError:
         raise
     except Exception as exc:
         raise SourceContractError(f"Unreadable source NPZ: {resolved_path}") from exc
 
-    after = resolved_path.stat()
-    after_sha = _sha256_file(resolved_path)
+    try:
+        after = resolved_path.stat()
+        after_sha = _sha256_file(resolved_path)
+    except OSError as exc:
+        raise SourceContractError("Source post-read validation failed") from exc
     stable_stat = (
         before.st_dev,
         before.st_ino,
@@ -178,7 +187,7 @@ def load_source_npz(path: Path, source_root: Path) -> SourceRecord:
         source_mtime_ns=before.st_mtime_ns,
         source_mode=before.st_mode,
     )
-    return SourceRecord.create(identity, arrays)
+    return SourceRecord.create(identity, arrays, field_errors)
 
 
 def _validate_requirement_shape(
@@ -213,6 +222,11 @@ def validate_family_input(
     dimensions: dict[str, int] = {}
     observed: list[ObservedField] = []
     for requirement in contract.requirements:
+        if requirement.name in source.field_errors:
+            raise FamilyInputReviewError(
+                f"{contract.family_id}: cannot decode required field "
+                f"{requirement.name} ({source.field_errors[requirement.name]})"
+            )
         if requirement.name not in source.arrays:
             raise FamilyInputReviewError(
                 f"{contract.family_id}: missing required field {requirement.name}"

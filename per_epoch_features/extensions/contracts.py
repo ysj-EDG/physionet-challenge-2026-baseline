@@ -94,17 +94,31 @@ class SourceIdentity:
 class SourceRecord:
     identity: SourceIdentity
     arrays: Mapping[str, np.ndarray]
+    field_errors: Mapping[str, str]
     loaded_fields: tuple[str, ...]
 
     @classmethod
-    def create(cls, identity: SourceIdentity, arrays: Mapping[str, np.ndarray]) -> "SourceRecord":
+    def create(
+        cls,
+        identity: SourceIdentity,
+        arrays: Mapping[str, np.ndarray],
+        field_errors: Mapping[str, str] | None = None,
+    ) -> "SourceRecord":
         copied: dict[str, np.ndarray] = {}
         for name, value in arrays.items():
             array = np.asarray(value).copy()
             array.setflags(write=False)
             copied[name] = array
         ordered = dict(sorted(copied.items()))
-        return cls(identity, MappingProxyType(ordered), tuple(ordered))
+        errors = dict(sorted((field_errors or {}).items()))
+        if set(ordered).intersection(errors):
+            raise ValueError("Loaded fields and field errors must be disjoint")
+        return cls(
+            identity,
+            MappingProxyType(ordered),
+            MappingProxyType(errors),
+            tuple(ordered),
+        )
 
 
 ShapeDimension = int | str
