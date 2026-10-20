@@ -22,6 +22,7 @@ from .contracts import (
     validate_feature_result,
 )
 from .recipe import build_recipe_identity
+from .registry import FamilyExtractor
 from .sources import load_source_npz, validate_family_input
 
 
@@ -35,6 +36,7 @@ def run_record(
     cache_root: Path,
     family_ids: Sequence[str],
     config_overrides: Mapping[str, Mapping[str, object]],
+    extractors: Mapping[str, FamilyExtractor] | None = None,
 ) -> RecordRunSummary:
     try:
         source = load_source_npz(source_path, source_root)
@@ -124,7 +126,10 @@ def run_record(
             )
             continue
 
-        if spec.extractor is None:
+        extractor = spec.extractor
+        if extractors is not None and family_id in extractors:
+            extractor = extractors[family_id]
+        if extractor is None:
             results.append(
                 FamilyRunResult(
                     family_id=family_id,
@@ -135,7 +140,7 @@ def run_record(
             )
             continue
         try:
-            result = spec.extractor(source, config)
+            result = extractor(source, config)
             validate_feature_result(result)
             if result.family_id != spec.family_id or result.family_version != spec.family_version:
                 raise ValueError("Extractor family identity mismatch")
