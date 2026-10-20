@@ -49,21 +49,39 @@ class FamilySpec:
 
 
 _FAMILIES: tuple[FamilySpec, ...] = ()
-_IMPLEMENTED_FAMILY_MODULES = (
-    "extensions.eeg_tail",
-    "extensions.eeg_temporal",
-    "extensions.eeg_coherence_stage",
-    "extensions.caisr_stage",
-    "extensions.emg_stage",
-    "extensions.resp_stage",
+SOURCE_ADAPTER_NUMERICAL_SYMBOLS = (
+    "extensions.sources.load_source_npz",
+    "extensions.sources._relative_identity",
+    "extensions.sources._sha256_file",
+    "extensions.sources._scalar_text",
+    "extensions.sources.record_key_for",
+    "extensions.sources._record_identity_material",
+    "extensions.sources._record_key_digest",
+    "extensions.sources.validate_family_input",
+    "extensions.sources._validate_requirement_shape",
+    "extensions.contracts.canonical_json",
+    "extensions.contracts.canonical_sha256",
+    "extensions.contracts.SourceIdentity",
+    "extensions.contracts.SourceRecord",
+    "extensions.contracts.ObservedField",
+    "extensions.contracts.FamilyInputIdentity",
+    "extensions.contracts.SourceContractError",
+    "extensions.contracts.FamilyInputReviewError",
+)
+SOURCE_ADAPTER_NUMERICAL_CONSTANTS = (
+    "extensions.sources.SOURCE_NAMESPACE",
+    "extensions.sources.EXPECTED_EXTRACTION_SCHEMA",
+    "extensions.sources.EXPECTED_VALIDITY_SCHEMA",
+    "extensions.sources.FORBIDDEN_FIELDS",
+    "extensions.sources.SOURCE_FIELD_ALLOWLIST",
 )
 _FAMILY_EXPORTS = (
-    ("extensions.eeg_tail", "EEG_TAIL_SPEC"),
-    ("extensions.eeg_temporal", "EEG_TEMPORAL_SPEC"),
-    ("extensions.eeg_coherence_stage", "EEG_COHERENCE_STAGE_SPEC"),
-    ("extensions.caisr_stage", "CAISR_STAGE_SPEC"),
-    ("extensions.emg_stage", "EMG_STAGE_SPEC"),
-    ("extensions.resp_stage", "RESP_STAGE_SPEC"),
+    (".eeg_tail", "EEG_TAIL_SPEC"),
+    (".eeg_temporal", "EEG_TEMPORAL_SPEC"),
+    (".eeg_coherence_stage", "EEG_COHERENCE_STAGE_SPEC"),
+    (".caisr_stage", "CAISR_STAGE_SPEC"),
+    (".emg_stage", "EMG_STAGE_SPEC"),
+    (".resp_stage", "RESP_STAGE_SPEC"),
 )
 
 
@@ -71,7 +89,7 @@ def list_families() -> tuple[FamilySpec, ...]:
     if _FAMILIES:
         return _FAMILIES
     return tuple(
-        getattr(importlib.import_module(module), export)
+        getattr(importlib.import_module(module, package=__package__), export)
         for module, export in _FAMILY_EXPORTS
     )
 

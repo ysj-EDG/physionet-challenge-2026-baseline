@@ -55,6 +55,9 @@ class ManifestTests(unittest.TestCase):
             [row["minimum_support"] for row in temporal[:4]],
             ["20", "20", "96", "1"],
         )
+        self.assertTrue(
+            all(row["physiological_meaning"] != row["feature_id"] for row in rows)
+        )
         with tempfile.TemporaryDirectory() as directory:
             target = Path(directory) / "manifest.csv"
             write_manifest(target)

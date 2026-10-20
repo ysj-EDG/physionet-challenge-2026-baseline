@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 import tempfile
 import unittest
 from dataclasses import replace
@@ -18,6 +19,7 @@ from extensions.common import (
 )
 from extensions.contracts import FamilyInputContract, FieldRequirement
 from extensions.recipe import RecipeDependencyError, build_recipe_identity
+from extensions import registry
 from extensions.registry import FamilySpec, FeatureDefinition, list_families
 from extensions.tests.fixtures import write_recipe_tree
 
@@ -137,6 +139,70 @@ class RecipeTests(unittest.TestCase):
                 "resp_stage",
             ),
         )
+
+    def test_registry_loads_families_relative_to_its_active_package(self) -> None:
+        fake_modules = []
+        for index, (_module, export) in enumerate(registry._FAMILY_EXPORTS):
+            fake = mock.Mock()
+            setattr(fake, export, f"spec-{index}")
+            fake_modules.append(fake)
+        with mock.patch.object(registry, "_FAMILIES", ()), mock.patch.object(
+            registry.importlib, "import_module", side_effect=fake_modules
+        ) as importer:
+            self.assertEqual(
+                registry.list_families(),
+                tuple(f"spec-{index}" for index in range(6)),
+            )
+        self.assertEqual(
+            importer.call_args_list,
+            [
+                mock.call(module, package=registry.__package__)
+                for module, _export in registry._FAMILY_EXPORTS
+            ],
+        )
+
+    def test_real_recipes_fingerprint_source_loading_and_family_validation(self) -> None:
+        required = {
+            "extensions.sources.load_source_npz",
+            "extensions.sources.validate_family_input",
+        }
+        specs = list_families()
+        for spec in specs:
+            self.assertTrue(required.issubset(spec.numerical_symbols), spec.family_id)
+
+        mutations = (
+            (
+                "source loading",
+                "np.asarray(source[name]).copy()",
+                "np.asarray(source[name], dtype=np.float64).copy()",
+            ),
+            (
+                "family validation",
+                "if actual != expected:",
+                "if actual == -1 or actual != expected:",
+            ),
+        )
+        live_root = Path(__file__).resolve().parents[2]
+        for label, old, new in mutations:
+            with self.subTest(label), tempfile.TemporaryDirectory() as directory:
+                copied_root = Path(directory)
+                shutil.copytree(live_root / "extensions", copied_root / "extensions")
+                before = {
+                    spec.family_id: build_recipe_identity(spec, {}, copied_root).recipe_id
+                    for spec in specs
+                }
+                source_path = copied_root / "extensions/sources.py"
+                text = source_path.read_text(encoding="utf-8")
+                self.assertIn(old, text)
+                source_path.write_text(
+                    text.replace(old, new, 1),
+                    encoding="utf-8",
+                )
+                after = {
+                    spec.family_id: build_recipe_identity(spec, {}, copied_root).recipe_id
+                    for spec in specs
+                }
+                self.assertTrue(all(before[key] != after[key] for key in before))
 
     def test_parameter_order_is_canonical_and_feature_order_is_material(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

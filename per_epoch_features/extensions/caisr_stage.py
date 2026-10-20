@@ -7,7 +7,12 @@ import numpy as np
 
 from .common import linear_quantile
 from .contracts import FamilyInputContract, FeatureResult, FieldRequirement
-from .registry import FamilySpec, FeatureDefinition
+from .registry import (
+    SOURCE_ADAPTER_NUMERICAL_CONSTANTS,
+    SOURCE_ADAPTER_NUMERICAL_SYMBOLS,
+    FamilySpec,
+    FeatureDefinition,
+)
 
 FAMILY_ID = "caisr_stage"
 FAMILY_VERSION = "1.0.0"
@@ -202,7 +207,7 @@ CAISR_STAGE_SPEC = FamilySpec(
         "extensions.common.linear_quantile",
         "extensions.contracts.FeatureResult",
         "extensions.registry.FeatureDefinition",
-    ),
+    ) + SOURCE_ADAPTER_NUMERICAL_SYMBOLS,
     numerical_constants=(
         "extensions.caisr_stage.FAMILY_ID",
         "extensions.caisr_stage.FAMILY_VERSION",
@@ -212,7 +217,7 @@ CAISR_STAGE_SPEC = FamilySpec(
         "extensions.caisr_stage.STATIC_P95",
         "extensions.caisr_stage.EPOCH_SECONDS",
         "extensions.caisr_stage.DEFAULT_STATIC_TOLERANCE",
-    ),
+    ) + SOURCE_ADAPTER_NUMERICAL_CONSTANTS,
     numerical_dependencies={"numpy": np.__version__},
     extractor=extract_family,
 )

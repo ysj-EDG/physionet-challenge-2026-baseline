@@ -93,7 +93,9 @@ def build_manifest_rows() -> list[dict[str, str]]:
                 "source_column": ";".join(str(item) for item in definition.source_columns),
                 "stage_scope": stage,
                 "channel_or_pair": channel,
-                "physiological_meaning": definition.feature_id,
+                "physiological_meaning": (
+                    f"{channel} {stage} {definition.formula_id.replace(chr(95), chr(32))}"
+                ),
                 "mathematical_formula": definition.formula_id,
                 "parameters": canonical_json(dict(definition.parameters)),
                 "unit": definition.unit,

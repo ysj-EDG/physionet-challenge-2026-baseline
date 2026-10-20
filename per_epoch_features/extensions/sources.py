@@ -23,14 +23,13 @@ from .contracts import (
 SOURCE_NAMESPACE = "timegrid_v2.1.0"
 EXPECTED_EXTRACTION_SCHEMA = "timegrid_v2.1.0"
 EXPECTED_VALIDITY_SCHEMA = "validity_v0.2"
-IDENTITY_FIELDS = frozenset(
-    {"site_id", "record_id", "extraction_version", "validity_schema_version"}
+IDENTITY_FIELDS = (
+    "site_id", "record_id", "extraction_version", "validity_schema_version"
 )
-FORBIDDEN_FIELDS = frozenset(
-    {"y", "label", "labels", "tte", "diagnosis", "prediction", "score"}
+FORBIDDEN_FIELDS = (
+    "y", "label", "labels", "tte", "diagnosis", "prediction", "score"
 )
-SOURCE_FIELD_ALLOWLIST = frozenset(
-    {
+SOURCE_FIELD_ALLOWLIST = (
         "X_seq",
         "X_ecg",
         "x_static",
@@ -63,7 +62,6 @@ SOURCE_FIELD_ALLOWLIST = frozenset(
         "ecg_alignment_valid",
         "annotation_status",
         "annotation_signal_lengths_json",
-    }
 )
 
 
@@ -138,7 +136,7 @@ def load_source_npz(path: Path, source_root: Path) -> SourceRecord:
                 raise SourceContractError("Unexpected extraction schema")
             if validity_schema != EXPECTED_VALIDITY_SCHEMA:
                 raise SourceContractError("Unexpected validity schema")
-            for name in sorted(SOURCE_FIELD_ALLOWLIST.intersection(source.files)):
+            for name in sorted(set(SOURCE_FIELD_ALLOWLIST).intersection(source.files)):
                 if name in FORBIDDEN_FIELDS:
                     continue
                 try:

@@ -5,7 +5,12 @@ import numpy as np
 
 from .common import pool_mean_iqr, stage_mask
 from .contracts import FamilyInputContract, FeatureResult, FieldRequirement
-from .registry import FamilySpec, FeatureDefinition
+from .registry import (
+    SOURCE_ADAPTER_NUMERICAL_CONSTANTS,
+    SOURCE_ADAPTER_NUMERICAL_SYMBOLS,
+    FamilySpec,
+    FeatureDefinition,
+)
 
 FAMILY_ID = "eeg_coherence_stage"
 FAMILY_VERSION = "1.0.0"
@@ -135,7 +140,7 @@ EEG_COHERENCE_STAGE_SPEC = FamilySpec(
         "extensions.common.stage_mask",
         "extensions.contracts.FeatureResult",
         "extensions.registry.FeatureDefinition",
-    ),
+    ) + SOURCE_ADAPTER_NUMERICAL_SYMBOLS,
     numerical_constants=(
         "extensions.eeg_coherence_stage.FAMILY_ID",
         "extensions.eeg_coherence_stage.FAMILY_VERSION",
@@ -147,7 +152,7 @@ EEG_COHERENCE_STAGE_SPEC = FamilySpec(
         "extensions.eeg_coherence_stage.PAIR_BLOCK_WIDTH",
         "extensions.eeg_coherence_stage.DEFAULT_MINIMUM_SUPPORT",
         "extensions.common.STAGE_CODES",
-    ),
+    ) + SOURCE_ADAPTER_NUMERICAL_CONSTANTS,
     numerical_dependencies={"numpy": np.__version__},
     extractor=extract_family,
 )
