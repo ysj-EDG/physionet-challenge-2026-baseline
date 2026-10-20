@@ -87,5 +87,43 @@ class Batch2DocumentContractTests(unittest.TestCase):
         self.assertIn("## Intermediate-cache recommendations", text)
 
 
+class Phase4PublicDocumentContractTests(unittest.TestCase):
+    def _document(self, name: str) -> str:
+        path = Path(__file__).resolve().parents[3] / "docs/featurelab" / name
+        return path.read_text(encoding="utf-8")
+
+    def test_pilot_report_is_aggregate_only_and_complete(self) -> None:
+        text = self._document("FEATURELAB_BATCH1_PILOT_REPORT.md")
+        for required in (
+            "CROSS_SITE_PILOT = COMPLETE",
+            "SOURCE_IMMUTABILITY = VERIFIED",
+            "CACHE_READBACK = VERIFIED",
+            "FULL_6600_STATUS = NOT_STARTED",
+            "BATCH2_553_STATUS = AUDIT_ONLY",
+            "I0002",
+            "I0006",
+            "S0001",
+            "eeg_tail",
+            "resp_stage",
+        ):
+            self.assertIn(required, text)
+        for forbidden in (
+            "record_key",
+            "record_id",
+            "source_path",
+            "cache_path",
+            "rec_",
+        ):
+            self.assertNotIn(forbidden, text)
+
+    def test_full_plan_requires_explicit_authorization_and_has_stop_rules(self) -> None:
+        text = self._document("FEATURELAB_BATCH1_FULL_EXTRACTION_PLAN.md")
+        self.assertIn("FULL_6600_STATUS = NOT_STARTED", text)
+        self.assertIn("FULL_EXTRACTION_AUTHORIZATION = REQUIRED", text)
+        self.assertIn("--execution-mode full", text)
+        self.assertIn("--expected-inventory-size 6600", text)
+        self.assertIn("## Stop conditions", text)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -1,6 +1,6 @@
 # FeatureLab v2 Family Cache Schema
 
-Status: implemented for the Task 1–3 synthetic contract only. No real-record cache has been produced or validated in this phase.
+Status: implemented and validated by synthetic cache/runner tests, one bounded real Smoke, and a six-file cross-site Pilot. Full 6,600-file extraction has not started.
 
 ## Scope and path
 
@@ -77,3 +77,22 @@ The writer removes only its own temporary file. Pre-existing orphan temporary fi
 ## Error isolation
 
 A record-level source or canonical identity failure returns `STOP_RECORD` before any family extractor runs. A missing or malformed family-only input returns `REQUIRES_INPUT_REVIEW` for that family and creates no cache. A family computation or publication exception returns `FAILED` for that family and creates no completed result. An invalid existing cache returns family-local `STOP_INVALID`. Input-complete sibling families continue in all family-local cases.
+
+## Private batch inventory and checkpoint
+
+The Phase 4 batch layer does not change the family-cache schema or path. Its path-only inventory is deterministic and can be built without decoding NPZ fields. True source schema/identity and family-input validation still occur inside the frozen source adapter and `run_record()`.
+
+The private checkpoint schema is `featurelab_batch_checkpoint_v1`. It contains:
+
+- the deterministic inventory digest and private ordered mapping;
+- one request digest over the ordered family list and canonical configuration overrides;
+- per-source attempt count, record status and reason;
+- per-family status and reason;
+- elapsed seconds, total verified bytes and newly published bytes;
+- source-immutability and strict-readback results.
+
+The checkpoint is written through a same-directory temporary file, fsynced, and atomically replaced after each completed source. It is an owned mutable progress ledger, not a final feature cache. A mismatched or unreadable checkpoint stops recovery; it is not silently replaced. Inventory, checkpoint, and detailed Pilot diagnostics remain under the private cache root and must not be committed.
+
+The batch entry point requires an explicit positive source limit. Pilot mode hard-stops above 12. Full mode additionally requires an exact expected inventory size and a separate private authorization file with the approved token. There is no default path that launches all 6,600 sources.
+
+On resume, the same request conservatively re-enters `run_record()` for selected sources. Completed families are reused only after the final cache and current source/family identities validate as `SKIP_VERIFIED`; missing family units build independently. `STOP_INVALID` is never repaired or overwritten. A checkpoint compatibility probe can use `stop_after=0` to validate inventory and request digests without opening a source or calling an extractor.
