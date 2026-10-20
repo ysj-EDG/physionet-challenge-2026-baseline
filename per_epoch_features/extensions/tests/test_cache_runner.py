@@ -481,5 +481,120 @@ class RunnerTests(unittest.TestCase):
             self.assertEqual(CALL_COUNTS, {"a": 1, "b": 0})
 
 
+class RealFamilySyntheticIntegrationTests(unittest.TestCase):
+    FAMILY_IDS = (
+        "eeg_tail",
+        "eeg_temporal",
+        "eeg_coherence_stage",
+        "caisr_stage",
+        "emg_stage",
+        "resp_stage",
+    )
+
+    def _paths(self, root: Path, payload=None):
+        source_root = root / "source"
+        source_path = write_source_npz(
+            source_root, payload=payload or source_payload(epochs=120)
+        )
+        return source_path, source_root, root / "cache"
+
+    def _run(self, paths, family_ids, overrides=None):
+        return run_record(paths[0], paths[1], paths[2], family_ids, overrides or {})
+
+    def test_each_then_all_and_all_then_each_reuse(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            paths = self._paths(Path(directory))
+            for family_id in self.FAMILY_IDS:
+                result = self._run(paths, (family_id,))
+                self.assertEqual(result.family_results[0].status, FamilyRunStatus.BUILT)
+            combined = self._run(paths, self.FAMILY_IDS)
+            self.assertEqual(
+                [item.status for item in combined.family_results],
+                [FamilyRunStatus.SKIP_VERIFIED] * 6,
+            )
+
+        with tempfile.TemporaryDirectory() as directory:
+            paths = self._paths(Path(directory))
+            combined = self._run(paths, self.FAMILY_IDS)
+            self.assertEqual(
+                [item.status for item in combined.family_results],
+                [FamilyRunStatus.BUILT] * 6,
+            )
+            source_json = combined.source_identity.canonical_json()
+            for family_id in reversed(self.FAMILY_IDS):
+                result = self._run(paths, (family_id,))
+                self.assertEqual(result.family_results[0].status, FamilyRunStatus.SKIP_VERIFIED)
+                self.assertEqual(result.source_identity.canonical_json(), source_json)
+
+    def test_one_family_parameter_change_invalidates_only_that_recipe(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            paths = self._paths(Path(directory))
+            baseline = self._run(paths, self.FAMILY_IDS)
+            baseline_paths = {item.family_id: item.cache_path for item in baseline.family_results}
+            changed = self._run(
+                paths,
+                self.FAMILY_IDS,
+                {"eeg_tail": {"minimum_support": 21}},
+            )
+            self.assertEqual(changed.family_results[0].status, FamilyRunStatus.BUILT)
+            self.assertNotEqual(changed.family_results[0].cache_path, baseline_paths["eeg_tail"])
+            self.assertTrue(baseline_paths["eeg_tail"].exists())
+            self.assertEqual(
+                [item.status for item in changed.family_results[1:]],
+                [FamilyRunStatus.SKIP_VERIFIED] * 5,
+            )
+            self.assertEqual(
+                [item.cache_path for item in changed.family_results[1:]],
+                [baseline_paths[family_id] for family_id in self.FAMILY_IDS[1:]],
+            )
+
+    def test_family_input_errors_are_isolated_for_real_specs(self) -> None:
+        for missing_field, affected in (
+            ("eeg_common_clean_subsegment_count", "eeg_coherence_stage"),
+            ("emg_epoch_success", "emg_stage"),
+        ):
+            with self.subTest(missing_field), tempfile.TemporaryDirectory() as directory:
+                payload = source_payload(epochs=120)
+                del payload[missing_field]
+                paths = self._paths(Path(directory), payload)
+                result = self._run(paths, self.FAMILY_IDS)
+                by_family = {item.family_id: item for item in result.family_results}
+                self.assertEqual(
+                    by_family[affected].status, FamilyRunStatus.REQUIRES_INPUT_REVIEW
+                )
+                self.assertIsNone(by_family[affected].cache_path)
+                self.assertTrue(
+                    all(
+                        item.status is FamilyRunStatus.BUILT
+                        for family_id, item in by_family.items()
+                        if family_id != affected
+                    )
+                )
+
+    def test_global_identity_error_stops_all_real_families(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            payload = source_payload(site_id="OTHER", epochs=120)
+            paths = self._paths(Path(directory), payload)
+            result = self._run(paths, self.FAMILY_IDS)
+            self.assertEqual(result.status, RecordRunStatus.STOP_RECORD)
+            self.assertEqual(result.family_results, ())
+            self.assertFalse(paths[2].exists())
+
+    def test_corrupt_real_family_cache_stops_only_that_family_without_overwrite(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            paths = self._paths(Path(directory))
+            baseline = self._run(paths, self.FAMILY_IDS)
+            target = baseline.family_results[2].cache_path
+            target.write_bytes(b"corrupt-existing-cache")
+            invalid_bytes = target.read_bytes()
+            resumed = self._run(paths, self.FAMILY_IDS)
+            self.assertEqual(resumed.family_results[2].status, FamilyRunStatus.STOP_INVALID)
+            self.assertEqual(
+                [item.status for index, item in enumerate(resumed.family_results) if index != 2],
+                [FamilyRunStatus.SKIP_VERIFIED] * 5,
+            )
+            self.assertEqual(target.read_bytes(), invalid_bytes)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -189,7 +189,7 @@ CAISR_STAGE_SPEC = FamilySpec(
             FieldRequirement("stage_valid", ("T",), ("bool",)),
             FieldRequirement("epoch_start_sec", ("T",), ("float32",)),
             FieldRequirement("x_static", (196,), ("float32",), columns=tuple(range(44, 49)) + tuple(range(69, 74))),
-            FieldRequirement("annotation_status", (), ("str224", "str288")),
+            FieldRequirement("annotation_status", (), ("<U7", "<U9")),
         ),
         stage_time_rules=("invalid epochs and non-30-second gaps terminate bouts",),
         validity_rules=("annotation available and reconstructed bout support",),

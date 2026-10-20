@@ -49,7 +49,13 @@ def _definitions() -> tuple[FeatureDefinition, ...]:
                             "valid sleep & lead available & clean_subsegments>0 & "
                             "finite(inputs) on the uncompressed time grid"
                         ),
-                        minimum_support=DEFAULT_REFERENCE_SUPPORT,
+                        minimum_support=(
+                            DEFAULT_HOUR_SLEEP_SUPPORT
+                            if statistic == "tail_hour_concentration"
+                            else 1
+                            if statistic == "tail_entry_rate_per_hour"
+                            else DEFAULT_REFERENCE_SUPPORT
+                        ),
                         unit=(
                             "per_hour" if statistic.endswith("per_hour")
                             else "fraction" if statistic == "tail_hour_concentration"
@@ -67,6 +73,9 @@ def extract_family(source, config) -> FeatureResult:
     hour_support = int(config["minimum_hour_sleep_support"])
     epoch_seconds = float(config["epoch_seconds"])
     tail_quantile = float(config["tail_quantile"])
+    tail_comparison = str(config["tail_comparison"])
+    if tail_comparison != "strict_greater_than":
+        raise ValueError("Only the frozen strict-greater-than tail rule is supported")
     definitions = _definitions()
     values = np.full(len(definitions), np.nan, dtype=np.float64)
     valid = np.zeros(len(definitions), dtype=bool)
@@ -205,7 +214,7 @@ def extract_family(source, config) -> FeatureResult:
             "minimum_hour_sleep_support": hour_support,
             "epoch_seconds": epoch_seconds,
             "tail_quantile": tail_quantile,
-            "tail_comparison": "strict_greater_than",
+            "tail_comparison": tail_comparison,
         },
     )
 
@@ -222,6 +231,7 @@ EEG_TEMPORAL_SPEC = FamilySpec(
         "minimum_hour_sleep_support": DEFAULT_HOUR_SLEEP_SUPPORT,
         "epoch_seconds": EPOCH_SECONDS,
         "tail_quantile": TAIL_QUANTILE,
+        "tail_comparison": "strict_greater_than",
     },
     input_contract=FamilyInputContract(
         family_id=FAMILY_ID,
@@ -259,6 +269,7 @@ EEG_TEMPORAL_SPEC = FamilySpec(
         "extensions.eeg_temporal.BETA_OFFSET",
         "extensions.eeg_temporal.P0_OFFSET",
         "extensions.eeg_temporal.DEFAULT_REFERENCE_SUPPORT",
+        "extensions.eeg_temporal.DEFAULT_HOUR_SLEEP_SUPPORT",
         "extensions.common.STAGE_CODES",
     ),
     numerical_dependencies={"numpy": np.__version__},

@@ -1,6 +1,7 @@
 """Declarative FeatureLab family specifications and ordered registry."""
 from __future__ import annotations
 
+import importlib
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping
 
@@ -56,14 +57,27 @@ _IMPLEMENTED_FAMILY_MODULES = (
     "extensions.emg_stage",
     "extensions.resp_stage",
 )
+_FAMILY_EXPORTS = (
+    ("extensions.eeg_tail", "EEG_TAIL_SPEC"),
+    ("extensions.eeg_temporal", "EEG_TEMPORAL_SPEC"),
+    ("extensions.eeg_coherence_stage", "EEG_COHERENCE_STAGE_SPEC"),
+    ("extensions.caisr_stage", "CAISR_STAGE_SPEC"),
+    ("extensions.emg_stage", "EMG_STAGE_SPEC"),
+    ("extensions.resp_stage", "RESP_STAGE_SPEC"),
+)
 
 
 def list_families() -> tuple[FamilySpec, ...]:
-    return _FAMILIES
+    if _FAMILIES:
+        return _FAMILIES
+    return tuple(
+        getattr(importlib.import_module(module), export)
+        for module, export in _FAMILY_EXPORTS
+    )
 
 
 def get_family(family_id: str) -> FamilySpec:
-    for spec in _FAMILIES:
+    for spec in list_families():
         if spec.family_id == family_id:
             return spec
     raise KeyError(f"Unknown feature family: {family_id}")

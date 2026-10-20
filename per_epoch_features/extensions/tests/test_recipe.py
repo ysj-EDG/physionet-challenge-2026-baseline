@@ -125,8 +125,18 @@ class RecipeTests(unittest.TestCase):
     def _identity(self, root: Path, spec: FamilySpec | None = None, config=None):
         return build_recipe_identity(spec or _spec(), config or {}, root)
 
-    def test_registry_starts_empty_of_real_feature_families(self) -> None:
-        self.assertEqual(list_families(), ())
+    def test_registry_has_ordered_batch1_feature_families(self) -> None:
+        self.assertEqual(
+            tuple(spec.family_id for spec in list_families()),
+            (
+                "eeg_tail",
+                "eeg_temporal",
+                "eeg_coherence_stage",
+                "caisr_stage",
+                "emg_stage",
+                "resp_stage",
+            ),
+        )
 
     def test_parameter_order_is_canonical_and_feature_order_is_material(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
