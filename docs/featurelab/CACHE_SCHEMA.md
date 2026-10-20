@@ -91,8 +91,19 @@ The private checkpoint schema is `featurelab_batch_checkpoint_v1`. It contains:
 - elapsed seconds, total verified bytes and newly published bytes;
 - source-immutability and strict-readback results.
 
-The checkpoint is written through a same-directory temporary file, fsynced, and atomically replaced after each completed source. It is an owned mutable progress ledger, not a final feature cache. A mismatched or unreadable checkpoint stops recovery; it is not silently replaced. Inventory, checkpoint, and detailed Pilot diagnostics remain under the private cache root and must not be committed.
+Gate 4F adds optional Full-mode control state without changing the family-cache schema:
+
+- `active_safety_stop` stores the reason code, completed-record count, abnormal status, and whether a resource-only stop can be retried safely;
+- `safety_stop_history` preserves prior stop decisions;
+- `systemic_errors` stores repeated source-contract signatures by site and family-input signatures by site/family, counting unique record keys;
+- the abnormal record result is present in `records` before its run-level stop becomes active.
+
+The checkpoint is written through a same-directory temporary file, fsynced, and atomically replaced after each completed source. A Full-mode abnormal result is first committed in full and then the active safety-stop state is committed before the runner exits; no next source is scheduled. It is an owned mutable progress ledger, not a final feature cache. A mismatched or unreadable checkpoint stops recovery; it is not silently replaced. An active nonrecoverable stop is not bypassed on resume. Inventory, checkpoint, and detailed Pilot diagnostics remain under the private cache root and must not be committed.
 
 The batch entry point requires an explicit positive source limit. Pilot mode hard-stops above 12. Full mode additionally requires an exact expected inventory size and a separate private authorization file with the approved token. There is no default path that launches all 6,600 sources.
+
+The first Full run further freezes the ordered six-family set, registered default parameters, 637 ordered Feature IDs, their canonical digest, six dimensions and Recipe IDs, one worker, the 6,600-record/site inventory, and the exact private authorization path. It stops before source access on any mismatch. Full startup requires at least 2 GiB free at the cache filesystem; runtime requires at least 1 GiB remaining and peak process RSS no greater than 1 GiB. These resource probes are bounded filesystem/process queries, not cache-tree scans.
+
+The separate `--preflight-only` path validates inventory, frozen registry/Recipe material, resources, authorization presence, and existing checkpoint compatibility without decoding NPZ data, invoking an extractor, or writing cache/checkpoint state. It is intentionally usable while the exact authorization path is absent and reports execution as not permitted.
 
 On resume, the same request conservatively re-enters `run_record()` for selected sources. Completed families are reused only after the final cache and current source/family identities validate as `SKIP_VERIFIED`; missing family units build independently. `STOP_INVALID` is never repaired or overwritten. A checkpoint compatibility probe can use `stop_after=0` to validate inventory and request digests without opening a source or calling an extractor.

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from concurrent.futures import ThreadPoolExecutor
@@ -8,20 +9,37 @@ from unittest import mock
 
 import numpy as np
 
-from extensions import registry
+from extensions import batch_runner, registry
 from extensions.batch_runner import (
     BatchVerificationError,
+    SourceInventoryEntry,
     assert_result_payload_equal,
     build_path_inventory,
     run_batch,
     select_pilot_inventory,
 )
 from extensions.cache import read_cache
-from extensions.contracts import FamilyRunStatus, RecordRunStatus
+from extensions.contracts import (
+    FamilyRunResult,
+    FamilyRunStatus,
+    RecordRunStatus,
+    RecordRunSummary,
+)
+from extensions.sources import record_key_for
 from extensions.tests.fixtures import source_payload, write_source_npz
 
 
 class BatchRunnerTests(unittest.TestCase):
+    FULL_SITE_COUNTS = {"I0002": 319, "I0006": 1142, "S0001": 5139}
+    FULL_FAMILY_IDS = (
+        "eeg_tail",
+        "eeg_temporal",
+        "eeg_coherence_stage",
+        "caisr_stage",
+        "emg_stage",
+        "resp_stage",
+    )
+
     def _sources(self, root: Path, count: int = 2):
         source_root = root / "source"
         paths = tuple(
@@ -63,6 +81,76 @@ class BatchRunnerTests(unittest.TestCase):
             max_records=kwargs.pop("max_records", len(inventory)),
             **kwargs,
         )
+    def _full_inventory(self, root: Path, payloads=()):
+        source_root = root / "source"
+        entries = []
+        for site_id, count in self.FULL_SITE_COUNTS.items():
+            for index in range(count):
+                record_id = f"record-{index:05d}"
+                entries.append(
+                    SourceInventoryEntry(
+                        relative_path=f"{site_id}/{record_id}.npz",
+                        site_id=site_id,
+                        record_id=record_id,
+                        record_key=record_key_for(site_id, record_id),
+                    )
+                )
+        ordered = tuple(sorted(entries))
+        for index, payload in enumerate(payloads):
+            entry = ordered[index]
+            write_source_npz(
+                source_root,
+                site_id=entry.site_id,
+                record_id=entry.record_id,
+                payload=payload,
+            )
+        return source_root, ordered
+
+    def _run_full(
+        self,
+        root: Path,
+        inventory,
+        source_root: Path,
+        *,
+        authorization=True,
+        authorization_path=None,
+        **kwargs,
+    ):
+        auth = authorization_path or root / "FULL_EXTRACTION_APPROVED.txt"
+        if authorization:
+            auth.write_text("FEATURELAB_FULL_EXTRACTION_APPROVED\n", encoding="utf-8")
+        with (
+            mock.patch.object(
+                batch_runner, "FULL_AUTHORIZATION_PATH", auth, create=True
+            ),
+            mock.patch.object(
+                batch_runner,
+                "_available_cache_bytes",
+                return_value=10 * 1024**3,
+                create=True,
+            ),
+            mock.patch.object(
+                batch_runner,
+                "_peak_rss_kb",
+                return_value=100_000,
+                create=True,
+            ),
+        ):
+            return run_batch(
+                inventory,
+                source_root,
+                root / "cache",
+                root / "full-checkpoint.json",
+                kwargs.pop("family_ids", self.FULL_FAMILY_IDS),
+                kwargs.pop("config_overrides", {}),
+                max_records=kwargs.pop("max_records", 6600),
+                workers=kwargs.pop("workers", 1),
+                execution_mode="full",
+                full_authorization_file=auth if authorization else None,
+                expected_inventory_size=kwargs.pop("expected_inventory_size", 6600),
+                **kwargs,
+            )
+
 
     def test_inventory_is_deterministic_path_only_and_collision_checked(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -359,6 +447,562 @@ class BatchRunnerTests(unittest.TestCase):
                         max_candidates=1,
                         max_records=1,
                     )
+
+    def test_full_stop_invalid_persists_checkpoint_and_does_not_run_next_record(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            payloads = [
+                source_payload(
+                    site_id="I0002", record_id=f"record-{index:05d}", epochs=240
+                )
+                for index in range(2)
+            ]
+            source_root, inventory = self._full_inventory(root, payloads)
+            seed = self._run(
+                root,
+                inventory[:1],
+                source_root,
+                checkpoint_name="seed.json",
+            )
+            target = seed.records[0].run.family_results[0].cache_path
+            target.write_bytes(b"corrupt synthetic cache")
+            corrupted = target.read_bytes()
+
+            summary = self._run_full(
+                root, inventory, source_root, stop_after=2
+            )
+
+            self.assertEqual(summary.executed_count, 1)
+            self.assertEqual(summary.safety_stop.reason_code, "CACHE_STOP_INVALID")
+            self.assertFalse(summary.safety_stop.safe_to_resume)
+            self.assertEqual(target.read_bytes(), corrupted)
+            checkpoint = json.loads(
+                (root / "full-checkpoint.json").read_text(encoding="utf-8")
+            )
+            state = checkpoint["requests"][summary.request_digest]
+            self.assertEqual(len(state["records"]), 1)
+            self.assertEqual(
+                state["active_safety_stop"]["reason_code"], "CACHE_STOP_INVALID"
+            )
+
+    def test_full_source_immutability_failure_stops_after_checkpoint(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            payloads = [
+                source_payload(
+                    site_id="I0002", record_id=f"record-{index:05d}", epochs=240
+                )
+                for index in range(2)
+            ]
+            source_root, inventory = self._full_inventory(root, payloads)
+            original_snapshot = batch_runner._source_snapshot
+            calls = {}
+
+            def changed_after_first(path):
+                snapshot = original_snapshot(path)
+                key = str(path)
+                calls[key] = calls.get(key, 0) + 1
+                if key.endswith("record-00000.npz") and calls[key] == 2:
+                    snapshot["sha256"] = "f" * 64
+                return snapshot
+
+            with mock.patch(
+                "extensions.batch_runner._source_snapshot",
+                side_effect=changed_after_first,
+            ):
+                summary = self._run_full(
+                    root, inventory, source_root, stop_after=2
+                )
+
+            self.assertEqual(summary.executed_count, 1)
+            self.assertEqual(summary.safety_stop.reason_code, "SOURCE_IMMUTABILITY")
+            checkpoint = json.loads(
+                (root / "full-checkpoint.json").read_text(encoding="utf-8")
+            )
+            state = checkpoint["requests"][summary.request_digest]
+            self.assertFalse(next(iter(state["records"].values()))["source_immutable"])
+            self.assertEqual(
+                state["active_safety_stop"]["completed_count"], 1
+            )
+
+    def test_full_readback_failure_stops_and_requires_nonzero_exit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            payloads = [
+                source_payload(
+                    site_id="I0002", record_id=f"record-{index:05d}", epochs=240
+                )
+                for index in range(2)
+            ]
+            source_root, inventory = self._full_inventory(root, payloads)
+            with mock.patch(
+                "extensions.batch_runner.read_cache",
+                side_effect=BatchVerificationError("synthetic readback failure"),
+            ):
+                summary = self._run_full(
+                    root, inventory, source_root, stop_after=2
+                )
+            self.assertEqual(summary.executed_count, 1)
+            self.assertEqual(summary.safety_stop.reason_code, "CACHE_READBACK_FAILED")
+            self.assertNotEqual(batch_runner.summary_exit_code(summary), 0)
+
+    def test_full_repeated_same_site_family_input_error_is_systemic(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            payloads = []
+            for index in range(2):
+                payload = source_payload(
+                    site_id="I0002", record_id=f"record-{index:05d}", epochs=240
+                )
+                del payload["emg_epoch_success"]
+                payloads.append(payload)
+            source_root, inventory = self._full_inventory(root, payloads)
+
+            summary = self._run_full(
+                root, inventory, source_root, stop_after=2
+            )
+
+            self.assertEqual(summary.executed_count, 2)
+            self.assertEqual(
+                summary.safety_stop.reason_code, "REPEATED_FAMILY_INPUT"
+            )
+            self.assertTrue(
+                all(item.run.status is RecordRunStatus.PARTIAL for item in summary.records)
+            )
+
+    def test_full_single_family_input_error_is_isolated_and_queue_continues(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            first = source_payload(
+                site_id="I0002", record_id="record-00000", epochs=240
+            )
+            del first["emg_epoch_success"]
+            second = source_payload(
+                site_id="I0002", record_id="record-00001", epochs=240
+            )
+            source_root, inventory = self._full_inventory(root, (first, second))
+
+            summary = self._run_full(
+                root, inventory, source_root, stop_after=2
+            )
+
+            self.assertEqual(summary.executed_count, 2)
+            self.assertIsNone(summary.safety_stop)
+            self.assertEqual(summary.records[0].run.status, RecordRunStatus.PARTIAL)
+            self.assertEqual(summary.records[1].run.status, RecordRunStatus.COMPLETE)
+
+    def test_full_legal_low_support_nan_does_not_stop(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source_root, inventory = self._full_inventory(
+                root,
+                (
+                    source_payload(
+                        site_id="I0002", record_id="record-00000", epochs=4
+                    ),
+                ),
+            )
+
+            summary = self._run_full(
+                root, inventory, source_root, stop_after=1
+            )
+
+            self.assertIsNone(summary.safety_stop)
+            self.assertEqual(summary.records[0].run.status, RecordRunStatus.COMPLETE)
+            self.assertTrue(
+                any(
+                    item.result is not None and np.any(~item.result.valid_mask)
+                    for item in summary.records[0].run.family_results
+                )
+            )
+
+    def test_full_rejects_changed_family_order_and_nondefault_parameters(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source_root, inventory = self._full_inventory(root)
+            with self.assertRaises(ValueError):
+                self._run_full(
+                    root,
+                    inventory,
+                    source_root,
+                    family_ids=tuple(reversed(self.FULL_FAMILY_IDS)),
+                    dry_run=True,
+                )
+            with self.assertRaises(ValueError):
+                self._run_full(
+                    root,
+                    inventory,
+                    source_root,
+                    config_overrides={"eeg_tail": {"minimum_support": 21}},
+                    dry_run=True,
+                )
+
+    def test_full_rejects_multiple_workers(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source_root, inventory = self._full_inventory(root)
+            with self.assertRaises(ValueError):
+                self._run_full(
+                    root, inventory, source_root, workers=2, dry_run=True
+                )
+
+    def test_full_rejects_wrong_site_distribution_and_recipe(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source_root, inventory = self._full_inventory(root)
+            wrong_site = list(inventory)
+            first = wrong_site[0]
+            wrong_site[0] = SourceInventoryEntry(
+                relative_path=first.relative_path,
+                site_id="WRONG",
+                record_id=first.record_id,
+                record_key=first.record_key,
+            )
+            with self.assertRaises(ValueError):
+                self._run_full(
+                    root, tuple(wrong_site), source_root, dry_run=True
+                )
+
+            frozen = {
+                spec.family_id: "0" * 64 for spec in registry.list_families()
+            }
+            with mock.patch.object(
+                batch_runner, "FULL_RECIPE_IDS", frozen, create=True
+            ):
+                with self.assertRaises(ValueError):
+                    self._run_full(root, inventory, source_root, dry_run=True)
+
+    def test_full_safety_stop_checkpoint_resume_does_not_fake_complete(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            payloads = [
+                source_payload(
+                    site_id="I0002", record_id=f"record-{index:05d}", epochs=240
+                )
+                for index in range(2)
+            ]
+            source_root, inventory = self._full_inventory(root, payloads)
+            seed = self._run(
+                root,
+                inventory[:1],
+                source_root,
+                checkpoint_name="seed.json",
+            )
+            target = seed.records[0].run.family_results[0].cache_path
+            target.write_bytes(b"corrupt synthetic cache")
+            first = self._run_full(root, inventory, source_root, stop_after=2)
+            second = self._run_full(root, inventory, source_root, stop_after=2)
+
+            self.assertEqual(first.executed_count, 1)
+            self.assertEqual(second.executed_count, 0)
+            self.assertEqual(second.safety_stop.reason_code, "CACHE_STOP_INVALID")
+            checkpoint = json.loads(
+                (root / "full-checkpoint.json").read_text(encoding="utf-8")
+            )
+            record = checkpoint["requests"][first.request_digest]["records"][
+                inventory[0].record_key
+            ]
+            self.assertNotEqual(record["record_status"], "COMPLETE")
+
+    def test_full_requires_exact_private_authorization_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source_root, inventory = self._full_inventory(root)
+            with self.assertRaises(PermissionError):
+                self._run_full(
+                    root, inventory, source_root, authorization=False, dry_run=True
+                )
+            expected = root / "expected" / "FULL_EXTRACTION_APPROVED.txt"
+            wrong = root / "wrong" / "FULL_EXTRACTION_APPROVED.txt"
+            expected.parent.mkdir(parents=True)
+            wrong.parent.mkdir(parents=True)
+            wrong.write_text(
+                "FEATURELAB_FULL_EXTRACTION_APPROVED\n", encoding="utf-8"
+            )
+            with mock.patch.object(
+                batch_runner, "FULL_AUTHORIZATION_PATH", expected, create=True
+            ):
+                with self.assertRaises(PermissionError):
+                    run_batch(
+                        inventory,
+                        source_root,
+                        root / "cache",
+                        root / "checkpoint.json",
+                        self.FULL_FAMILY_IDS,
+                        {},
+                        max_records=6600,
+                        workers=1,
+                        dry_run=True,
+                        execution_mode="full",
+                        full_authorization_file=wrong,
+                        expected_inventory_size=6600,
+                    )
+
+    def test_full_dry_run_never_computes_or_writes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source_root, inventory = self._full_inventory(root)
+            with mock.patch("extensions.batch_runner.run_record") as compute:
+                summary = self._run_full(
+                    root, inventory, source_root, dry_run=True
+                )
+            compute.assert_not_called()
+            self.assertTrue(summary.dry_run)
+            self.assertEqual(summary.executed_count, 0)
+            self.assertFalse((root / "cache").exists())
+            self.assertFalse((root / "full-checkpoint.json").exists())
+
+    def test_full_runtime_disk_guard_stops_after_persisting_record(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            payloads = [
+                source_payload(
+                    site_id="I0002", record_id=f"record-{index:05d}", epochs=240
+                )
+                for index in range(2)
+            ]
+            source_root, inventory = self._full_inventory(root, payloads)
+            auth = root / "FULL_EXTRACTION_APPROVED.txt"
+            auth.write_text("FEATURELAB_FULL_EXTRACTION_APPROVED\n", encoding="utf-8")
+            with (
+                mock.patch.object(batch_runner, "FULL_AUTHORIZATION_PATH", auth, create=True),
+                mock.patch.object(
+                    batch_runner,
+                    "_available_cache_bytes",
+                    side_effect=(3 * 1024**3, 512 * 1024**2),
+                    create=True,
+                ),
+                mock.patch.object(
+                    batch_runner, "_peak_rss_kb", return_value=100_000, create=True
+                ),
+            ):
+                summary = run_batch(
+                    inventory,
+                    source_root,
+                    root / "cache",
+                    root / "full-checkpoint.json",
+                    self.FULL_FAMILY_IDS,
+                    {},
+                    max_records=6600,
+                    workers=1,
+                    stop_after=2,
+                    execution_mode="full",
+                    full_authorization_file=auth,
+                    expected_inventory_size=6600,
+                )
+            self.assertEqual(summary.executed_count, 1)
+            self.assertEqual(summary.safety_stop.reason_code, "LOW_DISK_RUNTIME")
+            self.assertTrue(summary.safety_stop.safe_to_resume)
+
+    def test_full_read_only_preflight_needs_no_authorization_or_writes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source_root, inventory = self._full_inventory(root)
+            expected_auth = root / "FULL_EXTRACTION_APPROVED.txt"
+            with (
+                mock.patch.object(
+                    batch_runner, "FULL_AUTHORIZATION_PATH", expected_auth, create=True
+                ),
+                mock.patch.object(
+                    batch_runner,
+                    "_available_cache_bytes",
+                    return_value=10 * 1024**3,
+                    create=True,
+                ),
+                mock.patch.object(
+                    batch_runner, "_peak_rss_kb", return_value=100_000, create=True
+                ),
+                mock.patch("extensions.batch_runner.run_record") as compute,
+            ):
+                report = batch_runner.run_full_preflight(
+                    inventory,
+                    source_root,
+                    root / "cache",
+                    root / "full-checkpoint.json",
+                    self.FULL_FAMILY_IDS,
+                    {},
+                    max_records=6600,
+                    workers=1,
+                    full_authorization_file=expected_auth,
+                    expected_inventory_size=6600,
+                )
+            compute.assert_not_called()
+            self.assertTrue(report.contract_valid)
+            self.assertFalse(report.authorization_present)
+            self.assertFalse(report.execution_permitted)
+            self.assertFalse((root / "cache").exists())
+            self.assertFalse((root / "full-checkpoint.json").exists())
+    def test_full_isolated_compute_value_error_does_not_stop_queue(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            payloads = [
+                source_payload(
+                    site_id="I0002", record_id=f"record-{index:05d}", epochs=240
+                )
+                for index in range(2)
+            ]
+            source_root, inventory = self._full_inventory(root, payloads)
+            original_run_record = batch_runner.run_record
+            calls = 0
+
+            def inject_one_compute_failure(*args, **kwargs):
+                nonlocal calls
+                calls += 1
+                if calls == 1:
+                    return RecordRunSummary(
+                        status=RecordRunStatus.PARTIAL,
+                        source_identity=None,
+                        family_results=(
+                            FamilyRunResult(
+                                family_id="eeg_tail",
+                                status=FamilyRunStatus.FAILED,
+                                reason_code="COMPUTE:ValueError",
+                            ),
+                        ),
+                    )
+                return original_run_record(*args, **kwargs)
+
+            with mock.patch(
+                "extensions.batch_runner.run_record",
+                side_effect=inject_one_compute_failure,
+            ):
+                summary = self._run_full(
+                    root, inventory, source_root, stop_after=2
+                )
+
+            self.assertEqual(summary.executed_count, 2)
+            self.assertIsNone(summary.safety_stop)
+            self.assertEqual(summary.records[0].run.status, RecordRunStatus.PARTIAL)
+            self.assertEqual(summary.records[1].run.status, RecordRunStatus.COMPLETE)
+    def test_full_unavailable_source_snapshot_stops_before_compute(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            payload = source_payload(
+                site_id="I0002", record_id="record-00000", epochs=240
+            )
+            source_root, inventory = self._full_inventory(root, (payload,))
+            with (
+                mock.patch(
+                    "extensions.batch_runner._source_snapshot",
+                    side_effect=OSError("synthetic snapshot failure"),
+                ),
+                mock.patch("extensions.batch_runner.run_record") as compute,
+            ):
+                summary = self._run_full(
+                    root, inventory, source_root, stop_after=2
+                )
+            compute.assert_not_called()
+            self.assertEqual(summary.executed_count, 1)
+            self.assertEqual(
+                summary.safety_stop.reason_code, "SOURCE_SNAPSHOT_UNAVAILABLE"
+            )
+
+    def test_full_repeated_same_site_source_contract_error_is_systemic(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            payloads = [
+                source_payload(
+                    site_id="OTHER", record_id=f"record-{index:05d}", epochs=240
+                )
+                for index in range(2)
+            ]
+            source_root, inventory = self._full_inventory(root, payloads)
+
+            summary = self._run_full(
+                root, inventory, source_root, stop_after=2
+            )
+
+            self.assertEqual(summary.executed_count, 2)
+            self.assertEqual(
+                summary.safety_stop.reason_code, "REPEATED_SOURCE_CONTRACT"
+            )
+            self.assertTrue(
+                all(
+                    item.run.status is RecordRunStatus.STOP_RECORD
+                    for item in summary.records
+                )
+            )
+
+    def test_full_startup_disk_guard_writes_stop_without_computing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source_root, inventory = self._full_inventory(root)
+            auth = root / "FULL_EXTRACTION_APPROVED.txt"
+            auth.write_text("FEATURELAB_FULL_EXTRACTION_APPROVED\n", encoding="utf-8")
+            with (
+                mock.patch.object(batch_runner, "FULL_AUTHORIZATION_PATH", auth),
+                mock.patch.object(
+                    batch_runner,
+                    "_available_cache_bytes",
+                    return_value=1024**3,
+                ),
+                mock.patch.object(
+                    batch_runner, "_peak_rss_kb", return_value=100_000
+                ),
+                mock.patch("extensions.batch_runner.run_record") as compute,
+            ):
+                summary = run_batch(
+                    inventory,
+                    source_root,
+                    root / "cache",
+                    root / "full-checkpoint.json",
+                    self.FULL_FAMILY_IDS,
+                    {},
+                    max_records=6600,
+                    workers=1,
+                    execution_mode="full",
+                    full_authorization_file=auth,
+                    expected_inventory_size=6600,
+                )
+            compute.assert_not_called()
+            self.assertEqual(summary.executed_count, 0)
+            self.assertEqual(summary.safety_stop.reason_code, "LOW_DISK_STARTUP")
+            self.assertTrue((root / "full-checkpoint.json").is_file())
+
+    def test_full_runtime_rss_guard_stops_after_persisting_record(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            payloads = [
+                source_payload(
+                    site_id="I0002", record_id=f"record-{index:05d}", epochs=240
+                )
+                for index in range(2)
+            ]
+            source_root, inventory = self._full_inventory(root, payloads)
+            auth = root / "FULL_EXTRACTION_APPROVED.txt"
+            auth.write_text("FEATURELAB_FULL_EXTRACTION_APPROVED\n", encoding="utf-8")
+            with (
+                mock.patch.object(batch_runner, "FULL_AUTHORIZATION_PATH", auth),
+                mock.patch.object(
+                    batch_runner,
+                    "_available_cache_bytes",
+                    side_effect=(3 * 1024**3, 3 * 1024**3),
+                ),
+                mock.patch.object(
+                    batch_runner,
+                    "_peak_rss_kb",
+                    side_effect=(100_000, 2 * 1024 * 1024, 2 * 1024 * 1024),
+                ),
+            ):
+                summary = run_batch(
+                    inventory,
+                    source_root,
+                    root / "cache",
+                    root / "full-checkpoint.json",
+                    self.FULL_FAMILY_IDS,
+                    {},
+                    max_records=6600,
+                    workers=1,
+                    stop_after=2,
+                    execution_mode="full",
+                    full_authorization_file=auth,
+                    expected_inventory_size=6600,
+                )
+            self.assertEqual(summary.executed_count, 1)
+            self.assertEqual(summary.safety_stop.reason_code, "HIGH_RSS_RUNTIME")
+            self.assertTrue(summary.safety_stop.safe_to_resume)
+
+
 
 
 if __name__ == "__main__":

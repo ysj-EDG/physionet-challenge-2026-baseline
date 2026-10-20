@@ -51,6 +51,22 @@ For each selected source it calls `run_record()` once with the six-family tuple.
 
 The private checkpoint is atomically replaced after each completed source. It preserves `COMPLETE`, `PARTIAL`, `STOP_RECORD`, and all five family statuses. A resumed command conservatively revalidates completed source/cache identities; verified families skip numerical extraction, while missing family files build. An invalid final file remains `STOP_INVALID` and is never repaired automatically.
 
+### Gate 4F frozen full-run request
+
+The first 6,600-record full run is machine-checked against all of the following values before any source is opened:
+
+- the ordered family tuple is exactly `eeg_tail`, `eeg_temporal`, `eeg_coherence_stage`, `caisr_stage`, `emg_stage`, and `resp_stage`;
+- every family uses its registered `FamilySpec` defaults, with no configuration or extractor override;
+- the ordered manifest contains exactly 637 unique Feature IDs and has frozen canonical digest `92f071616f961256ac993a68624ef8f44f262a0a6738011e4bb0c4ec405d8039`;
+- the six live Recipe IDs and dimensions equal the frozen table above;
+- `workers=1`, `max_records=6600`, and `expected_inventory_size=6600`;
+- the inventory site totals are exactly I0002=319, I0006=1,142, and S0001=5,139; and
+- the authorization path is exactly `/database/home/gaohaojie/workspace/feature-cache-extension/full_batch/FULL_EXTRACTION_APPROVED.txt`, and an actual run additionally requires its exact token.
+
+Any mismatch refuses startup; the runner never changes its configuration to match observed data. Full mode has a run-level safety stop, whereas Pilot mode retains its approved record-isolation behavior. In Full mode an abnormal record is written completely to the private checkpoint before a stop becomes active, and no subsequent record is scheduled. Because the first Full run is fixed to one worker, there can be no already-submitted background records after the stop boundary.
+
+The checkpoint records the stop reason, completed-record count, abnormal status, safe-resume flag, repeated-error signatures, and stop history. A nonrecoverable active stop cannot be resumed by simply rerunning the command. A resource stop is marked safe to retry only after resources again pass the startup guard. The command-line exit status is nonzero for every safety stop and for a Full run that has not passed final acceptance.
+
 ## Resource estimate and worker recommendation
 
 The cross-site Pilot used one real worker over six files, of which five required all six new family builds and one reused all six caches.
@@ -64,21 +80,49 @@ The cross-site Pilot used one real worker over six files, of which five required
 | planning wall range | 4.5–7 h |
 | Pilot peak RSS | 356,176 KiB (about 348 MiB) |
 | projected family-cache payload | about 531 MB (506 MiB) |
-| recommended free cache capacity | at least 1 GiB, plus private logs/checkpoint |
+| required free capacity at Full startup | at least 2 GiB |
+| required remaining capacity during Full run | at least 1 GiB |
+| Gate 4F peak-RSS stop threshold | 1,048,576 KiB (1 GiB) |
 
 The timing model has only five newly built real sources and must be treated as low-confidence. Resume validation, filesystem contention, source heterogeneity, and exception handling can increase wall time. Source immutability checking and source adaptation read each compressed file multiple times, so total read traffic can exceed 35 GiB even though the source inventory itself is 8.67 GiB.
 
 Recommended initial full-run setting: `workers=1`. It is the only real-data concurrency level measured, completes within a practical planning window, limits simultaneous decompression memory, and avoids saturating a shared filesystem. Synthetic no-clobber competition passed for two workers, but that is not evidence of real I/O or memory scaling. Raising the full run above one worker requires a separate monitored authorization or a later evidence-based adjustment; it must not be inferred from the ideal two-worker estimate.
 
-## Preflight after future authorization
+Disk capacity is checked once before scheduling and once after each completed Full-mode record using a filesystem free-space query; no cache-tree scan is added. Full startup stops below 2 GiB, and an active run stops below 1 GiB after first checkpointing the just-completed record. Peak process RSS is sampled on the same bounded schedule. The 1 GiB RSS ceiling is deliberately about three times the Pilot peak; crossing it is an abnormal-growth safety stop, not a request to add workers or delete existing caches.
+
+## Read-only preflight before authorization
 
 1. Confirm the FeatureLab branch and approved SHA, a clean worktree, and unchanged Branch A.
 2. Confirm the source inventory remains exactly 6,600 with the stated site totals.
 3. Confirm all six current Recipe IDs equal the frozen table above.
-4. Confirm at least 1 GiB free at the cache destination and adequate free space for source-side I/O operations.
+4. Confirm at least 2 GiB free at the cache destination.
 5. Confirm the private checkpoint destination is outside Git and any existing checkpoint matches the inventory/request digest.
-6. Confirm the authorization file exists only because the user approved the full run and contains the exact required token.
-7. Execute the full-mode dry run below. It must report 6,600 selected and zero executed, with no cache or checkpoint mutation.
+6. Execute the `--preflight-only` command below. It reads inventory paths, the registry/Recipe contract, filesystem capacity, process RSS, and an existing checkpoint if present. It never decodes a source NPZ, calls an extractor, writes a cache, or creates/modifies a checkpoint.
+
+```bash
+cd /database/home/gaohaojie/workspace/python-example-2026-featurelab
+PYTHONPATH=per_epoch_features PYTHONNOUSERSITE=1 \
+  /database/home/gaohaojie/.conda/envs/sleepfm_env/bin/python \
+  -m extensions.batch_runner \
+  --source-root /database/home/gaohaojie/workspace/python-example-2026/validity_v0_2_full_6600/workspace/result_bundle/npz \
+  --cache-root /database/home/gaohaojie/workspace/feature-cache-extension \
+  --checkpoint /database/home/gaohaojie/workspace/feature-cache-extension/full_batch/checkpoint.json \
+  --max-records 6600 \
+  --workers 1 \
+  --execution-mode full \
+  --expected-inventory-size 6600 \
+  --full-authorization-file /database/home/gaohaojie/workspace/feature-cache-extension/full_batch/FULL_EXTRACTION_APPROVED.txt \
+  --preflight-only
+```
+
+Before authorization, an absent authorization file is reported as `authorization_present=false`, `authorization_valid=false`, and `execution_permitted=false`; this is the expected safe result, not permission to run. A valid read-only contract preflight exits zero. Contract, inventory, Recipe, checkpoint, disk, or RSS failures exit nonzero.
+
+## Preflight after future authorization
+
+After explicit approval creates the private authorization file:
+
+1. Repeat the read-only preflight and require `execution_permitted=true`.
+2. Execute the Full-mode dry run below. It must report 6,600 selected, zero executed, and no cache or checkpoint mutation.
 
 ```bash
 cd /database/home/gaohaojie/workspace/python-example-2026-featurelab
@@ -96,7 +140,7 @@ PYTHONPATH=per_epoch_features PYTHONNOUSERSITE=1 \
   --dry-run
 ```
 
-The authorization file is deliberately not created by this plan.
+The authorization file is deliberately not created by this plan or by `--preflight-only`.
 
 ## Explicit future launch and resume command — do not execute in this phase
 
@@ -130,17 +174,21 @@ The resume command is identical. Do not remove the checkpoint or any final famil
 
 ## Stop conditions
 
-Stop the authorized run and preserve all evidence when any of the following occurs:
+Full mode applies the following stop policy after atomically checkpointing the abnormal record:
 
-1. A source immutability check fails or the inventory count/site distribution changes unexpectedly.
-2. Any existing final family file returns `STOP_INVALID`; do not delete, rename, overwrite, or rebuild it.
-3. The same source-contract or family-input incompatibility recurs twice within one site, suggesting a systematic schema difference.
-4. A cache readback or payload equality check fails.
-5. Free cache capacity falls below 1 GiB or the shared filesystem shows sustained errors.
-6. Peak RSS materially exceeds the Pilot envelope, the process is killed, or I/O contention makes safe progress uncertain.
-7. The running Recipe IDs, Feature IDs, dimensions, source schema, or validity schema differ from the frozen contract.
+Immediate run-level stops are:
 
-An isolated `FAILED`, `REQUIRES_INPUT_REVIEW`, or `STOP_RECORD` remains truthfully recorded and does not authorize formula changes. The repeated-error rule determines whether the overall queue should stop for systematic review.
+1. any final family cache reports `STOP_INVALID`;
+2. cache strict readback or full payload comparison is false;
+3. the source NPZ SHA256/stat changes, or either the read-before or read-after source snapshot cannot be established;
+4. the live Recipe, ordered Feature IDs, dimensions, or registered defaults differ from the frozen contract;
+5. startup free space is below 2 GiB, runtime free space is below 1 GiB, or peak RSS exceeds 1 GiB.
+
+Systemic run-level stops occur on the second distinct record within one site carrying the same source-contract incompatibility, or on the second distinct record within one site and family carrying the same family-input contract incompatibility. Repeated-error counters use record keys so a resumed observation of the same record does not falsely count twice.
+
+An isolated ordinary computation failure, `REQUIRES_INPUT_REVIEW`, or non-systemic `STOP_RECORD` is recorded and isolated. A record containing any failed family is `PARTIAL`, never `COMPLETE`. Legal low-support NaN values remain valid family outputs under their per-feature missingness rules and never trigger a run stop.
+
+Pilot mode retains its prior bounded behavior: one record can be isolated while the Pilot queue continues. Neither mode converts `STOP_INVALID` to `BUILD_NEW`, deletes a bad cache, relaxes validity checks, or changes feature formulas.
 
 ## Final full-cohort acceptance criteria
 

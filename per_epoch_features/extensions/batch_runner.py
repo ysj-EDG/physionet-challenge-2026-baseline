@@ -12,6 +12,7 @@ import hashlib
 import json
 import os
 import resource
+import shutil
 import tempfile
 import time
 from collections import Counter, defaultdict, deque
@@ -36,6 +37,7 @@ from .contracts import (
 )
 from .common import STAGE_CODES
 from .registry import FamilyExtractor
+from .recipe import build_recipe_identity
 from .runner import run_record
 from .sources import load_source_npz, record_key_for, validate_family_input
 
@@ -43,6 +45,41 @@ from .sources import load_source_npz, record_key_for, validate_family_input
 BATCH_CHECKPOINT_SCHEMA = "featurelab_batch_checkpoint_v1"
 PILOT_RECORD_LIMIT = 12
 FULL_AUTHORIZATION_TEXT = "FEATURELAB_FULL_EXTRACTION_APPROVED"
+FULL_RECORD_COUNT = 6600
+FULL_SITE_COUNTS = {"I0002": 319, "I0006": 1142, "S0001": 5139}
+FULL_FAMILY_IDS = (
+    "eeg_tail",
+    "eeg_temporal",
+    "eeg_coherence_stage",
+    "caisr_stage",
+    "emg_stage",
+    "resp_stage",
+)
+FULL_FAMILY_DIMENSIONS = {
+    "eeg_tail": 288,
+    "eeg_temporal": 96,
+    "eeg_coherence_stage": 90,
+    "caisr_stage": 35,
+    "emg_stage": 72,
+    "resp_stage": 56,
+}
+FULL_RECIPE_IDS = {
+    "eeg_tail": "17f79dd79b79c4cc26ab0477b6c936e28cfb31161e9c0bb86ff44a21fa496054",
+    "eeg_temporal": "5dc03f81224b71d166ec736f0517575e982debecab46f06c85ae2c0a1446f8bd",
+    "eeg_coherence_stage": "c2c6949634746176d99c204792e5f860384530fee1a35ce54d5f4e41eb676a39",
+    "caisr_stage": "6529a32282e29ec44ef5af0290379c2d11f3d70527504a513b5121e6069ed7f3",
+    "emg_stage": "29cd008bf82a47a6fa823c400d8bca4b5e71f6a7c68a8b7a7eb7682da74ec91b",
+    "resp_stage": "3c1c051e7091cfeac73160a112f048208156cbdac1b5f4e33e24e4ce1825dd35",
+}
+FULL_FEATURE_ID_COUNT = 637
+FULL_FEATURE_ID_DIGEST = "92f071616f961256ac993a68624ef8f44f262a0a6738011e4bb0c4ec405d8039"
+FULL_AUTHORIZATION_PATH = Path(
+    "/database/home/gaohaojie/workspace/feature-cache-extension/"
+    "full_batch/FULL_EXTRACTION_APPROVED.txt"
+)
+FULL_START_FREE_BYTES = 2 * 1024**3
+FULL_RUNTIME_FREE_BYTES = 1024**3
+FULL_RSS_STOP_KB = 1024 * 1024
 
 
 class BatchVerificationError(ValueError):
@@ -81,6 +118,31 @@ class BatchRecordResult:
     readback_verified: bool
     verification_error: str = ""
 
+@dataclass(frozen=True)
+class BatchSafetyStop:
+    reason_code: str
+    completed_count: int
+    abnormal_status: str
+    safe_to_resume: bool
+
+    def material(self) -> dict[str, Any]:
+        return {
+            "reason_code": self.reason_code,
+            "completed_count": self.completed_count,
+            "abnormal_status": self.abnormal_status,
+            "safe_to_resume": self.safe_to_resume,
+        }
+
+    @classmethod
+    def from_material(cls, material: Mapping[str, Any]) -> "BatchSafetyStop":
+        return cls(
+            reason_code=str(material["reason_code"]),
+            completed_count=int(material["completed_count"]),
+            abnormal_status=str(material["abnormal_status"]),
+            safe_to_resume=bool(material["safe_to_resume"]),
+        )
+
+
 
 @dataclass(frozen=True)
 class BatchRunSummary:
@@ -96,6 +158,26 @@ class BatchRunSummary:
     status_counts: Mapping[str, int]
     inventory_digest: str
     request_digest: str
+    execution_mode: str
+    safety_stop: BatchSafetyStop | None
+    final_acceptance: bool
+
+@dataclass(frozen=True)
+class FullPreflightSummary:
+    contract_valid: bool
+    inventory_size: int
+    site_counts: Mapping[str, int]
+    requested_family_ids: tuple[str, ...]
+    feature_count: int
+    feature_id_digest: str
+    recipe_ids: Mapping[str, str]
+    available_cache_bytes: int
+    peak_rss_kb: int
+    authorization_present: bool
+    authorization_valid: bool
+    execution_permitted: bool
+    checkpoint_compatible: bool
+
 
 
 @dataclass(frozen=True)
@@ -571,12 +653,129 @@ def _checkpoint_record(result: BatchRecordResult) -> dict[str, Any]:
     }
 
 
+def _peak_rss_kb() -> int:
+    return int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+
+
+def _available_cache_bytes(cache_root: Path) -> int:
+    probe = Path(cache_root).resolve()
+    while not probe.exists() and probe != probe.parent:
+        probe = probe.parent
+    return int(shutil.disk_usage(probe).free)
+
+
+def _authorization_state(
+    full_authorization_file: Path | None,
+    *,
+    require_authorization: bool,
+) -> tuple[bool, bool]:
+    if full_authorization_file is None:
+        if require_authorization:
+            raise PermissionError("Full extraction requires an authorization file")
+        raise PermissionError("Full preflight requires the frozen authorization path")
+    requested = Path(full_authorization_file).resolve()
+    expected = Path(FULL_AUTHORIZATION_PATH).resolve()
+    if requested != expected:
+        raise PermissionError("Full extraction authorization path is not frozen")
+    if not requested.exists():
+        if require_authorization:
+            raise PermissionError("Full extraction authorization is unavailable")
+        return False, False
+    try:
+        authorization = requested.read_text(encoding="utf-8").strip()
+    except OSError as exc:
+        raise PermissionError("Full extraction authorization is unavailable") from exc
+    if authorization != FULL_AUTHORIZATION_TEXT:
+        raise PermissionError("Full extraction authorization is invalid")
+    return True, True
+
+
+def _live_full_contract() -> dict[str, Any]:
+    specs = registry.list_families()
+    family_ids = tuple(spec.family_id for spec in specs)
+    dimensions = {
+        spec.family_id: len(spec.feature_definitions) for spec in specs
+    }
+    feature_ids = tuple(
+        definition.feature_id
+        for spec in specs
+        for definition in spec.feature_definitions
+    )
+    code_root = Path(__file__).resolve().parents[1]
+    recipe_ids = {
+        spec.family_id: build_recipe_identity(
+            spec, dict(spec.default_config), code_root
+        ).recipe_id
+        for spec in specs
+    }
+    return {
+        "family_ids": family_ids,
+        "dimensions": dimensions,
+        "feature_ids": feature_ids,
+        "feature_id_digest": canonical_sha256(list(feature_ids)),
+        "recipe_ids": recipe_ids,
+    }
+
+
+def _validate_full_request(
+    inventory: Sequence[SourceInventoryEntry],
+    family_ids: tuple[str, ...],
+    config_overrides: Mapping[str, Mapping[str, object]],
+    *,
+    max_records: int,
+    workers: int,
+    full_authorization_file: Path | None,
+    expected_inventory_size: int | None,
+    extractors: Mapping[str, FamilyExtractor] | None,
+    require_authorization: bool,
+) -> dict[str, Any]:
+    authorization_present, authorization_valid = _authorization_state(
+        full_authorization_file,
+        require_authorization=require_authorization,
+    )
+    if max_records != FULL_RECORD_COUNT:
+        raise ValueError("Full mode max_records must equal 6600")
+    if expected_inventory_size != FULL_RECORD_COUNT:
+        raise ValueError("Full mode expected_inventory_size must equal 6600")
+    if len(inventory) != FULL_RECORD_COUNT:
+        raise ValueError("Full inventory must contain exactly 6600 records")
+    observed_sites = dict(sorted(Counter(item.site_id for item in inventory).items()))
+    if observed_sites != FULL_SITE_COUNTS:
+        raise ValueError("Full inventory site distribution differs from frozen contract")
+    if family_ids != FULL_FAMILY_IDS:
+        raise ValueError("Full family set and order differ from frozen contract")
+    if config_overrides:
+        raise ValueError("Full mode requires FamilySpec default parameters")
+    if workers != 1:
+        raise ValueError("First Full extraction requires workers=1")
+    if extractors is not None:
+        raise ValueError("Full extraction forbids extractor overrides")
+
+    live = _live_full_contract()
+    if live["family_ids"] != FULL_FAMILY_IDS:
+        raise ValueError("Live family registry differs from frozen contract")
+    if live["dimensions"] != FULL_FAMILY_DIMENSIONS:
+        raise ValueError("Live family dimensions differ from frozen contract")
+    feature_ids = live["feature_ids"]
+    if (
+        len(feature_ids) != FULL_FEATURE_ID_COUNT
+        or len(set(feature_ids)) != FULL_FEATURE_ID_COUNT
+        or live["feature_id_digest"] != FULL_FEATURE_ID_DIGEST
+    ):
+        raise ValueError("Live ordered Feature IDs differ from frozen contract")
+    if live["recipe_ids"] != FULL_RECIPE_IDS:
+        raise ValueError("Live Recipe IDs differ from frozen contract")
+    return {
+        **live,
+        "site_counts": observed_sites,
+        "authorization_present": authorization_present,
+        "authorization_valid": authorization_valid,
+    }
+
+
 def _validate_execution_mode(
     execution_mode: str,
     max_records: int,
-    full_authorization_file: Path | None,
-    expected_inventory_size: int | None,
-    inventory_size: int,
 ) -> None:
     if max_records <= 0:
         raise ValueError("max_records must be positive")
@@ -588,22 +787,288 @@ def _validate_execution_mode(
         return
     if execution_mode != "full":
         raise ValueError("execution_mode must be pilot or full")
-    if full_authorization_file is None:
-        raise PermissionError("Full extraction requires an authorization file")
-    try:
-        authorization = Path(full_authorization_file).read_text(
-            encoding="utf-8"
-        ).strip()
-    except OSError as exc:
-        raise PermissionError("Full extraction authorization is unavailable") from exc
-    if authorization != FULL_AUTHORIZATION_TEXT:
-        raise PermissionError("Full extraction authorization is invalid")
-    if expected_inventory_size is None:
-        raise ValueError("Full mode requires expected_inventory_size")
-    if inventory_size != expected_inventory_size:
-        raise ValueError("Inventory size differs from explicit full-run expectation")
-    if max_records != expected_inventory_size:
-        raise ValueError("Full mode max_records must equal expected inventory size")
+
+
+def run_full_preflight(
+    inventory: Sequence[SourceInventoryEntry],
+    source_root: Path,
+    cache_root: Path,
+    checkpoint_path: Path,
+    family_ids: Sequence[str],
+    config_overrides: Mapping[str, Mapping[str, object]],
+    *,
+    max_records: int,
+    workers: int,
+    full_authorization_file: Path | None,
+    expected_inventory_size: int | None,
+) -> FullPreflightSummary:
+    """Validate the frozen Full contract without decoding sources or writing state."""
+
+    del source_root
+    ordered = tuple(sorted(inventory))
+    if len({entry.relative_path for entry in ordered}) != len(ordered):
+        raise ValueError("Batch inventory contains duplicate paths")
+    if len({entry.record_key for entry in ordered}) != len(ordered):
+        raise ValueError("Batch inventory contains duplicate record keys")
+    requested = tuple(family_ids)
+    contract = _validate_full_request(
+        ordered,
+        requested,
+        config_overrides,
+        max_records=max_records,
+        workers=workers,
+        full_authorization_file=full_authorization_file,
+        expected_inventory_size=expected_inventory_size,
+        extractors=None,
+        require_authorization=False,
+    )
+    available = _available_cache_bytes(cache_root)
+    peak = _peak_rss_kb()
+    if available < FULL_START_FREE_BYTES:
+        raise RuntimeError("Full preflight has less than 2 GiB free")
+    if peak > FULL_RSS_STOP_KB:
+        raise RuntimeError("Full preflight RSS exceeds the frozen safety threshold")
+
+    inventory_digest = canonical_sha256([item.material() for item in ordered])
+    request_material = _request_material(requested, config_overrides)
+    request_digest = canonical_sha256(request_material)
+    checkpoint_compatible = True
+    if Path(checkpoint_path).exists():
+        checkpoint = _load_checkpoint(checkpoint_path, ordered, inventory_digest)
+        state = checkpoint["requests"].get(request_digest)
+        if state is not None and state.get("request") != request_material:
+            raise SourceContractError("Checkpoint request digest collision")
+    return FullPreflightSummary(
+        contract_valid=True,
+        inventory_size=len(ordered),
+        site_counts=contract["site_counts"],
+        requested_family_ids=requested,
+        feature_count=len(contract["feature_ids"]),
+        feature_id_digest=contract["feature_id_digest"],
+        recipe_ids=dict(contract["recipe_ids"]),
+        available_cache_bytes=available,
+        peak_rss_kb=peak,
+        authorization_present=contract["authorization_present"],
+        authorization_valid=contract["authorization_valid"],
+        execution_permitted=(
+            contract["authorization_present"] and contract["authorization_valid"]
+        ),
+        checkpoint_compatible=checkpoint_compatible,
+    )
+
+
+def _safety_stop(
+    reason_code: str,
+    completed_count: int,
+    abnormal_status: str,
+    *,
+    safe_to_resume: bool,
+) -> BatchSafetyStop:
+    return BatchSafetyStop(
+        reason_code=reason_code,
+        completed_count=completed_count,
+        abnormal_status=abnormal_status,
+        safe_to_resume=safe_to_resume,
+    )
+
+
+def _immediate_full_stop(
+    result: BatchRecordResult,
+    completed_count: int,
+) -> BatchSafetyStop | None:
+    stop_invalid = next(
+        (
+            item
+            for item in result.run.family_results
+            if item.status is FamilyRunStatus.STOP_INVALID
+        ),
+        None,
+    )
+    if stop_invalid is not None:
+        return _safety_stop(
+            "CACHE_STOP_INVALID",
+            completed_count,
+            f"{stop_invalid.family_id}:{stop_invalid.reason_code}",
+            safe_to_resume=False,
+        )
+    if result.source_immutable is not True:
+        unavailable = result.source_immutable is None or any(
+            token in result.verification_error
+            for token in ("SOURCE_BEFORE:", "SOURCE_AFTER:")
+        )
+        return _safety_stop(
+            "SOURCE_SNAPSHOT_UNAVAILABLE" if unavailable else "SOURCE_IMMUTABILITY",
+            completed_count,
+            result.verification_error or result.run.reason_code,
+            safe_to_resume=False,
+        )
+    if not result.readback_verified:
+        return _safety_stop(
+            "CACHE_READBACK_FAILED",
+            completed_count,
+            result.verification_error or "BATCH_VERIFY_FAILED",
+            safe_to_resume=False,
+        )
+    for item in result.run.family_results:
+        if item.status is not FamilyRunStatus.FAILED:
+            continue
+        if item.reason_code.startswith(("REGISTRY:", "RECIPE:")):
+            return _safety_stop(
+                "FROZEN_RUNTIME_CONTRACT",
+                completed_count,
+                f"{item.family_id}:{item.reason_code}",
+                safe_to_resume=False,
+            )
+    return None
+
+
+def _record_systemic_errors(
+    result: BatchRecordResult,
+    request_state: dict[str, Any],
+    completed_count: int,
+) -> BatchSafetyStop | None:
+    signatures: list[tuple[str, str]] = []
+    if (
+        result.run.status is RecordRunStatus.STOP_RECORD
+        and result.run.reason_code.startswith("SOURCE_CONTRACT:")
+    ):
+        signatures.append(
+            (
+                "REPEATED_SOURCE_CONTRACT",
+                "|".join(
+                    (
+                        "source",
+                        result.entry.site_id,
+                        result.run.reason_code,
+                    )
+                ),
+            )
+        )
+    for item in result.run.family_results:
+        if item.status is FamilyRunStatus.REQUIRES_INPUT_REVIEW:
+            signatures.append(
+                (
+                    "REPEATED_FAMILY_INPUT",
+                    "|".join(
+                        (
+                            "family",
+                            result.entry.site_id,
+                            item.family_id,
+                            item.reason_code,
+                        )
+                    ),
+                )
+            )
+
+    counters = request_state.setdefault("systemic_errors", {})
+    stop: BatchSafetyStop | None = None
+    for reason_code, signature in signatures:
+        record_keys = list(counters.get(signature, []))
+        if result.entry.record_key not in record_keys:
+            record_keys.append(result.entry.record_key)
+        counters[signature] = sorted(record_keys)
+        if len(record_keys) >= 2 and stop is None:
+            stop = _safety_stop(
+                reason_code,
+                completed_count,
+                signature,
+                safe_to_resume=False,
+            )
+    request_state["systemic_errors"] = dict(sorted(counters.items()))
+    return stop
+
+
+def _resource_stop(
+    cache_root: Path,
+    completed_count: int,
+    *,
+    startup: bool,
+) -> BatchSafetyStop | None:
+    available = _available_cache_bytes(cache_root)
+    threshold = FULL_START_FREE_BYTES if startup else FULL_RUNTIME_FREE_BYTES
+    if available < threshold:
+        return _safety_stop(
+            "LOW_DISK_STARTUP" if startup else "LOW_DISK_RUNTIME",
+            completed_count,
+            f"available_bytes={available};required_bytes={threshold}",
+            safe_to_resume=True,
+        )
+    peak = _peak_rss_kb()
+    if peak > FULL_RSS_STOP_KB:
+        return _safety_stop(
+            "HIGH_RSS_STARTUP" if startup else "HIGH_RSS_RUNTIME",
+            completed_count,
+            f"peak_rss_kb={peak};limit_kb={FULL_RSS_STOP_KB}",
+            safe_to_resume=True,
+        )
+    return None
+
+
+def _status_counts(results: Sequence[BatchRecordResult]) -> dict[str, int]:
+    counts: Counter[str] = Counter()
+    for result in results:
+        if result.run.status is RecordRunStatus.STOP_RECORD:
+            counts[RecordRunStatus.STOP_RECORD.value] += 1
+        for family in result.run.family_results:
+            counts[family.status.value] += 1
+        if not result.readback_verified:
+            counts["BATCH_VERIFY_FAILED"] += 1
+    return dict(sorted(counts.items()))
+
+
+def _batch_summary(
+    records: Sequence[BatchRecordResult],
+    *,
+    selected_count: int,
+    requested: tuple[str, ...],
+    workers: int,
+    dry_run: bool,
+    interrupted: bool,
+    started: float | None,
+    inventory_digest: str,
+    request_digest: str,
+    execution_mode: str,
+    safety_stop: BatchSafetyStop | None,
+) -> BatchRunSummary:
+    ordered_records = tuple(sorted(records, key=lambda item: item.entry))
+    accepted_records = (
+        len(ordered_records) == selected_count
+        and all(
+            item.run.status is RecordRunStatus.COMPLETE
+            and item.source_immutable is True
+            and item.readback_verified
+            for item in ordered_records
+        )
+    )
+    final_acceptance = (
+        safety_stop is None
+        and (
+            dry_run
+            or (
+                not interrupted
+                and accepted_records
+            )
+        )
+    )
+    return BatchRunSummary(
+        records=ordered_records,
+        selected_count=selected_count,
+        executed_count=len(ordered_records),
+        requested_family_ids=requested,
+        workers=workers,
+        dry_run=dry_run,
+        interrupted=interrupted or safety_stop is not None,
+        elapsed_sec=(
+            0.0 if started is None else round(time.monotonic() - started, 6)
+        ),
+        peak_rss_kb=_peak_rss_kb(),
+        status_counts=_status_counts(ordered_records),
+        inventory_digest=inventory_digest,
+        request_digest=request_digest,
+        execution_mode=execution_mode,
+        safety_stop=safety_stop,
+        final_acceptance=final_acceptance,
+    )
 
 
 def run_batch(
@@ -635,12 +1100,23 @@ def run_batch(
         raise ValueError("family_ids must be nonempty and unique")
     if workers <= 0:
         raise ValueError("workers must be positive")
-    _validate_execution_mode(
-        execution_mode,
-        max_records,
-        full_authorization_file,
-        expected_inventory_size,
-        len(ordered),
+    _validate_execution_mode(execution_mode, max_records)
+    if execution_mode == "full":
+        _validate_full_request(
+            ordered,
+            requested,
+            config_overrides,
+            max_records=max_records,
+            workers=workers,
+            full_authorization_file=full_authorization_file,
+            expected_inventory_size=expected_inventory_size,
+            extractors=extractors,
+            require_authorization=True,
+        )
+    startup_stop = (
+        _resource_stop(Path(cache_root), 0, startup=True)
+        if execution_mode == "full"
+        else None
     )
     selected = ordered[:max_records]
     if stop_after is not None and stop_after < 0:
@@ -652,19 +1128,18 @@ def run_batch(
     request_material = _request_material(requested, config_overrides)
     request_digest = canonical_sha256(request_material)
     if dry_run:
-        return BatchRunSummary(
-            records=(),
+        return _batch_summary(
+            (),
             selected_count=len(selected),
-            executed_count=0,
-            requested_family_ids=requested,
+            requested=requested,
             workers=workers,
             dry_run=True,
             interrupted=False,
-            elapsed_sec=0.0,
-            peak_rss_kb=int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss),
-            status_counts={},
+            started=None,
             inventory_digest=inventory_digest,
             request_digest=request_digest,
+            execution_mode=execution_mode,
+            safety_stop=startup_stop,
         )
 
     checkpoint = _load_checkpoint(checkpoint_path, selected, inventory_digest)
@@ -676,6 +1151,64 @@ def run_batch(
         raise SourceContractError("Checkpoint request digest collision")
     started = time.monotonic()
     completed: list[BatchRecordResult] = []
+    safety_stop: BatchSafetyStop | None = None
+    if execution_mode == "full":
+        request_state.setdefault("systemic_errors", {})
+        request_state.setdefault("safety_stop_history", [])
+        active_material = request_state.get("active_safety_stop")
+        if active_material is not None:
+            active = BatchSafetyStop.from_material(active_material)
+            if not active.safe_to_resume:
+                return _batch_summary(
+                    (),
+                    selected_count=len(selected),
+                    requested=requested,
+                    workers=workers,
+                    dry_run=False,
+                    interrupted=True,
+                    started=started,
+                    inventory_digest=inventory_digest,
+                    request_digest=request_digest,
+                    execution_mode=execution_mode,
+                    safety_stop=active,
+                )
+            if startup_stop is None:
+                request_state["safety_stop_history"].append(active.material())
+                request_state["active_safety_stop"] = None
+                _atomic_write_checkpoint(checkpoint_path, checkpoint)
+            else:
+                request_state["active_safety_stop"] = startup_stop.material()
+                _atomic_write_checkpoint(checkpoint_path, checkpoint)
+                return _batch_summary(
+                    (),
+                    selected_count=len(selected),
+                    requested=requested,
+                    workers=workers,
+                    dry_run=False,
+                    interrupted=True,
+                    started=started,
+                    inventory_digest=inventory_digest,
+                    request_digest=request_digest,
+                    execution_mode=execution_mode,
+                    safety_stop=startup_stop,
+                )
+        elif startup_stop is not None:
+            request_state["active_safety_stop"] = startup_stop.material()
+            _atomic_write_checkpoint(checkpoint_path, checkpoint)
+            return _batch_summary(
+                (),
+                selected_count=len(selected),
+                requested=requested,
+                workers=workers,
+                dry_run=False,
+                interrupted=True,
+                started=started,
+                inventory_digest=inventory_digest,
+                request_digest=request_digest,
+                execution_mode=execution_mode,
+                safety_stop=startup_stop,
+            )
+
 
     def persist(result: BatchRecordResult) -> None:
         previous = request_state["records"].get(result.entry.record_key, {})
@@ -696,7 +1229,24 @@ def run_batch(
                 extractors,
             )
             completed.append(result)
+            systemic_stop = (
+                _record_systemic_errors(result, request_state, len(completed))
+                if execution_mode == "full"
+                else None
+            )
             persist(result)
+            if execution_mode == "full":
+                safety_stop = (
+                    _immediate_full_stop(result, len(completed))
+                    or systemic_stop
+                    or _resource_stop(
+                        Path(cache_root), len(completed), startup=False
+                    )
+                )
+                if safety_stop is not None:
+                    request_state["active_safety_stop"] = safety_stop.material()
+                    _atomic_write_checkpoint(checkpoint_path, checkpoint)
+                    break
     else:
         with ThreadPoolExecutor(max_workers=workers) as pool:
             futures = {
@@ -716,28 +1266,18 @@ def run_batch(
                 completed.append(result)
                 persist(result)
 
-    completed.sort(key=lambda item: item.entry)
-    counts: Counter[str] = Counter()
-    for result in completed:
-        if result.run.status is RecordRunStatus.STOP_RECORD:
-            counts[RecordRunStatus.STOP_RECORD.value] += 1
-        for family in result.run.family_results:
-            counts[family.status.value] += 1
-        if not result.readback_verified:
-            counts["BATCH_VERIFY_FAILED"] += 1
-    return BatchRunSummary(
-        records=tuple(completed),
+    return _batch_summary(
+        completed,
         selected_count=len(selected),
-        executed_count=len(completed),
-        requested_family_ids=requested,
+        requested=requested,
         workers=workers,
         dry_run=False,
         interrupted=interrupted,
-        elapsed_sec=round(time.monotonic() - started, 6),
-        peak_rss_kb=int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss),
-        status_counts=dict(sorted(counts.items())),
+        started=started,
         inventory_digest=inventory_digest,
         request_digest=request_digest,
+        execution_mode=execution_mode,
+        safety_stop=safety_stop,
     )
 
 
@@ -750,6 +1290,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--workers", type=int, default=1)
     parser.add_argument("--family", action="append", dest="families")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--preflight-only", action="store_true")
     parser.add_argument(
         "--execution-mode", choices=("pilot", "full"), default="pilot"
     )
@@ -758,26 +1299,90 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
+def summary_exit_code(summary: BatchRunSummary) -> int:
+    if summary.safety_stop is not None:
+        return 2
+    if (
+        summary.execution_mode == "full"
+        and not summary.dry_run
+        and not summary.final_acceptance
+    ):
+        return 2
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
-    inventory = build_path_inventory(args.source_root)
-    family_ids = tuple(args.families or (
-        spec.family_id for spec in registry.list_families()
-    ))
-    summary = run_batch(
-        inventory,
-        args.source_root,
-        args.cache_root,
-        args.checkpoint,
-        family_ids,
-        {},
-        max_records=args.max_records,
-        workers=args.workers,
-        dry_run=args.dry_run,
-        execution_mode=args.execution_mode,
-        full_authorization_file=args.full_authorization_file,
-        expected_inventory_size=args.expected_inventory_size,
-    )
+    try:
+        inventory = build_path_inventory(args.source_root)
+        family_ids = tuple(args.families or (
+            spec.family_id for spec in registry.list_families()
+        ))
+        if args.preflight_only:
+            if args.execution_mode != "full" or args.dry_run:
+                raise ValueError(
+                    "--preflight-only requires full mode and is distinct from --dry-run"
+                )
+            report = run_full_preflight(
+                inventory,
+                args.source_root,
+                args.cache_root,
+                args.checkpoint,
+                family_ids,
+                {},
+                max_records=args.max_records,
+                workers=args.workers,
+                full_authorization_file=args.full_authorization_file,
+                expected_inventory_size=args.expected_inventory_size,
+            )
+            print(
+                canonical_json(
+                    {
+                        "preflight_only": True,
+                        "contract_valid": report.contract_valid,
+                        "inventory_size": report.inventory_size,
+                        "site_counts": dict(report.site_counts),
+                        "family_ids": list(report.requested_family_ids),
+                        "feature_count": report.feature_count,
+                        "feature_id_digest": report.feature_id_digest,
+                        "recipe_ids": dict(report.recipe_ids),
+                        "available_cache_bytes": report.available_cache_bytes,
+                        "peak_rss_kb": report.peak_rss_kb,
+                        "authorization_present": report.authorization_present,
+                        "authorization_valid": report.authorization_valid,
+                        "execution_permitted": report.execution_permitted,
+                        "checkpoint_compatible": report.checkpoint_compatible,
+                    }
+                )
+            )
+            return 0
+
+        summary = run_batch(
+            inventory,
+            args.source_root,
+            args.cache_root,
+            args.checkpoint,
+            family_ids,
+            {},
+            max_records=args.max_records,
+            workers=args.workers,
+            dry_run=args.dry_run,
+            execution_mode=args.execution_mode,
+            full_authorization_file=args.full_authorization_file,
+            expected_inventory_size=args.expected_inventory_size,
+        )
+    except (OSError, PermissionError, RuntimeError, ValueError) as exc:
+        print(
+            canonical_json(
+                {
+                    "status": "REJECTED",
+                    "error_type": type(exc).__name__,
+                    "reason": str(exc),
+                }
+            )
+        )
+        return 2
+
     print(
         canonical_json(
             {
@@ -791,10 +1396,16 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "status_counts": dict(summary.status_counts),
                 "inventory_digest": summary.inventory_digest,
                 "request_digest": summary.request_digest,
+                "final_acceptance": summary.final_acceptance,
+                "safety_stop": (
+                    None
+                    if summary.safety_stop is None
+                    else summary.safety_stop.material()
+                ),
             }
         )
     )
-    return 0
+    return summary_exit_code(summary)
 
 
 if __name__ == "__main__":
