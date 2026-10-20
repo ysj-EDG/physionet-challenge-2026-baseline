@@ -12,17 +12,27 @@ def source_payload(
     record_id: str = "record-001",
     epochs: int = 4,
 ) -> dict[str, Any]:
+    stage_pattern = np.asarray([2.0, 2.0, 4.0, 5.0, 1.0, 3.0], dtype=np.float32)
+    stages = np.resize(stage_pattern, epochs)
     return {
         "site_id": np.asarray(site_id),
         "record_id": np.asarray(record_id),
         "extraction_version": np.asarray("timegrid_v2.1.0"),
         "validity_schema_version": np.asarray("validity_v0.2"),
         "X_seq": np.arange(epochs * 483, dtype=np.float32).reshape(epochs, 483),
-        "stage_valid": np.asarray([True, False, True, True][:epochs], dtype=bool),
-        "stage_code_aligned": np.asarray([2.0, 2.0, 4.0, 5.0][:epochs], dtype=np.float32),
+        "stage_valid": np.ones(epochs, dtype=bool),
+        "stage_code_aligned": stages,
         "resp_feature_valid": np.ones((epochs, 14), dtype=bool),
         "epoch_start_sec": np.arange(epochs, dtype=np.float32) * 30.0,
         "epoch_duration_sec": np.full(epochs, 30.0, dtype=np.float32),
+        "eeg_channel_available": np.ones(6, dtype=bool),
+        "eeg_clean_subsegment_count": np.ones((epochs, 6), dtype=np.int32),
+        "eeg_common_clean_subsegment_count": np.ones(epochs, dtype=np.int32),
+        "emg_channel_available": np.ones(3, dtype=bool),
+        "emg_preprocessing_success": np.ones(3, dtype=bool),
+        "emg_epoch_success": np.ones((epochs, 3), dtype=bool),
+        "x_static": np.zeros(196, dtype=np.float32),
+        "annotation_status": np.asarray("available"),
         # Object dtype makes accidental label access fail under allow_pickle=False.
         "y": np.asarray({"forbidden": "label"}, dtype=object),
     }
