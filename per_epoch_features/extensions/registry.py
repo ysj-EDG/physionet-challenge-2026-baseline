@@ -48,7 +48,10 @@ class FamilySpec:
 
 
 _FAMILIES: tuple[FamilySpec, ...] = ()
-_IMPLEMENTED_FAMILY_MODULES = ("extensions.eeg_tail",)
+_IMPLEMENTED_FAMILY_MODULES = (
+    "extensions.eeg_tail",
+    "extensions.eeg_temporal",
+)
 
 
 def list_families() -> tuple[FamilySpec, ...]:
