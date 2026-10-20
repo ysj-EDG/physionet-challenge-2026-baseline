@@ -4,10 +4,16 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
+import numpy as np
+
 import extensions.smoke as smoke
+from extensions.cache import read_cache
 from extensions.contracts import SourceContractError
+from extensions.runner import run_record
+from extensions import registry
 from extensions.tests.fixtures import source_payload, write_source_npz
 
 
@@ -57,6 +63,22 @@ class SmokeSelectionTests(unittest.TestCase):
 
 
 class SmokeSyntheticCheckTests(unittest.TestCase):
+    def test_counting_extractors_capture_each_family_id(self) -> None:
+        calls = []
+        specs = tuple(
+            SimpleNamespace(
+                family_id=family_id,
+                extractor=lambda source, config, value=family_id: value,
+            )
+            for family_id in ("alpha", "beta", "gamma")
+        )
+        wrappers = smoke._counting_extractors(specs, calls)
+        self.assertEqual(
+            [wrappers[family_id](None, {}) for family_id in wrappers],
+            ["alpha", "beta", "gamma"],
+        )
+        self.assertEqual(calls, ["alpha", "beta", "gamma"])
+
     def test_synthetic_checks_all_pass_with_labeled_examples(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             summary = smoke.run_synthetic_cache_checks(Path(directory))
@@ -93,6 +115,9 @@ class SmokePrivacyTests(unittest.TestCase):
             {"identity_mapping": {"rec_abc": "X/Y"}},
             {"families": [{"family_id": "eeg_tail", "values": [1.0]}]},
             {"families": [{"family_id": "eeg_tail", "cache_path": "/tmp/x"}]},
+            {"status_counts": {"BUILT": 1, "record_key": "rec_abc"}},
+            {"status_counts": {"FAILED": {"source_path": "/private/x"}}},
+            {"status_counts": {"FAILED": 1, "reason_code": "record X failed"}},
         ):
             with self.subTest(payload), self.assertRaises(ValueError):
                 smoke.assert_public_summary_safe(payload)
@@ -108,6 +133,51 @@ class SmokePrivacyTests(unittest.TestCase):
             inside = Path(__file__).resolve().parents[3] / "docs" / "private.json"
             with self.assertRaises(ValueError):
                 smoke.run_real_smoke(source_path, source_root, cache_root, inside)
+
+    def test_cache_readback_requires_full_result_equality(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source_root = root / "npz"
+            source_path = write_source_npz(
+                source_root, payload=source_payload(epochs=120)
+            )
+            cache_root = root / "cache"
+            family_id = "eeg_tail"
+            summary = run_record(
+                source_path, source_root, cache_root, (family_id,), {}
+            )
+            item = summary.family_results[0]
+            result = item.result
+            self.assertIsNotNone(result)
+            payload = read_cache(item.cache_path)
+            smoke._assert_result_matches_payload(
+                result, payload, item.cache_path.parent.name
+            )
+
+            mutations = {
+                "feature_ids": lambda copy: copy.__setitem__(
+                    "feature_ids", copy["feature_ids"][::-1].copy()
+                ),
+                "values": lambda copy: copy["values"].__setitem__(0, copy["values"][0] + 1),
+                "valid_mask": lambda copy: copy["valid_mask"].__setitem__(0, False),
+                "support_count": lambda copy: copy["support_count"].__setitem__(0, 999),
+                "missing_reason": lambda copy: copy["missing_reason"].__setitem__(0, "changed"),
+                "processing_parameters_json": lambda copy: copy.__setitem__(
+                    "processing_parameters_json", np.asarray("{}")
+                ),
+                "recipe_id": lambda copy: copy.__setitem__(
+                    "recipe_id", np.asarray("0" * 64)
+                ),
+            }
+            for label, mutate in mutations.items():
+                with self.subTest(label), self.assertRaises(SourceContractError):
+                    changed = {
+                        key: np.asarray(value).copy() for key, value in payload.items()
+                    }
+                    mutate(changed)
+                    smoke._assert_result_matches_payload(
+                        result, changed, item.cache_path.parent.name
+                    )
 
     def test_real_smoke_orchestration_and_private_diagnostics(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

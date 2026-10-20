@@ -79,6 +79,11 @@ _PUBLIC_FORBIDDEN_KEYS = frozenset(
         "cache_path",
         "recipe_id",
         "sha256",
+        "reason",
+        "reason_code",
+        "exception",
+        "error",
+        "message",
     }
 )
 
@@ -143,9 +148,19 @@ def assert_public_summary_safe(mapping: Mapping[str, Any]) -> None:
     unknown = set(mapping) - _PUBLIC_SUMMARY_ALLOWED_KEYS
     if unknown:
         raise ValueError(f"Forbidden public summary keys: {sorted(unknown)}")
-    for key in mapping:
-        if key in _PUBLIC_FORBIDDEN_KEYS:
-            raise ValueError(f"Forbidden public summary key: {key}")
+    _reject_forbidden_nested_keys(mapping)
+    status_counts = mapping.get("status_counts", {})
+    if not isinstance(status_counts, Mapping):
+        raise ValueError("status_counts must be a mapping")
+    allowed_statuses = {status.value for status in FamilyRunStatus}
+    unknown_statuses = set(status_counts) - allowed_statuses
+    if unknown_statuses:
+        raise ValueError(f"Unknown public status keys: {sorted(unknown_statuses)}")
+    if any(
+        not isinstance(value, int) or isinstance(value, bool) or value < 0
+        for value in status_counts.values()
+    ):
+        raise ValueError("Public status counts must be nonnegative integers")
     for family in mapping.get("families", ()):
         if not isinstance(family, Mapping):
             raise ValueError("Family summaries must be mappings")
@@ -166,6 +181,17 @@ def assert_public_summary_safe(mapping: Mapping[str, Any]) -> None:
             value = family.get(key)
             if value is not None and not isinstance(value, int):
                 raise ValueError(f"Family summary {key} must be an integer or null")
+
+
+def _reject_forbidden_nested_keys(value: Any) -> None:
+    if isinstance(value, Mapping):
+        for key, item in value.items():
+            if key in _PUBLIC_FORBIDDEN_KEYS:
+                raise ValueError(f"Forbidden nested public summary key: {key}")
+            _reject_forbidden_nested_keys(item)
+    elif isinstance(value, (tuple, list)):
+        for item in value:
+            _reject_forbidden_nested_keys(item)
 
 
 def _synthetic_payload(
@@ -223,8 +249,10 @@ def _counting_extractors(
         if original is None:
             continue
 
-        def counted(source, config, original=original):
-            calls.append(spec.family_id)
+        def counted(
+            source, config, original=original, family_id=spec.family_id
+        ):
+            calls.append(family_id)
             return original(source, config)
 
         wrappers[spec.family_id] = counted
@@ -482,6 +510,49 @@ def _metrics_from_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _assert_result_matches_payload(
+    result, payload: Mapping[str, Any], expected_recipe_id: str
+) -> None:
+    feature_ids = tuple(str(item) for item in payload["feature_ids"].tolist())
+    missing_reason = tuple(
+        str(item) for item in payload["missing_reason"].tolist()
+    )
+    feature_units = tuple(str(item) for item in payload["feature_units"].tolist())
+    checks = (
+        (feature_ids == result.feature_ids, "feature IDs"),
+        (
+            np.array_equal(
+                np.asarray(payload["values"]),
+                np.asarray(result.values),
+                equal_nan=True,
+            ),
+            "values",
+        ),
+        (
+            np.array_equal(payload["valid_mask"], result.valid_mask),
+            "valid mask",
+        ),
+        (
+            np.array_equal(payload["support_count"], result.support_count),
+            "support count",
+        ),
+        (missing_reason == result.missing_reason, "missing reasons"),
+        (feature_units == result.feature_units, "feature units"),
+        (
+            str(np.asarray(payload["processing_parameters_json"]).item())
+            == canonical_json(dict(result.processing_parameters)),
+            "processing parameters",
+        ),
+        (
+            str(np.asarray(payload["recipe_id"]).item()) == expected_recipe_id,
+            "recipe identity",
+        ),
+    )
+    for matches, field in checks:
+        if not matches:
+            raise SourceContractError(f"Cache readback disagrees on {field}")
+
+
 def run_real_smoke(
     source_path: Path,
     source_root: Path,
@@ -524,6 +595,14 @@ def run_real_smoke(
             metrics[item.family_id] = _metrics_from_result(item.result)
     for family_id, payload in readback.items():
         if family_id in metrics:
+            item = next(
+                candidate
+                for candidate in build.family_results
+                if candidate.family_id == family_id
+            )
+            _assert_result_matches_payload(
+                item.result, payload, item.cache_path.parent.name
+            )
             stored = _metrics_from_payload(payload)
             if stored != metrics[family_id]:
                 raise SourceContractError(
