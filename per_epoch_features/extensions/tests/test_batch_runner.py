@@ -591,6 +591,29 @@ class BatchRunnerTests(unittest.TestCase):
             self.assertEqual(summary.records[0].run.status, RecordRunStatus.PARTIAL)
             self.assertEqual(summary.records[1].run.status, RecordRunStatus.COMPLETE)
 
+    def test_full_different_family_input_errors_do_not_form_systemic_pair(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            first = source_payload(
+                site_id="I0002", record_id="record-00000", epochs=240
+            )
+            del first["emg_epoch_success"]
+            second = source_payload(
+                site_id="I0002", record_id="record-00001", epochs=240
+            )
+            del second["emg_channel_available"]
+            source_root, inventory = self._full_inventory(root, (first, second))
+
+            summary = self._run_full(
+                root, inventory, source_root, stop_after=2
+            )
+
+            self.assertEqual(summary.executed_count, 2)
+            self.assertIsNone(summary.safety_stop)
+            self.assertTrue(
+                all(item.run.status is RecordRunStatus.PARTIAL for item in summary.records)
+            )
+
     def test_full_legal_low_support_nan_does_not_stop(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -857,6 +880,13 @@ class BatchRunnerTests(unittest.TestCase):
                                 family_id="eeg_tail",
                                 status=FamilyRunStatus.FAILED,
                                 reason_code="COMPUTE:ValueError",
+                                cache_path=(
+                                    root
+                                    / "cache"
+                                    / "eeg_tail"
+                                    / ("0" * 64)
+                                    / "unpublished.npz"
+                                ),
                             ),
                         ),
                     )
@@ -916,6 +946,31 @@ class BatchRunnerTests(unittest.TestCase):
             self.assertEqual(
                 summary.safety_stop.reason_code, "REPEATED_SOURCE_CONTRACT"
             )
+            self.assertTrue(
+                all(
+                    item.run.status is RecordRunStatus.STOP_RECORD
+                    for item in summary.records
+                )
+            )
+
+    def test_full_different_source_contract_errors_do_not_form_systemic_pair(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            first = source_payload(
+                site_id="OTHER", record_id="record-00000", epochs=240
+            )
+            second = source_payload(
+                site_id="I0002", record_id="record-00001", epochs=240
+            )
+            second["extraction_version"] = np.asarray("unexpected_schema")
+            source_root, inventory = self._full_inventory(root, (first, second))
+
+            summary = self._run_full(
+                root, inventory, source_root, stop_after=2
+            )
+
+            self.assertEqual(summary.executed_count, 2)
+            self.assertIsNone(summary.safety_stop)
             self.assertTrue(
                 all(
                     item.run.status is RecordRunStatus.STOP_RECORD

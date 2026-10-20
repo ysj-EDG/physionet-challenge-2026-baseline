@@ -117,6 +117,7 @@ class BatchRecordResult:
     source_immutable: bool | None
     readback_verified: bool
     verification_error: str = ""
+    incompatibility_signatures: tuple[tuple[str, str], ...] = ()
 
 @dataclass(frozen=True)
 class BatchSafetyStop:
@@ -481,6 +482,61 @@ def _stopped_record(reason: str) -> RecordRunSummary:
     )
 
 
+def _error_fingerprint(
+    scope: str,
+    error: BaseException,
+    source_path: Path,
+) -> str:
+    detail = str(error)
+    for value in {str(source_path), str(source_path.resolve())}:
+        detail = detail.replace(value, "<SOURCE>")
+    return canonical_sha256(
+        {
+            "scope": scope,
+            "error_type": type(error).__name__,
+            "detail": " ".join(detail.split()),
+        }
+    )
+
+
+def _diagnose_incompatibilities(
+    run: RecordRunSummary,
+    source_path: Path,
+    source_root: Path,
+) -> tuple[tuple[str, str], ...]:
+    affected = tuple(
+        item.family_id
+        for item in run.family_results
+        if item.status is FamilyRunStatus.REQUIRES_INPUT_REVIEW
+    )
+    if run.status is not RecordRunStatus.STOP_RECORD and not affected:
+        return ()
+    try:
+        source = load_source_npz(source_path, source_root)
+    except RecordFatalError as exc:
+        if run.status is RecordRunStatus.STOP_RECORD:
+            return (("source", _error_fingerprint("source", exc, source_path)),)
+        return ()
+    if run.status is RecordRunStatus.STOP_RECORD:
+        return ()
+
+    signatures: list[tuple[str, str]] = []
+    for family_id in affected:
+        try:
+            spec = registry.get_family(family_id)
+            validate_family_input(source, spec.input_contract)
+        except FamilyInputReviewError as exc:
+            signatures.append(
+                (
+                    family_id,
+                    _error_fingerprint(
+                        f"family:{family_id}", exc, source_path
+                    ),
+                )
+            )
+    return tuple(sorted(signatures))
+
+
 def _execute_entry(
     entry: SourceInventoryEntry,
     source_root: Path,
@@ -512,6 +568,9 @@ def _execute_entry(
         config_overrides,
         extractors=extractors,
     )
+    incompatibility_signatures = _diagnose_incompatibilities(
+        run, source_path, source_root
+    )
     try:
         after = _source_snapshot(source_path)
         immutable = before == after
@@ -526,7 +585,15 @@ def _execute_entry(
     published_bytes = 0
     verification_errors: list[str] = []
     for family in run.family_results:
-        if family.cache_path is None:
+        if (
+            family.cache_path is None
+            or family.status
+            not in {
+                FamilyRunStatus.BUILT,
+                FamilyRunStatus.SKIP_VERIFIED,
+                FamilyRunStatus.STOP_INVALID,
+            }
+        ):
             continue
         try:
             payload = read_cache(family.cache_path)
@@ -552,6 +619,7 @@ def _execute_entry(
         source_immutable=immutable,
         readback_verified=not verification_errors,
         verification_error=";".join(verification_errors),
+        incompatibility_signatures=incompatibility_signatures,
     )
 
 
@@ -650,6 +718,7 @@ def _checkpoint_record(result: BatchRecordResult) -> dict[str, Any]:
         "source_immutable": result.source_immutable,
         "readback_verified": result.readback_verified,
         "verification_error": result.verification_error,
+        "incompatibility_signatures": dict(result.incompatibility_signatures),
     }
 
 
@@ -928,9 +997,11 @@ def _record_systemic_errors(
     completed_count: int,
 ) -> BatchSafetyStop | None:
     signatures: list[tuple[str, str]] = []
+    diagnosed = dict(result.incompatibility_signatures)
     if (
         result.run.status is RecordRunStatus.STOP_RECORD
         and result.run.reason_code.startswith("SOURCE_CONTRACT:")
+        and "source" in diagnosed
     ):
         signatures.append(
             (
@@ -939,13 +1010,16 @@ def _record_systemic_errors(
                     (
                         "source",
                         result.entry.site_id,
-                        result.run.reason_code,
+                        diagnosed["source"],
                     )
                 ),
             )
         )
     for item in result.run.family_results:
-        if item.status is FamilyRunStatus.REQUIRES_INPUT_REVIEW:
+        if (
+            item.status is FamilyRunStatus.REQUIRES_INPUT_REVIEW
+            and item.family_id in diagnosed
+        ):
             signatures.append(
                 (
                     "REPEATED_FAMILY_INPUT",
@@ -954,7 +1028,7 @@ def _record_systemic_errors(
                             "family",
                             result.entry.site_id,
                             item.family_id,
-                            item.reason_code,
+                            diagnosed[item.family_id],
                         )
                     ),
                 )

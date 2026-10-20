@@ -184,9 +184,9 @@ Immediate run-level stops are:
 4. the live Recipe, ordered Feature IDs, dimensions, or registered defaults differ from the frozen contract;
 5. startup free space is below 2 GiB, runtime free space is below 1 GiB, or peak RSS exceeds 1 GiB.
 
-Systemic run-level stops occur on the second distinct record within one site carrying the same source-contract incompatibility, or on the second distinct record within one site and family carrying the same family-input contract incompatibility. Repeated-error counters use record keys so a resumed observation of the same record does not falsely count twice.
+Systemic run-level stops occur on the second distinct record within one site carrying the same source-contract incompatibility, or on the second distinct record within one site and family carrying the same family-input contract incompatibility. “Same” is determined from a normalized fingerprint of the actual adapter/contract diagnostic, not merely its exception class; source paths are removed before hashing. Different missing fields, dtypes, shapes, or source-schema violations therefore remain separate. Repeated-error counters use record keys so a resumed observation of the same record does not falsely count twice.
 
-An isolated ordinary computation failure, `REQUIRES_INPUT_REVIEW`, or non-systemic `STOP_RECORD` is recorded and isolated. A record containing any failed family is `PARTIAL`, never `COMPLETE`. Legal low-support NaN values remain valid family outputs under their per-feature missingness rules and never trigger a run stop.
+An isolated ordinary computation failure, `REQUIRES_INPUT_REVIEW`, or non-systemic `STOP_RECORD` is recorded and isolated. Strict cache readback is attempted only for statuses expected to have a final cache; an unpublished target path retained by a `FAILED` result is not treated as a readback failure. A record containing any failed family is `PARTIAL`, never `COMPLETE`. Legal low-support NaN values remain valid family outputs under their per-feature missingness rules and never trigger a run stop.
 
 Pilot mode retains its prior bounded behavior: one record can be isolated while the Pilot queue continues. Neither mode converts `STOP_INVALID` to `BUILD_NEW`, deletes a bad cache, relaxes validity checks, or changes feature formulas.
 
