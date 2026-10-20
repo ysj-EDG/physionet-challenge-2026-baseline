@@ -251,6 +251,28 @@ class RecipeTests(unittest.TestCase):
                 with self.assertRaises(RecipeDependencyError):
                     self._identity(root, spec)
 
+    def test_relative_imported_undeclared_helper_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = write_recipe_tree(Path(directory))
+            family = root / "pkg/family.py"
+            family.write_text(
+                family.read_text(encoding="utf-8").replace(
+                    "from pkg.common import SCALE, aggregate",
+                    "from .common import SCALE, aggregate",
+                ),
+                encoding="utf-8",
+            )
+            incomplete = replace(
+                _spec(),
+                numerical_symbols=tuple(
+                    symbol
+                    for symbol in _spec().numerical_symbols
+                    if symbol != "pkg.common.aggregate"
+                ),
+            )
+            with self.assertRaises(RecipeDependencyError):
+                self._identity(root, incomplete)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import tempfile
@@ -13,6 +14,7 @@ import numpy as np
 from extensions.cache import (
     CACHE_SCHEMA_VERSION,
     CacheExpectation,
+    CacheValidationError,
     ResumeAction,
     cache_path,
     decide_resume_action,
@@ -188,6 +190,13 @@ class CacheTests(unittest.TestCase):
             write_cache_atomic(target, result, recipe, family_input)
             payload = read_cache(target)
             self.assertEqual(str(payload["cache_schema"].item()), CACHE_SCHEMA_VERSION)
+            source_provenance = json.loads(str(payload["source_provenance_json"].item()))
+            self.assertEqual(source_provenance["source_path"], result.source_identity.source_path)
+            self.assertEqual(
+                source_provenance["source_mtime_ns"],
+                result.source_identity.source_mtime_ns,
+            )
+            self.assertEqual(source_provenance["source_mode"], result.source_identity.source_mode)
             self.assertEqual(tuple(payload["feature_ids"].tolist()), result.feature_ids)
             np.testing.assert_array_equal(payload["values"], result.values)
             self.assertEqual(decide_resume_action(target, expected), ResumeAction.SKIP_VERIFIED)
@@ -220,6 +229,19 @@ class CacheTests(unittest.TestCase):
             target.parent.mkdir(parents=True)
             target.write_bytes(b"not-an-npz")
             self.assertEqual(decide_resume_action(target, expected), ResumeAction.STOP_INVALID)
+
+    def test_malformed_source_provenance_raises_cache_validation_error(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            context = self._context(Path(directory))
+            _, _, family_input, recipe, result, _, target = context
+            write_cache_atomic(target, result, recipe, family_input)
+            _rewrite(
+                target,
+                {"source_provenance_json": np.asarray("1")},
+                refresh_digest=True,
+            )
+            with self.assertRaises(CacheValidationError):
+                read_cache(target)
 
     def test_logical_digest_includes_dtype_shape_and_bytes(self) -> None:
         int32 = {"x": np.asarray([1, 2], dtype=np.int32)}

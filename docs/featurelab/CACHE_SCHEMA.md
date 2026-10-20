@@ -26,6 +26,7 @@ The schema version is `featurelab_family_cache_v1`. Every final file contains ex
 | `recipe_material_json` | scalar | Unicode string | Canonical numerical Recipe material. |
 | `recipe_provenance_json` | scalar | Unicode string | Canonical provenance, including Git commit; provenance is not Recipe material. |
 | `source_identity_json` | scalar | Unicode string | Canonical request-independent record identity. |
+| `source_provenance_json` | scalar | Unicode string | Resolved source path, mtime in nanoseconds, and mode; payload provenance only, never cache-match identity. |
 | `source_identity_digest` | scalar | Unicode string | SHA256 of SourceIdentity material. |
 | `family_input_identity_json` | scalar | Unicode string | Canonical family-specific input observation and contract identity. |
 | `family_input_identity_digest` | scalar | Unicode string | SHA256 of FamilyInputIdentity material. |
@@ -53,7 +54,7 @@ Each component is prefixed by its unsigned eight-byte big-endian length. Consequ
 
 ## Identity and validation
 
-`SourceIdentity` is derived once from the source file and is independent of the requested family set, family order, or union of required fields. Its digest covers the canonical record namespace and identifiers, safe record key, source byte size and SHA256, extraction schema, and validity schema. The resolved source path and stat values remain provenance and are not cache-match identity.
+`SourceIdentity` is derived once from the source file and is independent of the requested family set, family order, or union of required fields. Its digest covers the canonical record namespace and identifiers, safe record key, source byte size and SHA256, extraction schema, and validity schema. The resolved source path and selected stat values are serialized separately in `source_provenance_json`; they remain payload provenance and are not cache-match identity.
 
 `FamilyInputIdentity` separately covers the SourceIdentity digest, the selected family's `FamilyInputContract` digest, and the actual shapes/dtypes of that family's required fields. This separation guarantees that the same source, family, and Recipe can be reused when run alone or within a multi-family request.
 

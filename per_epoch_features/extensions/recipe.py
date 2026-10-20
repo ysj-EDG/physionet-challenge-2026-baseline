@@ -4,6 +4,7 @@ from __future__ import annotations
 import ast
 import copy
 import hashlib
+import importlib.util
 import json
 import subprocess
 from dataclasses import dataclass
@@ -101,10 +102,28 @@ def _index_module(code_root: Path, module: str, cache: dict[str, _ModuleIndex]) 
                     constants[target.id] = node.value
         elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and node.value is not None:
             constants[node.target.id] = node.value
-        elif isinstance(node, ast.ImportFrom) and node.module:
+        elif isinstance(node, ast.ImportFrom):
+            if node.level:
+                package = module if path.name == "__init__.py" else module.rpartition(".")[0]
+                try:
+                    imported_from = importlib.util.resolve_name(
+                        "." * node.level + (node.module or ""), package
+                    )
+                except (ImportError, ValueError):
+                    continue
+            else:
+                imported_from = node.module
+            if not imported_from:
+                continue
             for alias in node.names:
-                if alias.name != "*":
-                    imported_symbols[alias.asname or alias.name] = f"{node.module}.{alias.name}"
+                if alias.name == "*":
+                    continue
+                local_name = alias.asname or alias.name
+                target = f"{imported_from}.{alias.name}"
+                if node.module is None:
+                    imported_modules[local_name] = target
+                else:
+                    imported_symbols[local_name] = target
         elif isinstance(node, ast.Import):
             for alias in node.names:
                 imported_modules[alias.asname or alias.name.split(".")[0]] = alias.name

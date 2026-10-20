@@ -37,6 +37,7 @@ _SCALAR_TEXT_KEYS = frozenset(
         "recipe_material_json",
         "recipe_provenance_json",
         "source_identity_json",
+        "source_provenance_json",
         "source_identity_digest",
         "family_input_identity_json",
         "family_input_identity_digest",
@@ -180,6 +181,9 @@ def _validate_payload(payload: Mapping[str, np.ndarray]) -> None:
     source_identity = _canonical_json_value(
         _text_scalar(payload, "source_identity_json"), "source_identity_json"
     )
+    source_provenance = _canonical_json_value(
+        _text_scalar(payload, "source_provenance_json"), "source_provenance_json"
+    )
     family_input = _canonical_json_value(
         _text_scalar(payload, "family_input_identity_json"),
         "family_input_identity_json",
@@ -199,6 +203,19 @@ def _validate_payload(payload: Mapping[str, np.ndarray]) -> None:
     source_material = {key: value for key, value in source_identity.items() if key != "digest"}
     if canonical_sha256(source_material) != source_digest:
         raise CacheValidationError("Source identity is internally inconsistent")
+    if not isinstance(source_provenance, dict) or set(source_provenance) != {
+        "source_path",
+        "source_mtime_ns",
+        "source_mode",
+    }:
+        raise CacheValidationError("Source provenance fields do not match schema")
+    if (
+        not isinstance(source_provenance["source_path"], str)
+        or not source_provenance["source_path"]
+        or not isinstance(source_provenance["source_mtime_ns"], int)
+        or not isinstance(source_provenance["source_mode"], int)
+    ):
+        raise CacheValidationError("Source provenance values are invalid")
     if family_input.get("digest") != family_input_digest:
         raise CacheValidationError("Family input identity digest disagrees")
     family_material = {key: value for key, value in family_input.items() if key != "digest"}
@@ -275,6 +292,15 @@ def _payload_for(
         "recipe_material_json": np.asarray(recipe.material_json),
         "recipe_provenance_json": np.asarray(canonical_json(dict(recipe.provenance))),
         "source_identity_json": np.asarray(result.source_identity.canonical_json()),
+        "source_provenance_json": np.asarray(
+            canonical_json(
+                {
+                    "source_path": result.source_identity.source_path,
+                    "source_mtime_ns": result.source_identity.source_mtime_ns,
+                    "source_mode": result.source_identity.source_mode,
+                }
+            )
+        ),
         "source_identity_digest": np.asarray(result.source_identity.digest),
         "family_input_identity_json": np.asarray(family_input.canonical_json()),
         "family_input_identity_digest": np.asarray(family_input.digest),
