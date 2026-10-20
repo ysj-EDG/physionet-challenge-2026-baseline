@@ -343,6 +343,23 @@ class BatchRunnerTests(unittest.TestCase):
             self.assertEqual(by_record["bad"], RecordRunStatus.STOP_RECORD)
             self.assertEqual(by_record["good"], RecordRunStatus.COMPLETE)
 
+    def test_pilot_selection_does_not_hide_unexpected_programming_errors(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source_root, paths = self._sources(root, 1)
+            inventory = build_path_inventory(source_root, paths)
+            with mock.patch(
+                "extensions.batch_runner.load_source_npz",
+                side_effect=RuntimeError("unexpected selector defect"),
+            ):
+                with self.assertRaises(RuntimeError):
+                    select_pilot_inventory(
+                        inventory,
+                        source_root,
+                        max_candidates=1,
+                        max_records=1,
+                    )
+
 
 if __name__ == "__main__":
     unittest.main()

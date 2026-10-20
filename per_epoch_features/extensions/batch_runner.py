@@ -25,7 +25,9 @@ import numpy as np
 from . import registry
 from .cache import read_cache
 from .contracts import (
+    FamilyInputReviewError,
     FamilyRunStatus,
+    RecordFatalError,
     RecordRunStatus,
     RecordRunSummary,
     SourceContractError,
@@ -258,14 +260,14 @@ def select_pilot_inventory(
         checked += 1
         try:
             source = load_source_npz(entry.source_path(root), root)
-        except Exception:
+        except RecordFatalError:
             rejections["SOURCE_CONTRACT"] += 1
             continue
         failed_family = None
         for spec in specs:
             try:
                 validate_family_input(source, spec.input_contract)
-            except Exception:
+            except FamilyInputReviewError:
                 failed_family = spec.family_id
                 break
         if failed_family is not None:
