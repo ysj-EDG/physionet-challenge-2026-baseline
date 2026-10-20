@@ -14,6 +14,7 @@ from extensions.batch_runner import (
     assert_result_payload_equal,
     build_path_inventory,
     run_batch,
+    select_pilot_inventory,
 )
 from extensions.cache import read_cache
 from extensions.contracts import FamilyRunStatus, RecordRunStatus
@@ -277,6 +278,70 @@ class BatchRunnerTests(unittest.TestCase):
                 assert_result_payload_equal(
                     family.result, changed, family.cache_path.parent.name
                 )
+
+    def test_pilot_selection_is_cross_site_bounded_and_label_free(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source_root = root / "source"
+            paths = []
+            for site_index in range(3):
+                for record_index in range(3):
+                    site_id = f"SITE_{site_index}"
+                    record_id = f"record-{record_index:03d}"
+                    paths.append(write_source_npz(
+                        source_root,
+                        site_id=site_id,
+                        record_id=record_id,
+                        payload=source_payload(
+                            site_id=site_id,
+                            record_id=record_id,
+                            epochs=240,
+                        ),
+                    ))
+            inventory = build_path_inventory(source_root, reversed(paths))
+            selection = select_pilot_inventory(
+                inventory,
+                source_root,
+                max_candidates=6,
+                max_records=6,
+                per_site=2,
+                preferred_paths=(paths[-1],),
+            )
+            self.assertEqual(selection.checked_count, 6)
+            self.assertEqual(len(selection.inventory), 6)
+            self.assertEqual(
+                dict(selection.site_counts),
+                {"SITE_0": 2, "SITE_1": 2, "SITE_2": 2},
+            )
+            self.assertIn(
+                paths[-1].relative_to(source_root).as_posix(),
+                {entry.relative_path for entry in selection.inventory},
+            )
+
+    def test_one_bad_record_does_not_terminate_remaining_queue(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source_root = root / "source"
+            bad = write_source_npz(
+                source_root,
+                site_id="SITE_0",
+                record_id="bad",
+                payload=source_payload(site_id="OTHER", record_id="bad", epochs=240),
+            )
+            good = write_source_npz(
+                source_root,
+                site_id="SITE_1",
+                record_id="good",
+                payload=source_payload(site_id="SITE_1", record_id="good", epochs=240),
+            )
+            inventory = build_path_inventory(source_root, (bad, good))
+            summary = self._run(root, inventory, source_root)
+            self.assertEqual(summary.executed_count, 2)
+            by_record = {
+                item.entry.record_id: item.run.status for item in summary.records
+            }
+            self.assertEqual(by_record["bad"], RecordRunStatus.STOP_RECORD)
+            self.assertEqual(by_record["good"], RecordRunStatus.COMPLETE)
 
 
 if __name__ == "__main__":

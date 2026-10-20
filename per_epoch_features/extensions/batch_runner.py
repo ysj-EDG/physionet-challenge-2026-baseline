@@ -32,9 +32,10 @@ from .contracts import (
     canonical_json,
     canonical_sha256,
 )
+from .common import STAGE_CODES
 from .registry import FamilyExtractor
 from .runner import run_record
-from .sources import record_key_for
+from .sources import load_source_npz, record_key_for, validate_family_input
 
 
 BATCH_CHECKPOINT_SCHEMA = "featurelab_batch_checkpoint_v1"
@@ -95,6 +96,15 @@ class BatchRunSummary:
     request_digest: str
 
 
+@dataclass(frozen=True)
+class PilotSelection:
+    inventory: tuple[SourceInventoryEntry, ...]
+    checked_count: int
+    eligible_count: int
+    rejection_counts: Mapping[str, int]
+    site_counts: Mapping[str, int]
+
+
 def build_path_inventory(
     source_root: Path,
     paths: Iterable[Path] | None = None,
@@ -153,6 +163,146 @@ def round_robin_by_site(
             if grouped[site]:
                 ordered.append(grouped[site].popleft())
     return tuple(ordered)
+
+
+def _pilot_candidate_quality(source, preferred: bool) -> tuple[int, ...] | None:
+    stages = np.asarray(source.arrays["stage_code_aligned"])
+    valid = np.asarray(source.arrays["stage_valid"])
+    lawful = valid & np.isfinite(stages)
+    counts = {
+        name: int(np.sum(lawful & np.isin(stages, codes)))
+        for name, codes in STAGE_CODES.items()
+    }
+    if (
+        counts["Wake"] < 20
+        or counts["Sleep"] < 20
+        or counts["REM"] < 5
+        or counts["N2"] < 5
+        or counts["N3"] < 5
+    ):
+        return None
+    eeg = int(np.sum(np.asarray(source.arrays["eeg_channel_available"], dtype=bool)))
+    emg_available = np.asarray(
+        source.arrays["emg_channel_available"], dtype=bool
+    )
+    emg_preprocessed = np.asarray(
+        source.arrays["emg_preprocessing_success"], dtype=bool
+    )
+    emg = int(np.sum(emg_available & emg_preprocessed))
+    resp = int(
+        np.sum(
+            np.any(
+                np.asarray(source.arrays["resp_feature_valid"], dtype=bool),
+                axis=0,
+            )
+        )
+    )
+    if eeg == 0 or emg == 0 or resp == 0:
+        return None
+    stage_floor = min(counts[name] for name in ("Wake", "REM", "N2", "N3"))
+    return (
+        int(preferred),
+        eeg,
+        emg,
+        resp,
+        stage_floor,
+        counts["All-stage"],
+    )
+
+
+def select_pilot_inventory(
+    inventory: Sequence[SourceInventoryEntry],
+    source_root: Path,
+    *,
+    max_candidates: int = 80,
+    max_records: int = PILOT_RECORD_LIMIT,
+    per_site: int = 2,
+    preferred_paths: Sequence[Path] = (),
+) -> PilotSelection:
+    """Select a deterministic label-free cross-site pilot within hard bounds."""
+
+    if not 1 <= max_candidates <= 80:
+        raise ValueError("max_candidates must be in [1, 80]")
+    if not 1 <= max_records <= PILOT_RECORD_LIMIT:
+        raise ValueError(f"max_records must be in [1, {PILOT_RECORD_LIMIT}]")
+    if per_site <= 0:
+        raise ValueError("per_site must be positive")
+    root = Path(source_root).resolve(strict=True)
+    ordered = round_robin_by_site(inventory)
+    by_relative = {entry.relative_path: entry for entry in ordered}
+    preferred_relatives: list[str] = []
+    for path in preferred_paths:
+        resolved = Path(path).resolve(strict=True)
+        try:
+            relative = resolved.relative_to(root).as_posix()
+        except ValueError as exc:
+            raise SourceContractError(
+                "Preferred pilot source is outside source root"
+            ) from exc
+        if relative not in by_relative:
+            raise SourceContractError("Preferred pilot source is absent from inventory")
+        if relative not in preferred_relatives:
+            preferred_relatives.append(relative)
+    preferred_set = set(preferred_relatives)
+    candidates = tuple(
+        [by_relative[relative] for relative in preferred_relatives]
+        + [entry for entry in ordered if entry.relative_path not in preferred_set]
+    )
+    specs = registry.list_families()
+    eligible: list[tuple[tuple[int, ...], SourceInventoryEntry]] = []
+    rejections: Counter[str] = Counter()
+    checked = 0
+    for entry in candidates:
+        if checked >= max_candidates:
+            break
+        checked += 1
+        try:
+            source = load_source_npz(entry.source_path(root), root)
+        except Exception:
+            rejections["SOURCE_CONTRACT"] += 1
+            continue
+        failed_family = None
+        for spec in specs:
+            try:
+                validate_family_input(source, spec.input_contract)
+            except Exception:
+                failed_family = spec.family_id
+                break
+        if failed_family is not None:
+            rejections[f"FAMILY_INPUT:{failed_family}"] += 1
+            continue
+        quality = _pilot_candidate_quality(
+            source, entry.relative_path in preferred_set
+        )
+        if quality is None:
+            rejections["SUPPORT_OR_MODALITY"] += 1
+            continue
+        eligible.append((quality, entry))
+
+    grouped: dict[str, list[tuple[tuple[int, ...], SourceInventoryEntry]]] = (
+        defaultdict(list)
+    )
+    for quality, entry in eligible:
+        grouped[entry.site_id].append((quality, entry))
+    shortlists: list[SourceInventoryEntry] = []
+    for site in sorted(grouped):
+        ranked = sorted(
+            grouped[site],
+            key=lambda item: (
+                tuple(-component for component in item[0]),
+                item[1].relative_path,
+            ),
+        )
+        shortlists.extend(entry for _quality, entry in ranked[:per_site])
+    selected = round_robin_by_site(shortlists)[:max_records]
+    site_counts = Counter(entry.site_id for entry in selected)
+    return PilotSelection(
+        inventory=selected,
+        checked_count=checked,
+        eligible_count=len(eligible),
+        rejection_counts=dict(sorted(rejections.items())),
+        site_counts=dict(sorted(site_counts.items())),
+    )
 
 
 def assert_result_payload_equal(
