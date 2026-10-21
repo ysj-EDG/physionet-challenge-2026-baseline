@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import tempfile
+import threading
 import time
 import unittest
 from concurrent.futures import ThreadPoolExecutor
@@ -797,6 +798,75 @@ class BatchRunnerTests(unittest.TestCase):
                     item["reason_code"].startswith("WORKER_EXCEPTION:")
                     for item in state["records"].values()
                 )
+            )
+
+    def test_full_persists_stop_before_draining_running_workers(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source_root, inventory = self._full_inventory(root)
+            first_key = inventory[0].record_key
+            release = threading.Event()
+            result_holder = {}
+
+            def synthetic_worker(entry, *args, **kwargs):
+                if entry.record_key == first_key:
+                    raise RuntimeError("synthetic worker failure")
+                release.wait(timeout=5.0)
+                return BatchRecordResult(
+                    entry=entry,
+                    run=RecordRunSummary(
+                        status=RecordRunStatus.COMPLETE,
+                        source_identity=None,
+                        family_results=(),
+                        reason_code="",
+                    ),
+                    elapsed_sec=0.0,
+                    cache_bytes=0,
+                    published_bytes=0,
+                    source_immutable=True,
+                    readback_verified=True,
+                )
+
+            def run_worker():
+                result_holder["summary"] = self._run_full(
+                    root,
+                    inventory,
+                    source_root,
+                    workers=8,
+                    stop_after=20,
+                )
+
+            with mock.patch(
+                "extensions.batch_runner._execute_entry",
+                side_effect=synthetic_worker,
+            ):
+                thread = threading.Thread(target=run_worker)
+                thread.start()
+                checkpoint_path = root / "full-checkpoint.json"
+                observed = False
+                deadline = time.monotonic() + 3.0
+                while time.monotonic() < deadline:
+                    if checkpoint_path.exists():
+                        checkpoint = json.loads(
+                            checkpoint_path.read_text(encoding="utf-8")
+                        )
+                        states = checkpoint.get("requests", {}).values()
+                        if any(
+                            state.get("active_safety_stop", {}).get("reason_code")
+                            == "WORKER_EXCEPTION"
+                            for state in states
+                        ):
+                            observed = True
+                            break
+                    time.sleep(0.01)
+                release.set()
+                thread.join(timeout=10.0)
+
+            self.assertTrue(observed)
+            self.assertFalse(thread.is_alive())
+            self.assertEqual(
+                result_holder["summary"].safety_stop.reason_code,
+                "WORKER_EXCEPTION",
             )
 
     def test_full_rejects_wrong_site_distribution_and_recipe(self):

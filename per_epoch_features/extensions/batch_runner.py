@@ -1380,19 +1380,21 @@ def run_batch(
             except BaseException as exc:
                 result = _worker_failure_result(entry, exc)
                 process_result(result, check_resource=not stop_triggered)
-                worker_stop_candidates.append(
-                    _safety_stop(
-                        "WORKER_EXCEPTION",
-                        len(completed),
-                        result.verification_error,
-                        safe_to_resume=False,
-                    )
+                worker_stop = _safety_stop(
+                    "WORKER_EXCEPTION",
+                    len(completed),
+                    result.verification_error,
+                    safe_to_resume=False,
                 )
+                worker_stop_candidates.append(worker_stop)
+                activate_stop(worker_stop)
                 stop_triggered = True
                 return
             stop = process_result(result, check_resource=not stop_triggered)
             if stop is not None:
                 stop_candidates.append(stop)
+                if safety_stop is None:
+                    activate_stop(stop)
                 stop_triggered = True
 
         def drain_pending() -> None:
