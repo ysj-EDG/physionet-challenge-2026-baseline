@@ -16,7 +16,7 @@ import shutil
 import tempfile
 import time
 from collections import Counter, defaultdict, deque
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, as_completed, wait
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
@@ -46,6 +46,7 @@ BATCH_CHECKPOINT_SCHEMA = "featurelab_batch_checkpoint_v1"
 PILOT_RECORD_LIMIT = 12
 FULL_AUTHORIZATION_TEXT = "FEATURELAB_FULL_EXTRACTION_APPROVED"
 FULL_RECORD_COUNT = 6600
+FULL_WORKERS = 8
 FULL_SITE_COUNTS = {"I0002": 319, "I0006": 1142, "S0001": 5139}
 FULL_FAMILY_IDS = (
     "eeg_tail",
@@ -815,8 +816,10 @@ def _validate_full_request(
         raise ValueError("Full family set and order differ from frozen contract")
     if config_overrides:
         raise ValueError("Full mode requires FamilySpec default parameters")
-    if workers != 1:
-        raise ValueError("First Full extraction requires workers=1")
+    if workers != FULL_WORKERS:
+        raise ValueError(
+            f"Full extraction requires workers={FULL_WORKERS}"
+        )
     if extractors is not None:
         raise ValueError("Full extraction forbids extractor overrides")
 
@@ -1090,6 +1093,29 @@ def _status_counts(results: Sequence[BatchRecordResult]) -> dict[str, int]:
     return dict(sorted(counts.items()))
 
 
+def _worker_failure_result(
+    entry: SourceInventoryEntry,
+    error: BaseException,
+) -> BatchRecordResult:
+    error_type = type(error).__name__
+    reason = f"WORKER_EXCEPTION:{error_type}"
+    return BatchRecordResult(
+        entry=entry,
+        run=RecordRunSummary(
+            status=RecordRunStatus.STOP_RECORD,
+            source_identity=None,
+            family_results=(),
+            reason_code=reason,
+        ),
+        elapsed_sec=0.0,
+        cache_bytes=0,
+        published_bytes=0,
+        source_immutable=None,
+        readback_verified=False,
+        verification_error=reason,
+    )
+
+
 def _batch_summary(
     records: Sequence[BatchRecordResult],
     *,
@@ -1292,6 +1318,28 @@ def run_batch(
         request_state["records"] = dict(sorted(request_state["records"].items()))
         _atomic_write_checkpoint(checkpoint_path, checkpoint)
 
+    def process_result(result: BatchRecordResult) -> BatchSafetyStop | None:
+        completed.append(result)
+        systemic_stop = (
+            _record_systemic_errors(result, request_state, len(completed))
+            if execution_mode == "full"
+            else None
+        )
+        persist(result)
+        if execution_mode != "full":
+            return None
+        return (
+            _immediate_full_stop(result, len(completed))
+            or systemic_stop
+            or _resource_stop(Path(cache_root), len(completed), startup=False)
+        )
+
+    def activate_stop(stop: BatchSafetyStop) -> None:
+        nonlocal safety_stop
+        safety_stop = stop
+        request_state["active_safety_stop"] = stop.material()
+        _atomic_write_checkpoint(checkpoint_path, checkpoint)
+
     if workers == 1:
         for entry in executable:
             result = _execute_entry(
@@ -1302,25 +1350,79 @@ def run_batch(
                 config_overrides,
                 extractors,
             )
-            completed.append(result)
-            systemic_stop = (
-                _record_systemic_errors(result, request_state, len(completed))
-                if execution_mode == "full"
-                else None
-            )
-            persist(result)
-            if execution_mode == "full":
-                safety_stop = (
-                    _immediate_full_stop(result, len(completed))
-                    or systemic_stop
-                    or _resource_stop(
-                        Path(cache_root), len(completed), startup=False
-                    )
-                )
-                if safety_stop is not None:
-                    request_state["active_safety_stop"] = safety_stop.material()
-                    _atomic_write_checkpoint(checkpoint_path, checkpoint)
+            stop = process_result(result)
+            if stop is not None:
+                activate_stop(stop)
+                break
+    elif execution_mode == "full":
+        pool = ThreadPoolExecutor(max_workers=workers)
+        pending: dict[Any, SourceInventoryEntry] = {}
+        executable_iter = iter(executable)
+        try:
+            for _ in range(min(workers, len(executable))):
+                entry = next(executable_iter, None)
+                if entry is None:
                     break
+                pending[
+                    pool.submit(
+                        _execute_entry,
+                        entry,
+                        Path(source_root),
+                        Path(cache_root),
+                        requested,
+                        config_overrides,
+                        extractors,
+                    )
+                ] = entry
+            while pending and safety_stop is None:
+                done, _ = wait(
+                    tuple(pending),
+                    return_when=FIRST_COMPLETED,
+                )
+                for future in done:
+                    entry = pending.pop(future)
+                    try:
+                        result = future.result()
+                    except BaseException as exc:
+                        result = _worker_failure_result(entry, exc)
+                        process_result(result)
+                        activate_stop(
+                            _safety_stop(
+                                "WORKER_EXCEPTION",
+                                len(completed),
+                                result.verification_error,
+                                safe_to_resume=False,
+                            )
+                        )
+                        break
+                    stop = process_result(result)
+                    if stop is not None:
+                        activate_stop(stop)
+                        break
+                if safety_stop is not None:
+                    for future in pending:
+                        future.cancel()
+                    break
+                for _ in range(len(done)):
+                    entry = next(executable_iter, None)
+                    if entry is None:
+                        break
+                    pending[
+                        pool.submit(
+                            _execute_entry,
+                            entry,
+                            Path(source_root),
+                            Path(cache_root),
+                            requested,
+                            config_overrides,
+                            extractors,
+                        )
+                    ] = entry
+        finally:
+            pool.shutdown(
+                wait=True,
+                cancel_futures=safety_stop is not None,
+            )
     else:
         with ThreadPoolExecutor(max_workers=workers) as pool:
             futures = {

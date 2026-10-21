@@ -59,11 +59,11 @@ The first 6,600-record full run is machine-checked against all of the following 
 - every family uses its registered `FamilySpec` defaults, with no configuration or extractor override;
 - the ordered manifest contains exactly 637 unique Feature IDs and has frozen canonical digest `92f071616f961256ac993a68624ef8f44f262a0a6738011e4bb0c4ec405d8039`;
 - the six live Recipe IDs and dimensions equal the frozen table above;
-- `workers=1`, `max_records=6600`, and `expected_inventory_size=6600`;
+- `workers=8`, `max_records=6600`, and `expected_inventory_size=6600`;
 - the inventory site totals are exactly I0002=319, I0006=1,142, and S0001=5,139; and
 - the authorization path is exactly `/database/home/gaohaojie/workspace/feature-cache-extension/full_batch/FULL_EXTRACTION_APPROVED.txt`, and an actual run additionally requires its exact token.
 
-Any mismatch refuses startup; the runner never changes its configuration to match observed data. Full mode has a run-level safety stop, whereas Pilot mode retains its approved record-isolation behavior. In Full mode an abnormal record is written completely to the private checkpoint before a stop becomes active, and no subsequent record is scheduled. Because the first Full run is fixed to one worker, there can be no already-submitted background records after the stop boundary.
+Any mismatch refuses startup; the runner never changes its configuration to match observed data. Full mode has a run-level safety stop, whereas Pilot mode retains its approved record-isolation behavior. In Full mode an abnormal record is written completely to the private checkpoint before a stop becomes active, and no new record is scheduled. The first Full run is fixed to eight workers with at most eight in-flight records; pending futures are cancelled after a stop and no replacement submissions are made.
 
 The checkpoint records the stop reason, completed-record count, abnormal status, safe-resume flag, repeated-error signatures, and stop history. A nonrecoverable active stop cannot be resumed by simply rerunning the command. A resource stop is marked safe to retry only after resources again pass the startup guard. The command-line exit status is nonzero for every safety stop and for a Full run that has not passed final acceptance.
 
@@ -86,7 +86,7 @@ The cross-site Pilot used one real worker over six files, of which five required
 
 The timing model has only five newly built real sources and must be treated as low-confidence. Resume validation, filesystem contention, source heterogeneity, and exception handling can increase wall time. Source immutability checking and source adaptation read each compressed file multiple times, so total read traffic can exceed 35 GiB even though the source inventory itself is 8.67 GiB.
 
-Recommended initial full-run setting: `workers=1`. It is the only real-data concurrency level measured, completes within a practical planning window, limits simultaneous decompression memory, and avoids saturating a shared filesystem. Synthetic no-clobber competition passed for two workers, but that is not evidence of real I/O or memory scaling. Raising the full run above one worker requires a separate monitored authorization or a later evidence-based adjustment; it must not be inferred from the ideal two-worker estimate.
+The authorized Full setting is `workers=8`, with a bounded submission window of eight records. This is a new concurrency setting rather than a claim derived from the one-worker Pilot timing. The runner does not refill the window after a worker-level exception or safety stop, does not increase workers automatically, and records the stop before exiting. Memory and filesystem thresholds remain hard safety guards.
 
 Disk capacity is checked once before scheduling and once after each completed Full-mode record using a filesystem free-space query; no cache-tree scan is added. Full startup stops below 2 GiB, and an active run stops below 1 GiB after first checkpointing the just-completed record. Peak process RSS is sampled on the same bounded schedule. The 1 GiB RSS ceiling is deliberately about three times the Pilot peak; crossing it is an abnormal-growth safety stop, not a request to add workers or delete existing caches.
 
@@ -108,7 +108,7 @@ PYTHONPATH=per_epoch_features PYTHONNOUSERSITE=1 \
   --cache-root /database/home/gaohaojie/workspace/feature-cache-extension \
   --checkpoint /database/home/gaohaojie/workspace/feature-cache-extension/full_batch/checkpoint.json \
   --max-records 6600 \
-  --workers 1 \
+  --workers 8 \
   --execution-mode full \
   --expected-inventory-size 6600 \
   --full-authorization-file /database/home/gaohaojie/workspace/feature-cache-extension/full_batch/FULL_EXTRACTION_APPROVED.txt \
@@ -133,7 +133,7 @@ PYTHONPATH=per_epoch_features PYTHONNOUSERSITE=1 \
   --cache-root /database/home/gaohaojie/workspace/feature-cache-extension \
   --checkpoint /database/home/gaohaojie/workspace/feature-cache-extension/full_batch/checkpoint.json \
   --max-records 6600 \
-  --workers 1 \
+  --workers 8 \
   --execution-mode full \
   --expected-inventory-size 6600 \
   --full-authorization-file /database/home/gaohaojie/workspace/feature-cache-extension/full_batch/FULL_EXTRACTION_APPROVED.txt \
@@ -155,7 +155,7 @@ PYTHONPATH=per_epoch_features PYTHONNOUSERSITE=1 \
   --cache-root /database/home/gaohaojie/workspace/feature-cache-extension \
   --checkpoint /database/home/gaohaojie/workspace/feature-cache-extension/full_batch/checkpoint.json \
   --max-records 6600 \
-  --workers 1 \
+  --workers 8 \
   --execution-mode full \
   --expected-inventory-size 6600 \
   --full-authorization-file /database/home/gaohaojie/workspace/feature-cache-extension/full_batch/FULL_EXTRACTION_APPROVED.txt
@@ -187,6 +187,8 @@ Immediate run-level stops are:
 Systemic run-level stops occur on the second distinct record within one site carrying the same source-contract incompatibility, or on the second distinct record within one site and family carrying the same family-input contract incompatibility. “Same” is determined from a normalized fingerprint of the actual adapter/contract diagnostic, not merely its exception class; source paths are removed before hashing. Different missing fields, dtypes, shapes, or source-schema violations therefore remain separate. Repeated-error counters use record keys so a resumed observation of the same record does not falsely count twice.
 
 An isolated ordinary computation failure, `REQUIRES_INPUT_REVIEW`, or non-systemic `STOP_RECORD` is recorded and isolated. Strict cache readback is attempted only for statuses expected to have a final cache; an unpublished target path retained by a `FAILED` result is not treated as a readback failure. A record containing any failed family is `PARTIAL`, never `COMPLETE`. Legal low-support NaN values remain valid family outputs under their per-feature missingness rules and never trigger a run stop.
+
+Any uncaught worker/future exception is a Full-mode `WORKER_EXCEPTION` safety stop: the exception record is checkpointed, pending futures are cancelled, running futures are allowed to settle without replacement submissions, and the process exits nonzero. This does not convert an ordinary family `FAILED` result into a worker exception.
 
 Pilot mode retains its prior bounded behavior: one record can be isolated while the Pilot queue continues. Neither mode converts `STOP_INVALID` to `BUILD_NEW`, deletes a bad cache, relaxes validity checks, or changes feature formulas.
 

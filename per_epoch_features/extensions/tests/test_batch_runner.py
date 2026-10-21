@@ -119,7 +119,12 @@ class BatchRunnerTests(unittest.TestCase):
         auth = authorization_path or root / "FULL_EXTRACTION_APPROVED.txt"
         if authorization:
             auth.write_text("FEATURELAB_FULL_EXTRACTION_APPROVED\n", encoding="utf-8")
+        workers = kwargs.pop("workers", 1)
+        contract_workers = kwargs.pop("contract_workers", workers)
         with (
+            mock.patch.object(
+                batch_runner, "FULL_WORKERS", contract_workers, create=True
+            ),
             mock.patch.object(
                 batch_runner, "FULL_AUTHORIZATION_PATH", auth, create=True
             ),
@@ -144,7 +149,7 @@ class BatchRunnerTests(unittest.TestCase):
                 kwargs.pop("family_ids", self.FULL_FAMILY_IDS),
                 kwargs.pop("config_overrides", {}),
                 max_records=kwargs.pop("max_records", 6600),
-                workers=kwargs.pop("workers", 1),
+                workers=workers,
                 execution_mode="full",
                 full_authorization_file=auth if authorization else None,
                 expected_inventory_size=kwargs.pop("expected_inventory_size", 6600),
@@ -666,8 +671,57 @@ class BatchRunnerTests(unittest.TestCase):
             source_root, inventory = self._full_inventory(root)
             with self.assertRaises(ValueError):
                 self._run_full(
-                    root, inventory, source_root, workers=2, dry_run=True
+                    root,
+                    inventory,
+                    source_root,
+                    workers=4,
+                    contract_workers=8,
+                    dry_run=True,
                 )
+
+    def test_full_workers8_contract_accepts_dry_run(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source_root, inventory = self._full_inventory(root)
+            summary = self._run_full(
+                root, inventory, source_root, workers=8, dry_run=True
+            )
+            self.assertTrue(summary.dry_run)
+            self.assertEqual(summary.workers, 8)
+            self.assertEqual(summary.executed_count, 0)
+
+    def test_full_worker_exception_stops_without_refilling_submission_window(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source_root, inventory = self._full_inventory(root)
+            calls = []
+
+            def fail_worker(*args, **kwargs):
+                calls.append(args[0].record_key)
+                raise RuntimeError("synthetic worker failure")
+
+            with mock.patch(
+                "extensions.batch_runner._execute_entry",
+                side_effect=fail_worker,
+            ):
+                summary = self._run_full(
+                    root,
+                    inventory,
+                    source_root,
+                    workers=8,
+                    stop_after=20,
+                )
+
+            self.assertEqual(summary.safety_stop.reason_code, "WORKER_EXCEPTION")
+            self.assertLessEqual(len(calls), 8)
+            self.assertEqual(summary.executed_count, 1)
+            checkpoint = json.loads(
+                (root / "full-checkpoint.json").read_text(encoding="utf-8")
+            )
+            state = checkpoint["requests"][summary.request_digest]
+            self.assertEqual(
+                state["active_safety_stop"]["reason_code"], "WORKER_EXCEPTION"
+            )
 
     def test_full_rejects_wrong_site_distribution_and_recipe(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -754,7 +808,7 @@ class BatchRunnerTests(unittest.TestCase):
                         self.FULL_FAMILY_IDS,
                         {},
                         max_records=6600,
-                        workers=1,
+                        workers=8,
                         dry_run=True,
                         execution_mode="full",
                         full_authorization_file=wrong,
@@ -807,7 +861,7 @@ class BatchRunnerTests(unittest.TestCase):
                     self.FULL_FAMILY_IDS,
                     {},
                     max_records=6600,
-                    workers=1,
+                    workers=8,
                     stop_after=2,
                     execution_mode="full",
                     full_authorization_file=auth,
@@ -845,7 +899,7 @@ class BatchRunnerTests(unittest.TestCase):
                     self.FULL_FAMILY_IDS,
                     {},
                     max_records=6600,
-                    workers=1,
+                    workers=8,
                     full_authorization_file=expected_auth,
                     expected_inventory_size=6600,
                 )
@@ -1004,7 +1058,7 @@ class BatchRunnerTests(unittest.TestCase):
                     self.FULL_FAMILY_IDS,
                     {},
                     max_records=6600,
-                    workers=1,
+                    workers=8,
                     execution_mode="full",
                     full_authorization_file=auth,
                     expected_inventory_size=6600,
@@ -1047,7 +1101,7 @@ class BatchRunnerTests(unittest.TestCase):
                     self.FULL_FAMILY_IDS,
                     {},
                     max_records=6600,
-                    workers=1,
+                    workers=8,
                     stop_after=2,
                     execution_mode="full",
                     full_authorization_file=auth,
