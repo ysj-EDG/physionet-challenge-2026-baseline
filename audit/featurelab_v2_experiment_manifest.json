@@ -6,6 +6,62 @@
     "E2": 1060,
     "E3": 1444
   },
+  "experiment_column_selection": {
+    "E0": [
+      {
+        "start": 0,
+        "stop": 807
+      }
+    ],
+    "E1": [
+      {
+        "start": 0,
+        "stop": 1191
+      }
+    ],
+    "E2": [
+      {
+        "start": 0,
+        "stop": 807
+      },
+      {
+        "start": 1191,
+        "stop": 1444
+      }
+    ],
+    "E3": [
+      {
+        "start": 0,
+        "stop": 1444
+      }
+    ]
+  },
+  "experiment_feature_id_summary": {
+    "E0": {
+      "count": 807,
+      "feature_id_sha256": "d2b5cddc8918f4b48a864cc1f62b4104900ea5dd1ab1d761c88272e2a523c6f2",
+      "first_feature_id": "eeg_Wake_eeg_F3-M2_logP2P1_mean",
+      "last_feature_id": "resp_thorax_abd_paradox_fraction_iqr"
+    },
+    "E1": {
+      "count": 1191,
+      "feature_id_sha256": "dcbc587ad0357e4bb217b93fae3af5ed7cad74f4568ff664ec32325b8d3751cc",
+      "first_feature_id": "eeg_Wake_eeg_F3-M2_logP2P1_mean",
+      "last_feature_id": "featurelab_v2.eeg_temporal.o2.sigma.tail_entry_rate_per_hour"
+    },
+    "E2": {
+      "count": 1060,
+      "feature_id_sha256": "7b6b1f4d33bf095838b58b7e4befc6728751d5790893fef9ee4c86009cdbe92e",
+      "first_feature_id": "eeg_Wake_eeg_F3-M2_logP2P1_mean",
+      "last_feature_id": "featurelab_v2.resp_stage.thorax_abd_paradox_fraction.nrem.iqr"
+    },
+    "E3": {
+      "count": 1444,
+      "feature_id_sha256": "dc6c780b8791bd86b680793d76a21cd101340d24f27c3f3369b08553ede4a158",
+      "first_feature_id": "eeg_Wake_eeg_F3-M2_logP2P1_mean",
+      "last_feature_id": "featurelab_v2.resp_stage.thorax_abd_paradox_fraction.nrem.iqr"
+    }
+  },
   "family_dimensions": {
     "CAISR20": 20,
     "Demo5": 5,
@@ -115,6 +171,18 @@
   "model_training": false,
   "new637_columns": 637,
   "old807_columns": 807,
+  "protocols": {
+    "holdout_training_site": {
+      "I0002": "S0001",
+      "I0006": "S0001",
+      "S0001": "I0006"
+    },
+    "inductive_feature": true,
+    "preserve_legacy_sampling_models_fusion": true,
+    "rank256": false,
+    "read_labels_predictions": false,
+    "transductive": true
+  },
   "qc_overall": {
     "missing_count": 420602,
     "valid_count": 9109798,
@@ -126,6 +194,10 @@
   "source_order": "verified_old_g2b1_index_by_site_and_record_identity",
   "status": "COMPLETE_CACHE_ONLY_QC",
   "unique_feature_count": 1444,
+  "view_manifest_versions": {
+    "new": "featurelab_v2_unique_manifest.csv + featurelab_v2_view_manifest.csv",
+    "old": "G1B_FEATURE_MANIFEST_FROZEN.csv"
+  },
   "view_position_count": 1464,
   "views": {
     "V1": 161,
