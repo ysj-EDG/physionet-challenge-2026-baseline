@@ -1,0 +1,137 @@
+{
+  "batch2": false,
+  "candidate_sets": {
+    "E0": 807,
+    "E1": 1191,
+    "E2": 1060,
+    "E3": 1444
+  },
+  "family_dimensions": {
+    "CAISR20": 20,
+    "Demo5": 5,
+    "EEG54_stage_spectral": 648,
+    "EMG24": 48,
+    "HRV11": 22,
+    "Resp14": 28,
+    "caisr_stage": 35,
+    "eeg_coherence_stage": 90,
+    "eeg_tail": 288,
+    "eeg_temporal": 96,
+    "emg_stage": 72,
+    "resp_stage": 56,
+    "spatial_ap_gradient_candidate": 12,
+    "spatial_asymmetry_candidate": 24
+  },
+  "family_qc": {
+    "CAISR20": {
+      "dimensions": 20,
+      "missing_count": 8059,
+      "valid_count": 123941,
+      "zero_count": 1014
+    },
+    "Demo5": {
+      "dimensions": 5,
+      "missing_count": 5617,
+      "valid_count": 27383,
+      "zero_count": 16203
+    },
+    "EEG54_stage_spectral": {
+      "dimensions": 648,
+      "missing_count": 173466,
+      "valid_count": 4103334,
+      "zero_count": 2063
+    },
+    "EMG24": {
+      "dimensions": 48,
+      "missing_count": 2256,
+      "valid_count": 314544,
+      "zero_count": 26149
+    },
+    "HRV11": {
+      "dimensions": 22,
+      "missing_count": 704,
+      "valid_count": 144496,
+      "zero_count": 88
+    },
+    "Resp14": {
+      "dimensions": 28,
+      "missing_count": 894,
+      "valid_count": 183906,
+      "zero_count": 7606
+    },
+    "caisr_stage": {
+      "dimensions": 35,
+      "missing_count": 6732,
+      "valid_count": 224268,
+      "zero_count": 48285
+    },
+    "eeg_coherence_stage": {
+      "dimensions": 90,
+      "missing_count": 46370,
+      "valid_count": 547630,
+      "zero_count": 757
+    },
+    "eeg_tail": {
+      "dimensions": 288,
+      "missing_count": 117592,
+      "valid_count": 1783208,
+      "zero_count": 0
+    },
+    "eeg_temporal": {
+      "dimensions": 96,
+      "missing_count": 18040,
+      "valid_count": 615560,
+      "zero_count": 156
+    },
+    "emg_stage": {
+      "dimensions": 72,
+      "missing_count": 14368,
+      "valid_count": 460832,
+      "zero_count": 74231
+    },
+    "resp_stage": {
+      "dimensions": 56,
+      "missing_count": 13032,
+      "valid_count": 356568,
+      "zero_count": 16777
+    },
+    "spatial_ap_gradient_candidate": {
+      "dimensions": 12,
+      "missing_count": 6216,
+      "valid_count": 72984,
+      "zero_count": 0
+    },
+    "spatial_asymmetry_candidate": {
+      "dimensions": 24,
+      "missing_count": 7256,
+      "valid_count": 151144,
+      "zero_count": 24
+    }
+  },
+  "feature_selection": false,
+  "imputation": false,
+  "loso_scoring": false,
+  "missing_semantics": "NaN_with_valid_mask_false_and_support_count",
+  "model_training": false,
+  "new637_columns": 637,
+  "old807_columns": 807,
+  "qc_overall": {
+    "missing_count": 420602,
+    "valid_count": 9109798,
+    "zero_count": 193353
+  },
+  "row_count": 6600,
+  "scaling": false,
+  "schema": "featurelab_v2_candidate_pool_manifest_v1",
+  "source_order": "verified_old_g2b1_index_by_site_and_record_identity",
+  "status": "COMPLETE_CACHE_ONLY_QC",
+  "unique_feature_count": 1444,
+  "view_position_count": 1464,
+  "views": {
+    "V1": 161,
+    "V2": 177,
+    "V3": 493,
+    "V4": 257,
+    "V5": 376
+  }
+}
