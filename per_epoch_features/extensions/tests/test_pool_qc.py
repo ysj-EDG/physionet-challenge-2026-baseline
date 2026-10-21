@@ -1,7 +1,7 @@
 from __future__ import annotations
 import unittest
 import numpy as np
-from extensions.pool_qc import summarize_matrix
+from extensions.pool_qc import summarize_matrix, public_feature_rows
 
 class PoolQCTests(unittest.TestCase):
     def test_qc_preserves_zero_and_reports_missing(self):
@@ -16,5 +16,9 @@ class PoolQCTests(unittest.TestCase):
         grouped = summarize_matrix(values, valid, support, np.asarray([[0, 7, 0], [0, 7, 9]], dtype=np.int64), feature_ids=('a','b','c'), groups=('I0002','S0001'))
         self.assertEqual(grouped['groups']['I0002']['valid_count'], 2)
         self.assertEqual(grouped['groups']['I0002']['zero_count'], 1)
+        public_rows = public_feature_rows(summary)
+        self.assertNotIn('support_min', public_rows[0])
+        self.assertNotIn('support_median', public_rows[0])
+        self.assertNotIn('support_max', public_rows[0])
 
 if __name__ == '__main__': unittest.main()

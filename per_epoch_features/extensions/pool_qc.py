@@ -42,12 +42,12 @@ def summarize_matrix(values, valid_mask, support_count, reason_codes, feature_id
 def public_feature_rows(summary):
     rows=[]
     for feature_id,data in summary['features'].items():
-        rows.append({'feature_id':feature_id,'valid_count':data['valid_count'],'missing_count':data['missing_count'],'zero_count':data['zero_count'],'constant_valid':data['constant_valid'],'support_min':data['support_min'],'support_median':data['support_median'],'support_max':data['support_max']})
+        rows.append({'feature_id':feature_id,'valid_count':data['valid_count'],'missing_count':data['missing_count'],'zero_count':data['zero_count'],'constant_valid':data['constant_valid']})
     return rows
 
 def write_public_qc_csv(path: Path, summary):
     rows=public_feature_rows(summary); target=Path(path); target.parent.mkdir(parents=True,exist_ok=True)
-    fields=('feature_id','valid_count','missing_count','zero_count','constant_valid','support_min','support_median','support_max')
+    fields=('feature_id','valid_count','missing_count','zero_count','constant_valid')
     with target.open('w',newline='',encoding='utf-8') as h:
         w=csv.DictWriter(h,fieldnames=fields,lineterminator='\n'); w.writeheader(); w.writerows(rows)
 
