@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import tempfile
+import time
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -11,6 +12,7 @@ import numpy as np
 
 from extensions import batch_runner, registry
 from extensions.batch_runner import (
+    BatchRecordResult,
     BatchVerificationError,
     SourceInventoryEntry,
     assert_result_payload_equal,
@@ -714,13 +716,87 @@ class BatchRunnerTests(unittest.TestCase):
 
             self.assertEqual(summary.safety_stop.reason_code, "WORKER_EXCEPTION")
             self.assertLessEqual(len(calls), 8)
-            self.assertEqual(summary.executed_count, 1)
+            self.assertGreaterEqual(summary.executed_count, 1)
+            self.assertLessEqual(summary.executed_count, 8)
             checkpoint = json.loads(
                 (root / "full-checkpoint.json").read_text(encoding="utf-8")
             )
             state = checkpoint["requests"][summary.request_digest]
             self.assertEqual(
                 state["active_safety_stop"]["reason_code"], "WORKER_EXCEPTION"
+            )
+
+    def test_full_drains_simultaneous_futures_and_prioritizes_worker_exception(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source_root, inventory = self._full_inventory(root)
+            first_key = inventory[0].record_key
+            second_key = inventory[1].record_key
+
+            def synthetic_worker(entry, *args, **kwargs):
+                if entry.record_key == first_key:
+                    return BatchRecordResult(
+                        entry=entry,
+                        run=RecordRunSummary(
+                            status=RecordRunStatus.STOP_RECORD,
+                            source_identity=None,
+                            family_results=(),
+                            reason_code="SYNTHETIC_SOURCE_STOP",
+                        ),
+                        elapsed_sec=0.0,
+                        cache_bytes=0,
+                        published_bytes=0,
+                        source_immutable=False,
+                        readback_verified=False,
+                        verification_error="SOURCE_CHANGED_DURING_BATCH",
+                    )
+                if entry.record_key == second_key:
+                    time.sleep(0.05)
+                    raise RuntimeError("synthetic worker failure")
+                time.sleep(0.2)
+                return BatchRecordResult(
+                    entry=entry,
+                    run=RecordRunSummary(
+                        status=RecordRunStatus.COMPLETE,
+                        source_identity=None,
+                        family_results=(),
+                        reason_code="",
+                    ),
+                    elapsed_sec=0.0,
+                    cache_bytes=0,
+                    published_bytes=0,
+                    source_immutable=True,
+                    readback_verified=True,
+                )
+
+            with mock.patch(
+                "extensions.batch_runner._execute_entry",
+                side_effect=synthetic_worker,
+            ):
+                summary = self._run_full(
+                    root,
+                    inventory,
+                    source_root,
+                    workers=8,
+                    stop_after=20,
+                )
+
+            self.assertEqual(summary.safety_stop.reason_code, "WORKER_EXCEPTION")
+            self.assertTrue(
+                any(
+                    result.run.reason_code.startswith("WORKER_EXCEPTION:")
+                    for result in summary.records
+                )
+            )
+            checkpoint = json.loads(
+                (root / "full-checkpoint.json").read_text(encoding="utf-8")
+            )
+            state = checkpoint["requests"][summary.request_digest]
+            self.assertTrue(
+                any(
+                    item["reason_code"].startswith("WORKER_EXCEPTION:")
+                    for item in state["records"].values()
+                )
             )
 
     def test_full_rejects_wrong_site_distribution_and_recipe(self):
@@ -867,7 +943,8 @@ class BatchRunnerTests(unittest.TestCase):
                     full_authorization_file=auth,
                     expected_inventory_size=6600,
                 )
-            self.assertEqual(summary.executed_count, 1)
+            self.assertGreaterEqual(summary.executed_count, 1)
+            self.assertLessEqual(summary.executed_count, 2)
             self.assertEqual(summary.safety_stop.reason_code, "LOW_DISK_RUNTIME")
             self.assertTrue(summary.safety_stop.safe_to_resume)
 
@@ -1107,7 +1184,8 @@ class BatchRunnerTests(unittest.TestCase):
                     full_authorization_file=auth,
                     expected_inventory_size=6600,
                 )
-            self.assertEqual(summary.executed_count, 1)
+            self.assertGreaterEqual(summary.executed_count, 1)
+            self.assertLessEqual(summary.executed_count, 2)
             self.assertEqual(summary.safety_stop.reason_code, "HIGH_RSS_RUNTIME")
             self.assertTrue(summary.safety_stop.safe_to_resume)
 

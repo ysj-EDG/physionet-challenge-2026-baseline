@@ -1318,7 +1318,11 @@ def run_batch(
         request_state["records"] = dict(sorted(request_state["records"].items()))
         _atomic_write_checkpoint(checkpoint_path, checkpoint)
 
-    def process_result(result: BatchRecordResult) -> BatchSafetyStop | None:
+    def process_result(
+        result: BatchRecordResult,
+        *,
+        check_resource: bool = True,
+    ) -> BatchSafetyStop | None:
         completed.append(result)
         systemic_stop = (
             _record_systemic_errors(result, request_state, len(completed))
@@ -1331,7 +1335,11 @@ def run_batch(
         return (
             _immediate_full_stop(result, len(completed))
             or systemic_stop
-            or _resource_stop(Path(cache_root), len(completed), startup=False)
+            or (
+                _resource_stop(Path(cache_root), len(completed), startup=False)
+                if check_resource
+                else None
+            )
         )
 
     def activate_stop(stop: BatchSafetyStop) -> None:
@@ -1358,6 +1366,44 @@ def run_batch(
         pool = ThreadPoolExecutor(max_workers=workers)
         pending: dict[Any, SourceInventoryEntry] = {}
         executable_iter = iter(executable)
+        stop_candidates: list[BatchSafetyStop] = []
+        worker_stop_candidates: list[BatchSafetyStop] = []
+        stop_triggered = False
+
+        def observe_future(future: Any) -> None:
+            nonlocal stop_triggered
+            entry = pending.pop(future)
+            if future.cancelled():
+                return
+            try:
+                result = future.result()
+            except BaseException as exc:
+                result = _worker_failure_result(entry, exc)
+                process_result(result, check_resource=not stop_triggered)
+                worker_stop_candidates.append(
+                    _safety_stop(
+                        "WORKER_EXCEPTION",
+                        len(completed),
+                        result.verification_error,
+                        safe_to_resume=False,
+                    )
+                )
+                stop_triggered = True
+                return
+            stop = process_result(result, check_resource=not stop_triggered)
+            if stop is not None:
+                stop_candidates.append(stop)
+                stop_triggered = True
+
+        def drain_pending() -> None:
+            while pending:
+                done, _ = wait(
+                    tuple(pending),
+                    return_when=FIRST_COMPLETED,
+                )
+                for future in done:
+                    observe_future(future)
+
         try:
             for _ in range(min(workers, len(executable))):
                 entry = next(executable_iter, None)
@@ -1374,34 +1420,17 @@ def run_batch(
                         extractors,
                     )
                 ] = entry
-            while pending and safety_stop is None:
+            while pending:
                 done, _ = wait(
                     tuple(pending),
                     return_when=FIRST_COMPLETED,
                 )
                 for future in done:
-                    entry = pending.pop(future)
-                    try:
-                        result = future.result()
-                    except BaseException as exc:
-                        result = _worker_failure_result(entry, exc)
-                        process_result(result)
-                        activate_stop(
-                            _safety_stop(
-                                "WORKER_EXCEPTION",
-                                len(completed),
-                                result.verification_error,
-                                safe_to_resume=False,
-                            )
-                        )
-                        break
-                    stop = process_result(result)
-                    if stop is not None:
-                        activate_stop(stop)
-                        break
-                if safety_stop is not None:
+                    observe_future(future)
+                if stop_triggered:
                     for future in pending:
                         future.cancel()
+                    drain_pending()
                     break
                 for _ in range(len(done)):
                     entry = next(executable_iter, None)
@@ -1418,10 +1447,17 @@ def run_batch(
                             extractors,
                         )
                     ] = entry
+            if stop_triggered:
+                final_stop = (
+                    worker_stop_candidates[0]
+                    if worker_stop_candidates
+                    else stop_candidates[0]
+                )
+                activate_stop(final_stop)
         finally:
             pool.shutdown(
                 wait=True,
-                cancel_futures=safety_stop is not None,
+                cancel_futures=stop_triggered,
             )
     else:
         with ThreadPoolExecutor(max_workers=workers) as pool:
