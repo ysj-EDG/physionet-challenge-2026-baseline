@@ -239,6 +239,7 @@ def run_multiseed_v2(rank_root: Path, manifest_path: Path, metadata, old_root: P
     sample_matches = 0; models = []; predictions = []
     for seed in SEEDS:
         prepared = {}
+        prediction_prepared = {}
         for site in TRAIN_SITES:
             canonical = "I0002" if site == "S0001" else "S0001"
             for view in VIEWS:
@@ -252,8 +253,11 @@ def run_multiseed_v2(rank_root: Path, manifest_path: Path, metadata, old_root: P
             models.append({"train_site": site, "seed": seed, "view": view, "model_type": model, "status": result["status"]})
         for holdout, protocol, view, model, _seed in prediction_identities_multiseed():
             if _seed != seed: continue
-            fold = load_v2_fold(rank_root, holdout, protocol, view, metadata, manifest_path, source_fingerprints)
-            item = prepare_training_v2(fold, seed)
+            fold_key = (holdout, protocol, view)
+            if fold_key not in prediction_prepared:
+                fold = load_v2_fold(rank_root, holdout, protocol, view, metadata, manifest_path, source_fingerprints)
+                prediction_prepared[fold_key] = prepare_training_v2(fold, seed)
+            item = prediction_prepared[fold_key]
             site = HOLDOUT_TO_TRAIN[holdout]
             result = build_prediction_unit_multiseed(prediction_unit_path(output_root, seed, holdout, protocol, view, model),
                                                      output_root / "models" / site / f"seed{seed}" / view / model,
