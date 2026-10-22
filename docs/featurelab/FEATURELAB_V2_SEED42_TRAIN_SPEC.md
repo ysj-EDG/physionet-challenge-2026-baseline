@@ -34,7 +34,7 @@ LR uses the frozen adapter fitted on the selected subset with `fit_scope=seed_su
 
 Each model identity includes the v2 schema, execution identity, train site, seed, view, model type, sample fingerprint, query fingerprint and feature-ID fingerprint. Each prediction identity additionally includes holdout, protocol, model completion fingerprint and test-index fingerprint. Units publish through temporary same-filesystem directories and no-clobber completion records. An identity-matching complete unit returns `SKIP_VERIFIED`; an incomplete, corrupt or mismatched unit raises an error and is never replaced.
 
-The private output root is `/database/home/gaohaojie/workspace/feature-cache-extension/train_v2/seed42`. It is not a Git artifact. Patient-level values, labels, ages, row indices, checkpoints and predictions remain private.
+The private output root is outside the repository and is not a Git artifact. Its location is supplied only in the execution handoff. Patient-level values, labels, ages, row indices, checkpoints and predictions remain private.
 
 ## E0–E3 reference-only manifest
 
