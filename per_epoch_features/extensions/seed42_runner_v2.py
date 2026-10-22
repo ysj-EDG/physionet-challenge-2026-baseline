@@ -314,40 +314,42 @@ def run_seed42_v2(
             raise UnitIdentityError("Seed42 run identity drift")
     else:
         _write_json(run_path, run_identity)
-    folds = {}
-    prepared = {}
-    for holdout in HOLDOUTS:
-        for protocol in PROTOCOLS:
-            for view in VIEWS:
-                fold = load_v2_fold(rank_root, holdout, protocol, view, metadata, manifest_path, source_fingerprints)
-                item = prepare_seed42_training(fold)
-                folds[(holdout, protocol, view)] = fold
-                prepared[(holdout, protocol, view)] = item
+
+    # Keep only the ten sampled training roles in memory. Prediction roles are
+    # loaded and released one unit at a time.
+    train_prepared = {}
     old_bridge = {}
     for train_site in TRAIN_SITES:
         canonical = CANONICAL_HOLDOUT[train_site]
-        item = prepared[(canonical, "transductive", "V1")]
+        for view in VIEWS:
+            fold = load_v2_fold(rank_root, canonical, "transductive", view, metadata, manifest_path, source_fingerprints)
+            train_prepared[(train_site, view)] = prepare_seed42_training(fold)
+        item = train_prepared[(train_site, "V1")]
         old_bridge[train_site] = {
             "sample_match": bool(compare_old_sample(item, old_root)),
             "query_match": bool(compare_old_query(item, old_root)),
         }
+
     model_results = []
     for train_site, _seed, view, model_type in model_identities_v2():
-        item = prepared[(CANONICAL_HOLDOUT[train_site], "transductive", view)]
+        item = train_prepared[(train_site, view)]
         target = output_root / "models" / train_site / f"seed{SEED}" / view / model_type
         result = build_model_unit_v2(target, item, model_type, run_identity_sha256)
         model_results.append({"train_site": train_site, "view": view, "model_type": model_type, "status": result["status"]})
+
     prediction_results = []
     for holdout, protocol, view, model_type, _seed in prediction_identities_v2():
+        fold = load_v2_fold(rank_root, holdout, protocol, view, metadata, manifest_path, source_fingerprints)
+        item = prepare_seed42_training(fold)
         train_site = HOLDOUT_TO_TRAIN[holdout]
-        item = prepared[(holdout, protocol, view)]
         model_path = output_root / "models" / train_site / f"seed{SEED}" / view / model_type
         model_complete_sha256 = sha256_file(model_path / "complete.json")
         target = output_root / "predictions" / f"holdout_{holdout}" / protocol / view / model_type
         result = build_prediction_unit_v2(target, model_path, item, model_type, run_identity_sha256, model_complete_sha256)
         prediction_results.append({"holdout_site": holdout, "protocol": protocol, "view": view, "model_type": model_type, "status": result["status"]})
+
     reference_path = output_root / "reference_manifest.json"
-    reference = build_reference_manifest_v2(reference_path, old_root, output_root, run_identity_sha256)
+    build_reference_manifest_v2(reference_path, old_root, output_root, run_identity_sha256)
     summary = {
         "schema": "featurelab_v2_seed42_private_summary_v1", "run_identity_sha256": run_identity_sha256,
         "models": model_results, "predictions": prediction_results, "old_bridge": old_bridge,
