@@ -68,7 +68,8 @@ def collect_v2_rows(seed42_root: Path, new_root: Path) -> dict[tuple[str, str, s
             for protocol in PROTOCOLS:
                 for view in VIEWS:
                     for model in MODEL_TYPES:
-                        path = root / "predictions" / f"holdout_{holdout}" / protocol / view / model
+                        path = (root / "predictions" / f"holdout_{holdout}" / protocol / view / model
+                                if seed == 42 else root / "predictions" / f"seed{seed}" / f"holdout_{holdout}" / protocol / view / model)
                         meta_path = path / "metadata.json"
                         if not meta_path.is_file(): raise ValueError(f"v2 prediction missing: {path}")
                         metadata = _json(meta_path)

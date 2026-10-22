@@ -3,10 +3,15 @@ import unittest
 from pathlib import Path
 import numpy as np
 
-from extensions.multiseed_runner_v2 import publish_prediction_unit_multiseed, UnitIdentityError
+from extensions.multiseed_runner_v2 import publish_prediction_unit_multiseed, UnitIdentityError, prediction_unit_path
 
 
 class MultiSeedRunnerTests(unittest.TestCase):
+    def test_prediction_path_is_seed_unique(self):
+        path = prediction_unit_path(Path("/tmp/root"), 43, "I0002", "transductive", "V1", "lr")
+        self.assertIn("seed43", path.parts)
+        self.assertNotEqual(path, prediction_unit_path(Path("/tmp/root"), 44, "I0002", "transductive", "V1", "lr"))
+
     def test_prediction_no_clobber_and_resume(self):
         with tempfile.TemporaryDirectory() as td:
             path = Path(td) / "unit"

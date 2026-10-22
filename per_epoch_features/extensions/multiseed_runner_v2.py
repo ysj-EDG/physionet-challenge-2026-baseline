@@ -216,6 +216,10 @@ def prediction_identities_multiseed():
     return [(holdout, protocol, view, model, seed) for seed in SEEDS for holdout in HOLDOUTS for protocol in PROTOCOLS for view in VIEWS for model in MODEL_TYPES]
 
 
+def prediction_unit_path(root: Path, seed: int, holdout: str, protocol: str, view: str, model: str) -> Path:
+    return Path(root) / "predictions" / f"seed{int(seed)}" / f"holdout_{holdout}" / protocol / view / model
+
+
 def run_multiseed_v2(rank_root: Path, manifest_path: Path, metadata, old_root: Path, output_root: Path,
                      run_identity: Mapping[str, object], source_fingerprints: Mapping[str, str]) -> Mapping[str, object]:
     output_root = Path(output_root); output_root.mkdir(parents=True, exist_ok=True)
@@ -243,7 +247,7 @@ def run_multiseed_v2(rank_root: Path, manifest_path: Path, metadata, old_root: P
             fold = load_v2_fold(rank_root, holdout, protocol, view, metadata, manifest_path, source_fingerprints)
             item = prepare_training_v2(fold, seed)
             site = HOLDOUT_TO_TRAIN[holdout]
-            result = build_prediction_unit_multiseed(output_root / "predictions" / f"holdout_{holdout}" / protocol / view / model,
+            result = build_prediction_unit_multiseed(prediction_unit_path(output_root, seed, holdout, protocol, view, model),
                                                      output_root / "models" / site / f"seed{seed}" / view / model,
                                                      item, model, run_hash)
             predictions.append({"holdout_site": holdout, "protocol": protocol, "view": view, "model_type": model, "seed": seed, "status": result["status"]})
@@ -258,4 +262,4 @@ def run_multiseed_v2(rank_root: Path, manifest_path: Path, metadata, old_root: P
 
 __all__ = ["HOLDOUTS", "MODEL_TYPES", "MODEL_SCHEMA", "PREDICTION_SCHEMA", "SEEDS", "TRAIN_SITES", "VIEWS",
            "UnitIdentityError", "build_model_unit_multiseed", "build_prediction_unit_multiseed", "model_identities_multiseed",
-           "prediction_identities_multiseed", "publish_prediction_unit_multiseed", "run_multiseed_v2"]
+           "prediction_identities_multiseed", "prediction_unit_path", "publish_prediction_unit_multiseed", "run_multiseed_v2"]
