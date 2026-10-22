@@ -185,6 +185,24 @@ def build_model_unit_multiseed(path: Path, prepared: MultiSeedTraining, model_ty
     return {"status": status, "path": str(path), "metadata": metadata}
 
 
+def verify_existing_prediction_unit(path: Path, model_path: Path, seed: int, holdout: str, protocol: str, view: str, model_type: str, run_identity_sha256: str) -> bool:
+    path = Path(path)
+    if not (path.is_dir() and (path / "metadata.json").is_file() and (path / "complete.json").is_file()):
+        raise UnitIdentityError(f"incomplete prediction unit: {path}")
+    saved = _read_json(path / "metadata.json")
+    expected = {"schema": PREDICTION_SCHEMA, "source_version": "v2", "run_identity_sha256": run_identity_sha256,
+                "holdout_site": holdout, "protocol": protocol, "view": view, "model_type": model_type, "seed": int(seed),
+                "model_complete_sha256": sha256_file(Path(model_path) / "complete.json"), "score_type": _score_type(model_type),
+                "finite": True, "nonconstant": True}
+    for key, value in expected.items():
+        if saved.get(key) != value:
+            raise UnitIdentityError(f"prediction identity mismatch: {key}")
+    with np.load(path / "prediction.npz", allow_pickle=False) as archive:
+        payload = {key: np.array(archive[key], copy=True) for key in archive.files}
+    _validate_prediction(path, saved, payload)
+    return True
+
+
 def build_prediction_unit_multiseed(path: Path, model_path: Path, prepared: MultiSeedTraining,
                                      model_type: str, run_identity_sha256: str) -> dict:
     indices = np.asarray(prepared.fold.test_indices, dtype=np.int64)
@@ -253,15 +271,19 @@ def run_multiseed_v2(rank_root: Path, manifest_path: Path, metadata, old_root: P
             models.append({"train_site": site, "seed": seed, "view": view, "model_type": model, "status": result["status"]})
         for holdout, protocol, view, model, _seed in prediction_identities_multiseed():
             if _seed != seed: continue
-            fold_key = (holdout, protocol, view)
-            if fold_key not in prediction_prepared:
-                fold = load_v2_fold(rank_root, holdout, protocol, view, metadata, manifest_path, source_fingerprints)
-                prediction_prepared[fold_key] = prepare_training_v2(fold, seed)
-            item = prediction_prepared[fold_key]
             site = HOLDOUT_TO_TRAIN[holdout]
-            result = build_prediction_unit_multiseed(prediction_unit_path(output_root, seed, holdout, protocol, view, model),
-                                                     output_root / "models" / site / f"seed{seed}" / view / model,
-                                                     item, model, run_hash)
+            target = prediction_unit_path(output_root, seed, holdout, protocol, view, model)
+            model_path = output_root / "models" / site / f"seed{seed}" / view / model
+            if target.exists():
+                verify_existing_prediction_unit(target, model_path, seed, holdout, protocol, view, model, run_hash)
+                result = {"status": "SKIP_VERIFIED"}
+            else:
+                fold_key = (holdout, protocol, view)
+                if fold_key not in prediction_prepared:
+                    fold = load_v2_fold(rank_root, holdout, protocol, view, metadata, manifest_path, source_fingerprints)
+                    prediction_prepared[fold_key] = prepare_training_v2(fold, seed)
+                item = prediction_prepared[fold_key]
+                result = build_prediction_unit_multiseed(target, model_path, item, model, run_hash)
             predictions.append({"holdout_site": holdout, "protocol": protocol, "view": view, "model_type": model, "seed": seed, "status": result["status"]})
         _write_json(output_root / f"seed{seed}_complete.json", {"seed": seed, "sample_query_matches": 2,
                                                                 "model_count": 30, "prediction_count": 90, "status": "COMPLETE"})
@@ -274,4 +296,4 @@ def run_multiseed_v2(rank_root: Path, manifest_path: Path, metadata, old_root: P
 
 __all__ = ["HOLDOUTS", "MODEL_TYPES", "MODEL_SCHEMA", "PREDICTION_SCHEMA", "SEEDS", "TRAIN_SITES", "VIEWS",
            "UnitIdentityError", "build_model_unit_multiseed", "build_prediction_unit_multiseed", "model_identities_multiseed",
-           "prediction_identities_multiseed", "prediction_unit_path", "publish_prediction_unit_multiseed", "run_multiseed_v2"]
+           "prediction_identities_multiseed", "prediction_unit_path", "publish_prediction_unit_multiseed", "run_multiseed_v2", "verify_existing_prediction_unit"]
