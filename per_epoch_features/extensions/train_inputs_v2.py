@@ -36,7 +36,7 @@ V2_VIEW_DIMS = dict(VIEW_DIMS_V2)
 PROTOCOLS = ("transductive", "inductive")
 DEFAULT_EXPECTED_FOLDS = {
     "I0002": ("S0001", "I0006", 5139, 319),
-    "I0006": ("S0001", "I0002", 1142, 1142),
+    "I0006": ("S0001", "I0002", 5139, 1142),
     "S0001": ("I0006", "I0002", 1142, 5139),
 }
 
@@ -76,19 +76,21 @@ def _read_view_rows(path: Path) -> list[dict[str, str]]:
 
 
 def _global_feature_ids(rows: Sequence[Mapping[str, str]]) -> tuple[str, ...]:
-    ordered = []
-    seen = set()
-    parsed = []
+    ordered: list[str | None] = [None] * 1444
     for row in rows:
-        feature_id = str(row.get("feature_id", ""))
-        if not feature_id:
-            raise ValueError("blank feature ID")
-        if feature_id not in seen:
-            seen.add(feature_id)
-            ordered.append(feature_id)
-    if len(ordered) != 1444:
-        raise ValueError("global feature ID count mismatch")
-    return tuple(ordered)
+        try:
+            index = int(row["unique_column_index"])
+            feature_id = str(row["feature_id"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError("invalid global feature mapping") from exc
+        if index < 0 or index >= 1444 or not feature_id:
+            raise ValueError("global feature index out of range")
+        if ordered[index] is not None and ordered[index] != feature_id:
+            raise ValueError("global feature index maps to multiple feature IDs")
+        ordered[index] = feature_id
+    if any(value is None for value in ordered):
+        raise ValueError("global feature mapping is incomplete")
+    return tuple(str(value) for value in ordered)
 
 
 def _manifest_view(rows: Sequence[Mapping[str, str]], view: str) -> tuple[str, ...]:

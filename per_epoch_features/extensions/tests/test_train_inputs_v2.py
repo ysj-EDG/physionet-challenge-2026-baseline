@@ -16,11 +16,16 @@ from extensions.train_inputs_v2 import (
 
 def _manifest(path):
     rows=[]
+    demo_ids=["demo_male","demo_bmi","demo_race_white","demo_race_black","demo_race_asian"]
+    next_index=0
     for view,width in V2_VIEW_DIMS.items():
         for pos in range(width):
-            idx=pos
-            feature_id = ["demo_male","demo_bmi","demo_race_white","demo_race_black","demo_race_asian"][pos-(width-5)] if pos >= width-5 else f"{view}_f{idx}"
+            if pos >= width-5:
+                idx=156+(pos-(width-5)); feature_id=demo_ids[pos-(width-5)]
+            else:
+                idx=next_index; feature_id=f"{view}_f{idx}"; next_index += 1
             rows.append({"view_id":view,"view_position":str(pos),"feature_id":feature_id,"unique_column_index":str(idx),"source_block":"synthetic"})
+        if view == "V1": next_index = 161
     with path.open('w',newline='',encoding='utf-8') as handle:
         writer=csv.DictWriter(handle,fieldnames=rows[0]); writer.writeheader(); writer.writerows(rows)
     return rows
@@ -46,7 +51,7 @@ def _unit(root, manifest_path, holdout='I0002', protocol='transductive', *, bad_
         payload[f'test_{view}_values']=np.tile(base,(len(test_idx),1)) + test_idx[:,None]/1000.0
         payload[f'train_{view}_rank_valid_mask']=np.ones((len(train_idx),width),bool)
         payload[f'test_{view}_rank_valid_mask']=np.ones((len(test_idx),width),bool)
-    metadata={'schema':'featurelab_v2_rank256_v1','holdout_site':holdout,'train_site':train_site,'unused_site':unused,'protocol':protocol,'train_count':train_n,'test_count':test_n,'unused_count':len(payload['unused_indices']),'feature_count':1444,'feature_id_sha256':_sha_bytes(_canonical(list(dict.fromkeys(r['feature_id'] for r in rows))).encode()),'pool_matrix_digest':'pool','formula':'(L+0.5E)/n','levels':256,'rounding':'half_up','numpy_version':np.__version__,'python_version':'synthetic','experiment_selection':{},'view_dimensions':V2_VIEW_DIMS,'view_manifest_sha256':manifest_hash,'source_valid_mask_field':'valid_mask','support_field':'support_count','missing_reason_field':'missing_reason_codes'}
+    metadata={'schema':'featurelab_v2_rank256_v1','holdout_site':holdout,'train_site':train_site,'unused_site':unused,'protocol':protocol,'train_count':train_n,'test_count':test_n,'unused_count':len(payload['unused_indices']),'feature_count':1444,'feature_id_sha256':_sha_bytes(_canonical([next(r['feature_id'] for r in rows if int(r['unique_column_index']) == i) for i in range(1444)]).encode()),'pool_matrix_digest':'pool','formula':'(L+0.5E)/n','levels':256,'rounding':'half_up','numpy_version':np.__version__,'python_version':'synthetic','experiment_selection':{},'view_dimensions':V2_VIEW_DIMS,'view_manifest_sha256':manifest_hash,'source_valid_mask_field':'valid_mask','support_field':'support_count','missing_reason_field':'missing_reason_codes'}
     publish_unit_atomic(root/f'holdout_{holdout}'/protocol,payload,metadata)
     return sites,metadata
 
@@ -63,7 +68,7 @@ class TrainInputsV2Tests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             root=Path(td); manifest=root/'views.csv'; _manifest(manifest); sites,_=_unit(root,manifest)
             fold=load_v2_fold(root,'I0002','transductive','V2',_metadata(sites),manifest,{'source':'synthetic'},expected_folds={'I0002':('S0001','I0006',2,1)})
-            self.assertEqual(tuple(fold.feature_ids[:3]),('V2_f0','V2_f1','V2_f2')); np.testing.assert_allclose(fold.X_train[:,0],[0.,0.002]); np.testing.assert_array_equal(fold.train_indices,[0,2]); np.testing.assert_array_equal(fold.test_indices,[1])
+            self.assertEqual(tuple(fold.feature_ids[:3]),('V2_f161','V2_f162','V2_f163')); np.testing.assert_allclose(fold.X_train[:,0],[0.,0.002]); np.testing.assert_array_equal(fold.train_indices,[0,2]); np.testing.assert_array_equal(fold.test_indices,[1])
 
     def test_manifest_or_indices_mismatch_is_rejected(self):
         with tempfile.TemporaryDirectory() as td:
