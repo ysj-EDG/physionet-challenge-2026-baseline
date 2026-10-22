@@ -40,7 +40,8 @@ def _unit(root, manifest_path, holdout='I0002', protocol='transductive', *, bad_
     sites=np.array(['S0001','I0002','S0001','I0006'])
     folds={'I0002':('S0001','I0006',2,1),'I0006':('S0001','I0002',2,1),'S0001':('I0006','I0002',1,2)}
     train_site,unused,train_n,test_n=folds[holdout]
-    rows=list(csv.DictReader(manifest_path.open()))
+    with manifest_path.open() as handle:
+        rows=list(csv.DictReader(handle))
     manifest_hash=_sha_bytes(_canonical(rows).encode())
     payload={'train_indices':np.array([0,2] if holdout!='S0001' else [3],np.int64), 'test_indices':np.array([1] if holdout!='S0001' else [0,2],np.int64), 'unused_indices':np.array([3] if holdout!='S0001' else [1],np.int64)}
     if bad_indices: payload['train_indices']=np.array([2,0],np.int64) if holdout!='S0001' else np.array([3],np.int64)
@@ -74,7 +75,9 @@ class TrainInputsV2Tests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             root=Path(td); manifest=root/'views.csv'; _manifest(manifest); sites,_=_unit(root,manifest,bad_indices=True)
             with self.assertRaises(ValueError): load_v2_fold(root,'I0002','transductive','V1',_metadata(sites),manifest,{'source':'synthetic'},expected_folds={'I0002':('S0001','I0006',2,1)})
-            rows=list(csv.DictReader(manifest.open())); rows[0]['feature_id']='wrong'; bad=root/'bad.csv'
+            with manifest.open() as handle:
+                rows=list(csv.DictReader(handle))
+            rows[0]['feature_id']='wrong'; bad=root/'bad.csv'
             with bad.open('w',newline='') as h:
                 w=csv.DictWriter(h,fieldnames=rows[0]); w.writeheader(); w.writerows(rows)
             root2=Path(td)/'other'; root2.mkdir(); _unit(root2,manifest)
