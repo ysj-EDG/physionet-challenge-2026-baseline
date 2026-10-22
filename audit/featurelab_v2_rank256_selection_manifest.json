@@ -1,0 +1,46 @@
+{
+  "feature_count": 1444,
+  "feature_id_sha256": "dc6c780b8791bd86b680793d76a21cd101340d24f27c3f3369b08553ede4a158",
+  "mapping_only": true,
+  "schema": "featurelab_v2_rank256_selection_v1",
+  "selections": {
+    "E0": {
+      "count": 807,
+      "feature_id_sha256": "d2b5cddc8918f4b48a864cc1f62b4104900ea5dd1ab1d761c88272e2a523c6f2",
+      "first_index": 0,
+      "last_index": 806
+    },
+    "E1": {
+      "count": 1191,
+      "feature_id_sha256": "dcbc587ad0357e4bb217b93fae3af5ed7cad74f4568ff664ec32325b8d3751cc",
+      "first_index": 0,
+      "last_index": 1190
+    },
+    "E2": {
+      "count": 1060,
+      "feature_id_sha256": "7b6b1f4d33bf095838b58b7e4befc6728751d5790893fef9ee4c86009cdbe92e",
+      "first_index": 0,
+      "last_index": 1443
+    },
+    "E3": {
+      "count": 1444,
+      "feature_id_sha256": "dc6c780b8791bd86b680793d76a21cd101340d24f27c3f3369b08553ede4a158",
+      "first_index": 0,
+      "last_index": 1443
+    }
+  },
+  "view_dimensions_v1": {
+    "V1": 113,
+    "V2": 129,
+    "V3": 349,
+    "V4": 113,
+    "V5": 123
+  },
+  "view_dimensions_v2": {
+    "V1": 161,
+    "V2": 177,
+    "V3": 493,
+    "V4": 257,
+    "V5": 376
+  }
+}
