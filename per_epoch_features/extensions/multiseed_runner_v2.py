@@ -192,18 +192,26 @@ def build_prediction_unit_multiseed(path: Path, model_path: Path, prepared: Mult
     files = model_meta.get("checkpoint_files")
     if not isinstance(files, dict):
         raise UnitIdentityError("model checkpoint files missing")
-    trained = load_checkpoint(model_path, model_type, files)
-    scores = predict_scores(model_type, trained.model, trained.adapter, prepared.fold.X_test)
-    if not np.isfinite(scores).all() or np.ptp(scores) == 0:
-        raise UnitIdentityError("prediction invalid or constant")
-    payload = {"test_global_indices": indices, "scores": np.asarray(scores, dtype=np.float64)}
     identity = {"schema": PREDICTION_SCHEMA, "source_version": "v2", "run_identity_sha256": run_identity_sha256,
                 "holdout_site": prepared.fold.holdout_site, "train_site": prepared.fold.train_site,
                 "protocol": prepared.fold.protocol, "view": prepared.fold.view, "model_type": model_type,
                 "seed": prepared.seed, "model_complete_sha256": sha256_file(Path(model_path) / "complete.json"),
                 "feature_ids_sha256": _feature_sha(prepared.fold), "test_indices_sha256": _array_sha(indices),
-                "prediction_sha256": _array_sha(scores), "feature_count": len(prepared.fold.feature_ids),
-                "test_count": len(indices), "score_type": _score_type(model_type), "finite": True, "nonconstant": True}
+                "feature_count": len(prepared.fold.feature_ids), "test_count": len(indices),
+                "score_type": _score_type(model_type), "finite": True, "nonconstant": True}
+    path = Path(path)
+    if path.exists() or path.is_symlink():
+        with np.load(path / "prediction.npz", allow_pickle=False) as archive:
+            payload = {key: np.array(archive[key], copy=True) for key in archive.files}
+        identity["prediction_sha256"] = _array_sha(payload["scores"])
+        _validate_prediction(path, identity, payload)
+        return {"status": "SKIP_VERIFIED", "path": str(path), "metadata": identity}
+    trained = load_checkpoint(model_path, model_type, files)
+    scores = predict_scores(model_type, trained.model, trained.adapter, prepared.fold.X_test)
+    if not np.isfinite(scores).all() or np.ptp(scores) == 0:
+        raise UnitIdentityError("prediction invalid or constant")
+    payload = {"test_global_indices": indices, "scores": np.asarray(scores, dtype=np.float64)}
+    identity["prediction_sha256"] = _array_sha(scores)
     status = publish_prediction_unit_multiseed(path, payload, identity)
     return {"status": status, "path": str(path), "metadata": identity}
 
