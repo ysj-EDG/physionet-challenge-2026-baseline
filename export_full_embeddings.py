@@ -102,6 +102,19 @@ def write_dataset(group: h5py.Group, name: str, values: np.ndarray) -> None:
     )
 
 
+def shard_matches_checkpoint(
+    shard_path: Path, sidecar_path: Path, checkpoint_hash: str
+) -> bool:
+    if not shard_path.is_file() or not sidecar_path.is_file():
+        return False
+    try:
+        with h5py.File(shard_path, "r") as handle:
+            stored_hash = str(handle.attrs.get("checkpoint_sha256", ""))
+    except OSError:
+        return False
+    return stored_hash == checkpoint_hash
+
+
 def export_shard(
     shard_index: int,
     rows: pd.DataFrame,
@@ -114,7 +127,7 @@ def export_shard(
 ) -> None:
     shard_path = output_dir / "shards" / f"shard_{shard_index:04d}.h5"
     sidecar_path = output_dir / "manifests" / f"shard_{shard_index:04d}.parquet"
-    if shard_path.is_file() and sidecar_path.is_file():
+    if shard_matches_checkpoint(shard_path, sidecar_path, checkpoint_hash):
         return
     temporary = shard_path.with_suffix(".h5.tmp")
     if temporary.exists():
