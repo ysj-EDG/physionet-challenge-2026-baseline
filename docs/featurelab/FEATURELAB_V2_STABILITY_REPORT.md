@@ -1,6 +1,10 @@
 # FeatureLab v2 — E0–E3 稳定性与替换诊断
 
 V2_STABILITY_ANALYSIS_STATUS = COMPLETE
+SEED_STABILITY = VALID
+PAIRED_BOOTSTRAP = VALID
+VIEW_REPLACEMENT = VALID
+VIEW_MODEL_REPLACEMENT = VALID_AFTER_TARGETED_FIX
 
 本报告仅使用已冻结的15 Seed、225路预测和24个正式融合组；未重新训练、重新预测、重新提取特征、重建Rank256或改变正式融合规则。
 
@@ -130,27 +134,52 @@ R_V1–R_V5均从E0出发只替换对应View；R_V5与E2逐数组精确一致。
 | R_V5 | inductive | Worst-site | 0.00569582 | 0.00878709 | -0.00365400 |
 | R_V5 | inductive | Small-site mean | 0.00900455 | 0.00759656 | 0.01036012 |
 
-## View × Model replacement
+## View × Model replacement（定向修复后）
 
-每次只替换一个View × Model Type；每个配置仍为225列，其余210列保持E0 source。公开明细见audit/featurelab_v2_view_model_replacement.csv。
+初版View×Model诊断的生产路径按View而非(View, Model)选择prediction source，导致同一View的三个model replacement退化为完整View replacement。本次修复仅重新计算该post-hoc诊断，不影响正式E0–E3结果、Seed稳定性、Bootstrap或单View replacement。
 
-| View | Model | Protocol | Macro ΔAC | Worst-site ΔAC | Small-site ΔAC |
+正式source选择按 `(seed, view, model)` 键解析。15个View×Model配置均由实际source map核验：每组225列，其中15列v2、210列old，无重复或缺失。R_V5仍与E2逐数组精确一致。
+
+| View | Model | Protocol | Macro ΔAC | Worst-site ΔAC | Small-site mean ΔAC |
 |---|---|---|---:|---:|---:|
-| V1 | lr | transductive | -0.00007969 | -0.00206219 | 0.00091156 |
-| V1 | hgb | transductive | -0.00007969 | -0.00206219 | 0.00091156 |
-| V1 | lambdarank | transductive | -0.00007969 | -0.00206219 | 0.00091156 |
-| V2 | lr | transductive | 0.00102827 | 0.00212253 | 0.00048114 |
-| V2 | hgb | transductive | 0.00102827 | 0.00212253 | 0.00048114 |
-| V2 | lambdarank | transductive | 0.00102827 | 0.00212253 | 0.00048114 |
-| V3 | lr | transductive | -0.00162178 | -0.00387758 | -0.00049388 |
-| V3 | hgb | transductive | -0.00162178 | -0.00387758 | -0.00049388 |
-| V3 | lambdarank | transductive | -0.00162178 | -0.00387758 | -0.00049388 |
-| V4 | lr | transductive | 0.00218319 | 0.00443975 | 0.00105490 |
-| V4 | hgb | transductive | 0.00218319 | 0.00443975 | 0.00105490 |
-| V4 | lambdarank | transductive | 0.00218319 | 0.00443975 | 0.00105490 |
-| V5 | lr | transductive | 0.00661814 | 0.00527060 | 0.00708346 |
-| V5 | hgb | transductive | 0.00661814 | 0.00527060 | 0.00708346 |
-| V5 | lambdarank | transductive | 0.00661814 | 0.00527060 | 0.00708346 |
+| V1 | lr | transductive | 0.00102347 | -0.00001645 | 0.00154344 |
+| V1 | hgb | transductive | -0.00047887 | -0.00085011 | -0.00029325 |
+| V1 | lambdarank | transductive | -0.00090966 | -0.00104755 | -0.00084072 |
+| V2 | lr | transductive | 0.00064718 | 0.00141502 | 0.00026326 |
+| V2 | hgb | transductive | 0.00068279 | 0.00028520 | 0.00088158 |
+| V2 | lambdarank | transductive | 0.00071015 | 0.00057868 | 0.00076083 |
+| V3 | lr | transductive | 0.00015656 | -0.00169828 | 0.00015258 |
+| V3 | hgb | transductive | -0.00133052 | -0.00180168 | -0.00109494 |
+| V3 | lambdarank | transductive | -0.00167578 | -0.00177700 | -0.00162517 |
+| V4 | lr | transductive | 0.00073390 | 0.00175166 | 0.00002177 |
+| V4 | hgb | transductive | 0.00180534 | 0.00099271 | 0.00221166 |
+| V4 | lambdarank | transductive | 0.00199601 | 0.00216565 | 0.00155432 |
+| V5 | lr | transductive | 0.00334721 | 0.00300005 | 0.00352079 |
+| V5 | hgb | transductive | 0.00120789 | 0.00037169 | 0.00065734 |
+| V5 | lambdarank | transductive | 0.00165847 | -0.00011131 | 0.00121117 |
+
+### V5三个模型族：六个Site×Protocol ΔAC
+
+| Model | Protocol | I0002 | I0006 | S0001 | Macro |
+|---|---|---:|---:|---:|---:|
+| lr | transductive | 0.00159067 | 0.00545091 | 0.00300005 | 0.00334721 |
+| lr | inductive | -0.00159067 | 0.00482992 | 0.00008775 | 0.00110900 |
+| hgb | transductive | 0.00159067 | -0.00027600 | 0.00230900 | 0.00120789 |
+| hgb | inductive | 0.00371156 | 0.00137998 | 0.00124500 | 0.00211218 |
+| lambdarank | transductive | 0.00318134 | -0.00075899 | 0.00255306 | 0.00165847 |
+| lambdarank | inductive | 0.00371156 | 0.00027600 | 0.00242966 | 0.00213907 |
+
+### V1–V4定向解释
+
+- S0001的负向变化主要集中在V3的HGB/LambdaRank分支（transductive分别为 -0.00180168、-0.00177700），V1的HGB/LambdaRank也为负；V4三种模型在S0001均为正。
+- I0006的正向变化最明显来自V4的LambdaRank/HGB（0.00151797/0.00124198）和V2的LR（0.00158697）；V3在I0006对三种模型均非正。
+- V5的transductive Macro ΔAC三个模型族均为正（LR 0.00334721、HGB 0.00120789、LambdaRank 0.00165847），但站点方向并非完全一致：HGB与LambdaRank在I0006略负；LR三个站点均为正。inductive Macro三个模型族也均为正，但LR在I0002略负。
+- V5四家族leave-one-out可作为下一阶段的候选诊断问题，但本轮不启动；需要单独授权，不能由本次View×Model结果自动进入。
+
+VIEW_MODEL_REPLACEMENT_STATUS = VALID_AFTER_TARGETED_FIX
+VIEW_MODEL_SOURCE_CONTRACT = 15 v2 + 210 old per configuration
+VIEW_MODEL_DUPLICATE_OR_MISSING_IDENTITIES = 0
+
 
 ## 解释边界
 

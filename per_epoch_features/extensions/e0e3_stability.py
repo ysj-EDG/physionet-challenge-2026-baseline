@@ -225,7 +225,7 @@ def load_reference_sources(reference_manifest: Path):
 
 
 def _fuse_source(arrays, holdout: str, protocol: str,
-                 source_by_view: Mapping[str, str], seed: int | None = None):
+                 source_by_key: Mapping[tuple[int, str, str], str], seed: int | None = None):
     seeds = (int(seed),) if seed is not None else SEEDS
     columns = []
     keys = []
@@ -233,7 +233,7 @@ def _fuse_source(arrays, holdout: str, protocol: str,
     for current_seed in seeds:
         for view in VIEWS:
             for model in MODEL_TYPES:
-                source = source_by_view[view]
+                source = source_by_key[(current_seed, view, model)]
                 scores, indices = arrays[(source, holdout, protocol, view, model, current_seed)]
                 if canonical is None:
                     canonical = indices
@@ -254,20 +254,48 @@ def _source_map(experiment: str) -> dict[str, str]:
     return dict(EXPERIMENT_SOURCES[experiment])
 
 
-def _replacement_map(view: str | None = None, model: str | None = None) -> dict[str, str]:
-    result = {v: "old" for v in VIEWS}
-    if view is not None:
-        if view not in VIEWS or (model is not None and model not in MODEL_TYPES):
-            raise ValueError("invalid replacement")
-        result[view] = "v2"
+def build_prediction_source_keys(*, experiment: str | None = None,
+                                 view: str | None = None,
+                                 model: str | None = None) -> dict[tuple[int, str, str], str]:
+    """Resolve the actual old/v2 source for every frozen prediction key.
+
+    Replacement selection is deliberately expressed at ``(seed, view, model)``
+    granularity so a View×Model diagnostic cannot silently become a full-View
+    replacement.
+    """
+    if experiment is not None and (view is not None or model is not None):
+        raise ValueError("choose experiment or replacement")
+    if model is not None and view is None:
+        raise ValueError("model replacement requires a view")
+    if experiment is not None:
+        view_sources = _source_map(experiment)
+    else:
+        if view is not None and view not in VIEWS:
+            raise ValueError("invalid replacement view")
+        if model is not None and model not in MODEL_TYPES:
+            raise ValueError("invalid replacement model")
+        view_sources = {current_view: "old" for current_view in VIEWS}
+    result = {}
+    for seed in SEEDS:
+        for current_view in VIEWS:
+            for current_model in MODEL_TYPES:
+                source = view_sources[current_view]
+                if experiment is None and view is not None:
+                    if current_view == view and (model is None or current_model == model):
+                        source = "v2"
+                result[(seed, current_view, current_model)] = source
+    if len(result) != len(_fixed_keys()) or set(result) != set(_fixed_keys()):
+        raise RuntimeError("prediction source key coverage mismatch")
     return result
+
+
+def _replacement_map(view: str | None = None, model: str | None = None) -> dict[tuple[int, str, str], str]:
+    return build_prediction_source_keys(view=view, model=model)
 
 
 def build_fused_groups(arrays, *, experiment: str | None = None,
                        view: str | None = None, model: str | None = None):
-    if experiment is not None and (view is not None or model is not None):
-        raise ValueError("choose experiment or replacement")
-    source_map = _source_map(experiment) if experiment is not None else _replacement_map(view, model)
+    source_map = build_prediction_source_keys(experiment=experiment, view=view, model=model)
     groups = {}
     for holdout in HOLDOUTS:
         for protocol in PROTOCOLS:
@@ -277,7 +305,7 @@ def build_fused_groups(arrays, *, experiment: str | None = None,
 
 
 def build_single_seed_groups(arrays, *, experiment: str, seed: int):
-    source_map = _source_map(experiment)
+    source_map = build_prediction_source_keys(experiment=experiment)
     groups = {}
     for holdout in HOLDOUTS:
         for protocol in PROTOCOLS:
@@ -500,6 +528,51 @@ def score_replacements(arrays, metadata, official):
     return scores, view_rows, model_rows, replacements
 
 
+def score_view_model_replacements(arrays, metadata, official):
+    """Score only the fifteen View×Model replacements from the fixed E0 base."""
+    e0 = build_fused_groups(arrays, experiment="E0")
+
+    def score_groups(groups):
+        rows = {}
+        for holdout in HOLDOUTS:
+            for protocol in PROTOCOLS:
+                idx, fused = groups[(holdout, protocol)]
+                labels, ages = load_eval_targets(metadata, idx)
+                rows[(holdout, protocol)] = {
+                    "ac_auroc": _ac_fast(labels, ages, fused),
+                    "auroc": float(official.compute_auroc(labels, fused)),
+                    "auprc": float(official.compute_auprc(labels, fused)),
+                }
+        return rows
+
+    base_scores = score_groups(e0)
+    model_rows = []
+    source_counts = {}
+    for view in VIEWS:
+        for model in MODEL_TYPES:
+            name = f"R_{view}_{model}"
+            source_keys = build_prediction_source_keys(view=view, model=model)
+            source_counts[name] = {
+                "n_v2_columns": sum(source == "v2" for source in source_keys.values()),
+                "n_old_columns": sum(source == "old" for source in source_keys.values()),
+                "n_total_columns": len(source_keys),
+            }
+            groups = build_fused_groups(arrays, view=view, model=model)
+            current_scores = score_groups(groups)
+            for protocol in PROTOCOLS:
+                for scope in SCOPES:
+                    base = {site: base_scores[(site, protocol)] for site in HOLDOUTS}
+                    current = {site: current_scores[(site, protocol)] for site in HOLDOUTS}
+                    model_rows.append({
+                        "replacement": name, "view": view, "model": model,
+                        "protocol": protocol, "scope": scope,
+                        "delta_ac": _metric_scope({site: current[site]["ac_auroc"] for site in HOLDOUTS}, scope) - _metric_scope({site: base[site]["ac_auroc"] for site in HOLDOUTS}, scope),
+                        "delta_auroc": _metric_scope({site: current[site]["auroc"] for site in HOLDOUTS}, scope) - _metric_scope({site: base[site]["auroc"] for site in HOLDOUTS}, scope),
+                        "delta_auprc": _metric_scope({site: current[site]["auprc"] for site in HOLDOUTS}, scope) - _metric_scope({site: base[site]["auprc"] for site in HOLDOUTS}, scope),
+                    })
+    return model_rows, source_counts
+
+
 def write_csv(path: Path, rows: Sequence[Mapping[str, object]]) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -535,8 +608,9 @@ def assert_public_privacy(rows: Sequence[Mapping[str, object]]) -> None:
 __all__ = [
     "BOOTSTRAP_SEED", "COMPARISONS", "SCOPES", "SEEDS",
     "assert_public_privacy", "bootstrap_multiplicity", "build_fused_groups",
+    "build_prediction_source_keys",
     "build_replacement_keys", "expanded_ac", "fuse_score_columns",
     "load_reference_sources", "pair_contributions", "paired_bootstrap",
-    "score_replacements", "seed_stability_rows", "select_seed_columns",
+    "score_replacements", "score_view_model_replacements", "seed_stability_rows", "select_seed_columns",
     "weighted_ac_batch", "weighted_ac_from_pairs",
 ]

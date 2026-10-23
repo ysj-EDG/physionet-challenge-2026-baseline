@@ -1,9 +1,13 @@
 import unittest
+from unittest.mock import patch
 
 import numpy as np
+import extensions.e0e3_stability as stability
 
 from extensions.e0e3_stability import (
     assert_public_privacy,
+    build_fused_groups,
+    build_prediction_source_keys,
     build_replacement_keys,
     bootstrap_multiplicity,
     fuse_score_columns,
@@ -135,6 +139,57 @@ class ReplacementTests(unittest.TestCase):
             for model in ("lr", "hgb", "lambdarank"):
                 out = build_replacement_keys(e0, e2, view=view, model=model)
                 self.assertEqual(sum(out[k] != e0[k] for k in out), 15)
+
+
+class ProductionSourceSelectionTests(unittest.TestCase):
+    def test_build_fused_groups_passes_key_source_map_to_fuser(self):
+        captured = []
+
+        def fake_fuser(arrays, holdout, protocol, source_map, seed=None):
+            captured.append(source_map)
+            return [], [], np.array([0], dtype=np.int64), np.array([0.5], dtype=np.float64)
+
+        with patch.object(stability, "_fuse_source", side_effect=fake_fuser):
+            stability.build_fused_groups({}, view="V5", model="lr")
+        self.assertEqual(len(captured), 6)
+        for source_map in captured:
+            changed = {key for key, source in source_map.items() if source == "v2"}
+            self.assertEqual(len(changed), 15)
+            self.assertTrue(all(key[1:] == ("V5", "lr") for key in changed))
+
+    def test_view_model_source_selection_is_key_granular(self):
+        sources = build_prediction_source_keys(view="V5", model="lr")
+        self.assertEqual(len(sources), 225)
+        changed = {key for key, source in sources.items() if source == "v2"}
+        self.assertEqual(len(changed), 15)
+        self.assertTrue(all(key[1:] == ("V5", "lr") for key in changed))
+        self.assertEqual(sum(source == "old" for source in sources.values()), 210)
+
+    def test_three_v5_model_replacements_have_disjoint_key_sets(self):
+        changed = []
+        for model in ("lr", "hgb", "lambdarank"):
+            sources = build_prediction_source_keys(view="V5", model=model)
+            changed.append({key for key, source in sources.items() if source == "v2"})
+        self.assertEqual([len(value) for value in changed], [15, 15, 15])
+        self.assertTrue(changed[0].isdisjoint(changed[1]))
+        self.assertTrue(changed[0].isdisjoint(changed[2]))
+        self.assertTrue(changed[1].isdisjoint(changed[2]))
+
+    def test_full_view_replacement_stays_at_forty_five_columns(self):
+        sources = build_prediction_source_keys(view="V5")
+        self.assertEqual(sum(source == "v2" for source in sources.values()), 45)
+        self.assertEqual(sum(source == "old" for source in sources.values()), 180)
+
+    def test_all_view_model_replacements_cover_exactly_225_keys(self):
+        for view in ("V1", "V2", "V3", "V4", "V5"):
+            for model in ("lr", "hgb", "lambdarank"):
+                sources = build_prediction_source_keys(view=view, model=model)
+                self.assertEqual(set(sources), set((seed, v, m)
+                                 for seed in range(42, 57)
+                                 for v in ("V1", "V2", "V3", "V4", "V5")
+                                 for m in ("lr", "hgb", "lambdarank")))
+                self.assertEqual(sum(x == "v2" for x in sources.values()), 15)
+                self.assertEqual(sum(x == "old" for x in sources.values()), 210)
 
 
 class PrivacyTests(unittest.TestCase):
