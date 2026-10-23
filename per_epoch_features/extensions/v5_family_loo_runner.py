@@ -177,6 +177,30 @@ def _publish_model(path: Path, trained, metadata: Mapping[str, object]) -> str:
         raise
 
 
+def _validate_prediction_unit_identity(path: Path, expected: Mapping[str, object]) -> str:
+    """Validate an existing prediction unit without loading a model or recomputing scores."""
+    path = Path(path)
+    if not (path.is_dir() and (path / "payload.npz").is_file() and (path / "metadata.json").is_file() and (path / "complete.json").is_file()):
+        raise UnitIdentityError(f"incomplete prediction unit: {path}")
+    saved = json.loads((path / "metadata.json").read_text(encoding="utf-8"))
+    for key, value in expected.items():
+        if key != "prediction_sha256" and saved.get(key) != value:
+            raise UnitIdentityError(f"prediction identity mismatch: {key}")
+    complete = json.loads((path / "complete.json").read_text(encoding="utf-8"))
+    if complete.get("status") != "COMPLETE" or complete.get("payload_summary") != _payload_summary(path):
+        raise UnitIdentityError("prediction completion digest mismatch")
+    with np.load(path / "payload.npz", allow_pickle=False) as archive:
+        if set(archive.files) != {"test_global_indices", "scores"}:
+            raise UnitIdentityError("prediction payload keys mismatch")
+        indices = np.asarray(archive["test_global_indices"])
+        scores = np.asarray(archive["scores"])
+        if indices.dtype != np.dtype("int64") or scores.dtype != np.dtype("float64") or indices.ndim != 1 or scores.ndim != 1 or len(indices) != len(scores):
+            raise UnitIdentityError("prediction payload schema mismatch")
+        if saved.get("test_indices_sha256") != _array_sha(indices) or saved.get("prediction_sha256") != _array_sha(scores):
+            raise UnitIdentityError("prediction payload digest mismatch")
+    return "SKIP_VERIFIED"
+
+
 def _load_model(path: Path, model_type: str):
     from reproduction.siren_a.g4.models import load_checkpoint
     metadata = json.loads((Path(path) / 'metadata.json').read_text(encoding='utf-8'))
@@ -216,7 +240,7 @@ def _sample_query_bridge(prepared, old_root: Path) -> bool:
     return True
 
 
-def run_models_and_predictions(*, rank_root: Path, metadata, manifest_path: Path, source_fingerprints: Mapping[str, str], output_root: Path, old_root: Path, run_identity: Mapping[str, object], configs: Sequence[str] | None = None):
+def run_models_and_predictions(*, rank_root: Path, metadata, manifest_path: Path, source_fingerprints: Mapping[str, str], output_root: Path, old_root: Path, run_identity: Mapping[str, object], configs: Sequence[str] | None = None, selector=None, allowed_configs: Sequence[str] | None = None):
     from .train_inputs_v2 import load_v2_fold
     from reproduction.siren_a.g4.queries import build_queries
     from reproduction.siren_a.g4.sampler import sample_training_rows
@@ -227,9 +251,13 @@ def run_models_and_predictions(*, rank_root: Path, metadata, manifest_path: Path
     from .v5_family_loo import load_v5_manifest, select_config, _sha
     from .train_inputs_v2 import PROTOCOLS
     model_types = ('lr','hgb','lambdarank'); seeds = tuple(range(42,57)); holdouts=('I0002','I0006','S0001')
-    config_ids = tuple(CONFIGS if configs is None else configs)
-    if set(config_ids) != set(config_ids).intersection(CONFIGS) or len(set(config_ids)) != len(config_ids):
-        raise ValueError('invalid LOO configuration subset')
+    Path(output_root).mkdir(parents=True, exist_ok=True)
+    from .v5_family_loo import select_config
+    selector = select_config if selector is None else selector
+    allowed = tuple(CONFIGS if allowed_configs is None else allowed_configs)
+    config_ids = tuple(allowed if configs is None else configs)
+    if set(config_ids) != set(config_ids).intersection(allowed) or len(set(config_ids)) != len(config_ids):
+        raise ValueError('invalid configuration subset')
     manifest = load_v5_manifest(manifest_path)
     identity_sha = hashlib.sha256(_canonical(run_identity)).hexdigest()
     model_count = prediction_count = bridge_count = replay_max = 0.0
@@ -238,10 +266,10 @@ def run_models_and_predictions(*, rank_root: Path, metadata, manifest_path: Path
         key=(config_id,holdout,protocol)
         if key not in fold_cache:
             full=load_v2_fold(rank_root,holdout,protocol,'V5',metadata,manifest_path,source_fingerprints)
-            fold_cache[key]=project_fold_for_config(full,select_config(manifest,config_id))
+            fold_cache[key]=project_fold_for_config(full,selector(manifest,config_id))
         return fold_cache[key]
     for config_id in config_ids:
-        rows = select_config(manifest, config_id)
+        rows = selector(manifest, config_id)
         for train_site, representative in (('S0001','I0002'),('I0006','S0001')):
             fold = get_fold(config_id, representative, 'transductive')
             for seed in seeds:
@@ -274,7 +302,7 @@ def run_models_and_predictions(*, rank_root: Path, metadata, manifest_path: Path
                         pass
     # Models must all be complete before predictions begin.
     for config_id in config_ids:
-        rows=select_config(manifest,config_id)
+        rows=selector(manifest,config_id)
         for holdout in holdouts:
             train_site={'I0002':'S0001','I0006':'S0001','S0001':'I0006'}[holdout]
             for protocol in PROTOCOLS:
@@ -282,11 +310,15 @@ def run_models_and_predictions(*, rank_root: Path, metadata, manifest_path: Path
                 for seed in seeds:
                     for model_type in model_types:
                         model_path=Path(output_root)/'models'/config_id/train_site/f'seed{seed}'/model_type
+                        pred_path=Path(output_root)/'predictions'/config_id/f'seed{seed}'/f'holdout_{holdout}'/protocol/model_type
+                        pred_identity={'config_id':config_id,'holdout_site':holdout,'train_site':train_site,'protocol':protocol,'seed':seed,'view':'V5','model_type':model_type,'feature_count':len(rows),'feature_ids_sha256':_sha([r.feature_id for r in rows]),'model_complete_sha256':_file_sha(model_path/'complete.json'),'test_indices_sha256':_array_sha(np.asarray(fold.test_indices,dtype=np.int64)),'score_type':'raw_ranking_score' if model_type=='lambdarank' else 'positive_probability','run_identity_sha256':identity_sha}
+                        if pred_path.exists():
+                            _validate_prediction_unit_identity(pred_path, pred_identity)
+                            continue
                         model, model_meta=_load_model(model_path,model_type)
                         scores=predict_scores(model_type,model.model,model.adapter,fold.X_test)
                         payload={'test_global_indices':np.asarray(fold.test_indices,dtype=np.int64),'scores':np.asarray(scores,dtype=np.float64)}
-                        pred_path=Path(output_root)/'predictions'/config_id/f'seed{seed}'/f'holdout_{holdout}'/protocol/model_type
-                        pred_meta={'config_id':config_id,'holdout_site':holdout,'train_site':train_site,'protocol':protocol,'seed':seed,'view':'V5','model_type':model_type,'feature_count':len(rows),'feature_ids_sha256':_sha([r.feature_id for r in rows]),'model_complete_sha256':_file_sha(model_path/'complete.json'),'test_indices_sha256':_array_sha(payload['test_global_indices']),'prediction_sha256':_array_sha(payload['scores']),'score_type':'raw_ranking_score' if model_type=='lambdarank' else 'positive_probability','run_identity_sha256':identity_sha}
+                        pred_meta=dict(pred_identity); pred_meta['prediction_sha256']=_array_sha(payload['scores'])
                         status=publish_npz_unit(pred_path,payload,pred_meta)
                         if status=='BUILD_NEW': prediction_count += 1
     return {'models_built':int(model_count),'predictions_built':int(prediction_count),'sample_query_matches':int(bridge_count),'replay_max_abs_diff':float(replay_max)}

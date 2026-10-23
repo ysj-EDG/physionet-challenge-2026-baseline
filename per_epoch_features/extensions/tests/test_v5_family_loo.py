@@ -52,6 +52,35 @@ class V5FamilyLooContractTests(unittest.TestCase):
         self.assertNotEqual(references[("E0", "inductive")]["macro_ac"], references[("E2", "inductive")]["macro_ac"])
         self.assertIn("worst_site_ac", references[("E2", "transductive")])
 
+    def test_core_manifest_keeps_only_old_coherence_and_emg_blocks(self):
+        from extensions.core_coh_emg import CORE_CONFIG_ID, select_core_config, load_core_manifest_payload
+        from extensions.v5_family_loo import load_v5_manifest
+
+        manifest = load_v5_manifest(Path(__file__).parents[3] / "audit" / "featurelab_v2_view_manifest.csv")
+        selected = select_core_config(manifest)
+        self.assertEqual(CORE_CONFIG_ID, "CORE_COH_EMG")
+        self.assertEqual(len(selected), 285)
+        self.assertEqual({row.source_block for row in selected}, {"old807", "eeg_coherence_stage", "emg_stage"})
+        self.assertEqual([row.view_position for row in selected], sorted(row.view_position for row in selected))
+        self.assertEqual(len({row.feature_id for row in selected}), 285)
+        self.assertEqual(len({row.unique_column_index for row in selected}), 285)
+        payload = load_core_manifest_payload(manifest)
+        self.assertEqual(payload["retained_family_counts"], {"old807": 123, "eeg_coherence_stage": 90, "emg_stage": 72})
+        self.assertEqual(payload["removed_family_counts"], {"caisr_stage": 35, "resp_stage": 56})
+
+    def test_core_runner_requires_explicit_selector_registry(self):
+        import inspect
+        from extensions.v5_family_loo_runner import run_models_and_predictions
+
+        parameters = inspect.signature(run_models_and_predictions).parameters
+        self.assertIn("selector", parameters)
+        self.assertIn("allowed_configs", parameters)
+
+    def test_core_projection_is_distinct_from_loo_configuration_registry(self):
+        from extensions.core_coh_emg import CORE_CONFIG_ID
+        from extensions.v5_family_loo import CONFIGS
+        self.assertNotIn(CORE_CONFIG_ID, CONFIGS)
+
     def test_manifest_defines_four_widths_and_source_blocks(self):
         from extensions.v5_family_loo import CONFIGS, load_v5_manifest
         rows = load_v5_manifest(Path(__file__).parents[3] / "audit" / "featurelab_v2_view_manifest.csv")
