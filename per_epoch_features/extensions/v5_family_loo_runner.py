@@ -216,7 +216,7 @@ def _sample_query_bridge(prepared, old_root: Path) -> bool:
     return True
 
 
-def run_models_and_predictions(*, rank_root: Path, metadata, manifest_path: Path, source_fingerprints: Mapping[str, str], output_root: Path, old_root: Path, run_identity: Mapping[str, object]):
+def run_models_and_predictions(*, rank_root: Path, metadata, manifest_path: Path, source_fingerprints: Mapping[str, str], output_root: Path, old_root: Path, run_identity: Mapping[str, object], configs: Sequence[str] | None = None):
     from .train_inputs_v2 import load_v2_fold
     from reproduction.siren_a.g4.queries import build_queries
     from reproduction.siren_a.g4.sampler import sample_training_rows
@@ -227,6 +227,9 @@ def run_models_and_predictions(*, rank_root: Path, metadata, manifest_path: Path
     from .v5_family_loo import load_v5_manifest, select_config, _sha
     from .train_inputs_v2 import PROTOCOLS
     model_types = ('lr','hgb','lambdarank'); seeds = tuple(range(42,57)); holdouts=('I0002','I0006','S0001')
+    config_ids = tuple(CONFIGS if configs is None else configs)
+    if set(config_ids) != set(config_ids).intersection(CONFIGS) or len(set(config_ids)) != len(config_ids):
+        raise ValueError('invalid LOO configuration subset')
     manifest = load_v5_manifest(manifest_path)
     identity_sha = hashlib.sha256(_canonical(run_identity)).hexdigest()
     model_count = prediction_count = bridge_count = replay_max = 0.0
@@ -237,7 +240,7 @@ def run_models_and_predictions(*, rank_root: Path, metadata, manifest_path: Path
             full=load_v2_fold(rank_root,holdout,protocol,'V5',metadata,manifest_path,source_fingerprints)
             fold_cache[key]=project_fold_for_config(full,select_config(manifest,config_id))
         return fold_cache[key]
-    for config_id in CONFIGS:
+    for config_id in config_ids:
         rows = select_config(manifest, config_id)
         for train_site, representative in (('S0001','I0002'),('I0006','S0001')):
             fold = get_fold(config_id, representative, 'transductive')
@@ -270,7 +273,7 @@ def run_models_and_predictions(*, rank_root: Path, metadata, manifest_path: Path
                     if status == 'SKIP_VERIFIED':
                         pass
     # Models must all be complete before predictions begin.
-    for config_id in CONFIGS:
+    for config_id in config_ids:
         rows=select_config(manifest,config_id)
         for holdout in holdouts:
             train_site={'I0002':'S0001','I0006':'S0001','S0001':'I0006'}[holdout]
