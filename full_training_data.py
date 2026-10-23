@@ -215,11 +215,59 @@ def configuration(cache_path: Path) -> tuple[str, str]:
     return "|".join(channel_parts), "|".join(modality_parts)
 
 
+def cached_record_result(payload: dict[str, Any]) -> dict[str, Any] | None:
+    record_id = str(payload["record_id"])
+    cache_path = Path(payload["cache_path"])
+    annotation_path = Path(payload["annotation_path"])
+    if not cache_path.is_file() or not annotation_path.is_file():
+        return None
+    try:
+        with h5py.File(cache_path, "r") as handle:
+            if str(handle.attrs.get("record_id", "")) != record_id:
+                return None
+            n_epochs = int(handle.attrs["complete_epoch_count"])
+            if n_epochs <= 0 or not {"signals", "quality"}.issubset(handle.keys()):
+                return None
+        with h5py.File(annotation_path, "r") as handle:
+            if str(handle.attrs.get("record_id", "")) != record_id:
+                return None
+            if int(handle.attrs["complete_epoch_count"]) != n_epochs:
+                return None
+            if "annotations" not in handle:
+                return None
+        channel_config, modality_config = configuration(cache_path)
+        try:
+            features = caisr_feature_extractor.extract_caisr_features_from_hdf5(
+                record_id, str(annotation_path)
+            )
+            if features.get("feature_status") != "ok":
+                features = {}
+        except Exception:
+            features = {}
+        return {
+            "record_id": record_id,
+            "status": "ok",
+            "canonical_path": str(cache_path),
+            "annotation_path": str(annotation_path),
+            "complete_epoch_count": n_epochs,
+            "channel_config": channel_config,
+            "modality_config": modality_config,
+            "cache_bytes": int(cache_path.stat().st_size),
+            "elapsed_sec": 0.0,
+            **{name: features.get(name, np.nan) for name in CAISR_FEATURE_COLUMNS},
+        }
+    except Exception:
+        return None
+
+
 def process_record(payload: dict[str, Any]) -> dict[str, Any]:
     started = time.perf_counter()
     record_id = str(payload["record_id"])
     cache_path = Path(payload["cache_path"])
     annotation_path = Path(payload["annotation_path"])
+    cached = cached_record_result(payload)
+    if cached is not None:
+        return cached
     temporary = cache_path.with_suffix(".tmp.h5")
     temporary.unlink(missing_ok=True)
     try:
