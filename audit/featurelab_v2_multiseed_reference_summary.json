@@ -1,0 +1,33 @@
+{
+  "columns_per_group": 225,
+  "e0_fusion_regression": "EXACT_MATCH",
+  "experiments": [
+    "E0",
+    "E1",
+    "E2",
+    "E3"
+  ],
+  "fused_groups": 24,
+  "official_scoring": "FROZEN_BRANCH_A_SHA_VERIFIED",
+  "old_prediction_rows": 1350,
+  "reference_entries": 5400,
+  "schema": "featurelab_v2_multiseed_reference_summary_v1",
+  "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54,
+    55,
+    56
+  ],
+  "v2_prediction_rows": 1350
+}
