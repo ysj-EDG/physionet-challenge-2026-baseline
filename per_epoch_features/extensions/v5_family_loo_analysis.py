@@ -11,11 +11,20 @@ import numpy as np
 
 from reproduction.siren_a.g5.core import HOLDOUTS, PROTOCOLS, MODEL_TYPES, VIEWS, load_eval_targets, mean_ranks, score_site
 from .compare_e0_e3_v2 import load_prediction_row
-from .e0e3_stability import pair_contributions, weighted_ac_from_pairs, bootstrap_multiplicity
+from .e0e3_stability import pair_contributions, weighted_ac_from_pairs, weighted_ac_batch, bootstrap_multiplicity
 from .v5_family_loo import CONFIGS, load_v5_manifest, select_config, _sha
 
 SEEDS = tuple(range(42, 57))
+
+
+def _pairs_fast(labels, ages, scores):
+    y=np.asarray(labels); a=np.asarray(ages,dtype=np.float64); s=np.asarray(scores,dtype=np.float64)
+    pos=np.flatnonzero(y==1); neg=np.flatnonzero(y==0)
+    eligible=np.abs(a[pos,None]-a[neg][None,:])<=2.0
+    p,n=np.nonzero(eligible)
+    return {"positive":pos[p].astype(np.int64),"negative":neg[n].astype(np.int64),"contribution":np.where(s[pos[p]]>s[neg[n]],1.0,np.where(s[pos[p]]==s[neg[n]],0.5,0.0)).astype(np.float64)}
 SCOPES = (*HOLDOUTS, "Macro", "Worst-site", "Small-site mean")
+_PREDICTION_CACHE = {}
 
 
 def _official_module():
@@ -48,10 +57,18 @@ def _rows_by_key(reference_manifest: Path, experiment: str) -> dict[tuple[str, s
 
 
 def _new_prediction(path: Path):
+    key=("new",str(Path(path).resolve()))
+    if key in _PREDICTION_CACHE: return _PREDICTION_CACHE[key]
     with np.load(Path(path)/"payload.npz", allow_pickle=False) as archive:
         scores=np.asarray(archive["scores"],dtype=np.float64); indices=np.asarray(archive["test_global_indices"],dtype=np.int64)
     if scores.ndim != 1 or indices.ndim != 1 or len(scores)!=len(indices) or not np.isfinite(scores).all(): raise ValueError("invalid LOO prediction")
-    return scores, indices
+    _PREDICTION_CACHE[key]=(scores,indices); return scores,indices
+
+
+def _old_prediction(row):
+    key=("old",str(row["prediction_reference"]))
+    if key not in _PREDICTION_CACHE: _PREDICTION_CACHE[key]=load_prediction_row(row)
+    return _PREDICTION_CACHE[key]
 
 
 def _load_columns(old_rows, new_root: Path, config_id: str, holdout: str, protocol: str, *, seed: int | None = None):
@@ -65,7 +82,7 @@ def _load_columns(old_rows, new_root: Path, config_id: str, holdout: str, protoc
                     scores,indices=_new_prediction(path)
                 else:
                     row=old_rows[(holdout,protocol,view,model,int(current_seed))]
-                    scores,indices=load_prediction_row(row)
+                    scores,indices=_old_prediction(row)
                 if canonical is None: canonical=indices.copy()
                 elif not np.array_equal(canonical,indices): raise ValueError("prediction row order mismatch")
                 columns.append(scores); keys.append((current_seed,view,model))
@@ -103,7 +120,7 @@ def run_analysis(*, metadata, reference_manifest: Path, private_root: Path, publ
                 for seed in SEEDS:
                     for view in VIEWS:
                         for model in MODEL_TYPES:
-                            row=rows[(holdout,protocol,view,model,int(seed))]; scores,indices=load_prediction_row(row)
+                            row=rows[(holdout,protocol,view,model,int(seed))]; scores,indices=_old_prediction(row)
                             if canonical is None: canonical=indices.copy()
                             elif not np.array_equal(canonical,indices): raise ValueError("baseline index mismatch")
                             cols.append(scores)
@@ -132,7 +149,7 @@ def run_analysis(*, metadata, reference_manifest: Path, private_root: Path, publ
                     cols=[]; canonical=None
                     for view in VIEWS:
                         for model in MODEL_TYPES:
-                            score,idx=load_prediction_row(rows[(holdout,protocol,view,model,int(seed))]); canonical=idx if canonical is None else canonical; cols.append(score)
+                            score,idx=_old_prediction(rows[(holdout,protocol,view,model,int(seed))]); canonical=idx if canonical is None else canonical; cols.append(score)
                     _,fused=mean_ranks(np.column_stack(cols).astype(np.float64)); labels,ages=load_eval_targets(metadata,canonical)
                     baseline_seed_metrics[(name,seed,protocol,holdout)]=score_site(labels,fused,ages,OFFICIAL)["ac_auroc"]
     for config_id in CONFIGS:
@@ -155,7 +172,7 @@ def run_analysis(*, metadata, reference_manifest: Path, private_root: Path, publ
             for protocol in PROTOCOLS:
                 draws_by_site={}
                 for holdout in HOLDOUTS:
-                    idx,s=all_groups[config_id][(protocol,holdout)]; bidx,bs=baseline_groups[baseline][(protocol,holdout)]; labels,ages=load_eval_targets(metadata,idx); pairs_l=pair_contributions(labels,ages,s); pairs_b=pair_contributions(labels,ages,bs); rng=np.random.default_rng(bootstrap_seed); mult=np.vstack([bootstrap_multiplicity(len(labels),rng) for _ in range(n_bootstrap)]); draws_by_site[holdout]=(weighted_ac_from_pairs(pairs_l,np.ones(len(labels),dtype=np.int64)),weighted_ac_from_pairs(pairs_b,np.ones(len(labels),dtype=np.int64)),np.asarray([_weighted_batch(pairs_l,x)-_weighted_batch(pairs_b,x) for x in mult]))
+                    idx,s=all_groups[config_id][(protocol,holdout)]; bidx,bs=baseline_groups[baseline][(protocol,holdout)]; labels,ages=load_eval_targets(metadata,idx); pairs_l=_pairs_fast(labels,ages,s); pairs_b=_pairs_fast(labels,ages,bs); rng=np.random.default_rng(bootstrap_seed); mult=np.vstack([bootstrap_multiplicity(len(labels),rng) for _ in range(n_bootstrap)]); draws_by_site[holdout]=(weighted_ac_from_pairs(pairs_l,np.ones(len(labels),dtype=np.int64)),weighted_ac_from_pairs(pairs_b,np.ones(len(labels),dtype=np.int64)),weighted_ac_batch(pairs_l,mult)-weighted_ac_batch(pairs_b,mult))
                 for scope in SCOPES:
                     if scope in HOLDOUTS: delta=draws_by_site[scope][2]
                     else:
