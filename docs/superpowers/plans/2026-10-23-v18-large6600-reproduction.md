@@ -14,7 +14,8 @@
 
 - Source commit is `7f2eae2fe4f170c87a21943b24ea4e217eabf67f`.
 - `/database2/physionet2026_kaggle/data2` is read-only input only.
-- All artifacts stay below `/database/home/gaohaojie/workspace/repd/Matcha`.
+- Formal Large6600 caches stay below `/database2/physionet2026_kaggle/matcha_cache/v18_large6600`.
+- Scripts, logs, reports, checkpoints, and source changes stay below `/database/home/gaohaojie/workspace/repd/Matcha`.
 - Every encoder training/export task uses a dedicated `tmux` session.
 - Do not alter model, loss, sampling, labels, features, or scoring logic.
 - Only the embedding shard checkpoint-fingerprint cache guard may be added.
@@ -30,7 +31,8 @@
 ### Task 1: Fixed workspace, source, environment, and data manifest
 
 **Files:**
-- Create: `artifacts/v18_large6600/{prepared,encoder,frozen,loso,final_model,smoke,scratch,logs,reports}`
+- Create: `artifacts/v18_large6600/{encoder,loso,final_model,smoke,scratch,logs,reports}`
+- Create: `/database2/physionet2026_kaggle/matcha_cache/v18_large6600/{prepared,embeddings}`
 - Create: `artifacts/v18_large6600/reports/source_environment.json`
 - Create: `artifacts/v18_large6600/prepared/data_validation.json`
 
@@ -65,7 +67,7 @@
 ### Task 4: Formal preparation and E1 checkpoint
 
 **Files:**
-- Create: `artifacts/v18_large6600/prepared/*`
+- Create: `/database2/physionet2026_kaggle/matcha_cache/v18_large6600/prepared/*`
 - Create: `artifacts/v18_large6600/encoder/*`
 
 - [ ] Prepare all eligible Large records with existing preprocessing and annotation alignment.
@@ -76,7 +78,7 @@
 ### Task 5: Permanent frozen embedding export
 
 **Files:**
-- Create: `artifacts/v18_large6600/frozen/e1_seed20260804_epoch15/embeddings/*`
+- Create: `/database2/physionet2026_kaggle/matcha_cache/v18_large6600/embeddings/e1_seed20260804_epoch15/*`
 - Create: `artifacts/v18_large6600/frozen/e1_seed20260804_epoch15/metadata.json`
 
 - [ ] Export teacher-state 192-D 30-second representations in a dedicated tmux session directly to the permanent workspace path.
