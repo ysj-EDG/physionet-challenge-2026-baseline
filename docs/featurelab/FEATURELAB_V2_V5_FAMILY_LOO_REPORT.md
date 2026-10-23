@@ -40,6 +40,47 @@ factories, and seeds 42--56. Existing V1--V4 models, E0/E2 references, feature
 extraction, candidate-pool construction, Rank256 construction, feature
 selection, and fusion-weight tuning were not rerun.
 
+## Correction note
+
+The initial public protocol summary contained a reference-binding bug in all
+E0/E2 delta fields. The summary path recomputed the baseline from prediction
+vectors and passed the target arrays in the wrong positional order, rather than
+reading the frozen E0/E2 protocol aggregates. This produced a shared, invalid
+baseline and made the E0 and E2 deltas equal. Site-level scores, model units,
+prediction units, fused groups, seed stability, and paired bootstrap outputs
+were not changed. This correction only regenerates the eight protocol-summary
+rows and updates their interpretation.
+
+The corrected deltas are computed explicitly as `LOO - reference[(experiment,
+protocol)]` from the frozen AC fields.
+
+| Removed family | Protocol | Macro AC | ΔRemove vs E2 | Δ vs E0 | Worst-site AC |
+|---|---|---:|---:|---:|---:|
+| Coherence | Transductive | 0.664567 | -0.004444 | +0.002175 | 0.654966 |
+| Coherence | Inductive | 0.671328 | -0.006366 | +0.000350 | 0.666805 |
+| CAISR | Transductive | 0.670271 | +0.001260 | +0.007878 | 0.659014 |
+| CAISR | Inductive | 0.678970 | +0.001277 | +0.007992 | 0.669928 |
+| EMG | Transductive | 0.666818 | -0.002192 | +0.004426 | 0.657758 |
+| EMG | Inductive | 0.675578 | -0.002116 | +0.004600 | 0.669797 |
+| Resp | Transductive | 0.670038 | +0.001027 | +0.007645 | 0.659156 |
+| Resp | Inductive | 0.679851 | +0.002158 | +0.008873 | 0.671678 |
+
+### Family contribution interpretation
+
+- **Coherence:** Removing the family lowers Macro AC in both protocols, with
+  consistent site-level and seed-level support. The conditional contribution is
+  strongly positive, while remaining a post-hoc three-site LOSO diagnostic.
+- **EMG:** Removing the family lowers Macro AC in both protocols and the site
+  directions are consistent. The effect is smaller than Coherence and the
+  bootstrap uncertainty is wider; this is a positive conditional contribution.
+- **CAISR:** Removing the family slightly raises Macro AC in both protocols,
+  while site directions are heterogeneous. This is possibly redundant or weakly
+  negative with site interaction, not evidence that the family is useless.
+- **Resp:** Removing the family raises Macro AC in both protocols and the point
+  estimates generally support removal, but bootstrap uncertainty remains. This
+  is possible redundancy or a negative conditional contribution, not proof of
+  harm.
+
 ## Aggregate outputs
 
 The following files are the complete public aggregate outputs:
@@ -69,7 +110,7 @@ not serialized publicly.
   re-predicting.
 - No EDF, raw waveform, candidate pool, Rank256 unit, or Branch A artifact was
   modified by this analysis.
-- The full FeatureLab extensions unittest suite passed (211 tests).
+- The full FeatureLab extensions unittest suite passed (214 tests).
 
 ## Scope boundary
 

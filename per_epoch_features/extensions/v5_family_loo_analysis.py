@@ -4,6 +4,7 @@ from __future__ import annotations
 import csv
 import json
 import importlib.util
+import math
 from pathlib import Path
 from typing import Mapping
 
@@ -107,9 +108,67 @@ def _aggregate(rows):
     return {"macro_ac":float(vals.mean()),"worst_site_ac":float(vals.min()),"small_site_mean_ac":float((by["I0002"]+by["I0006"])/2)}
 
 
-def run_analysis(*, metadata, reference_manifest: Path, private_root: Path, public_root: Path, manifest_path: Path, n_bootstrap: int = 2000, bootstrap_seed: int = 20261023):
+def load_protocol_references(path: Path) -> dict[tuple[str, str], dict[str, float]]:
+    """Load explicit E0/E2 protocol aggregates from the frozen public CSV."""
+    required = {"experiment", "protocol", "macro_ac", "worst_site_ac", "small_site_mean_ac"}
+    references = {}
+    with Path(path).open(newline="", encoding="utf-8") as handle:
+        reader = csv.DictReader(handle)
+        if not required.issubset(set(reader.fieldnames or ())):
+            raise ValueError("protocol reference CSV is missing required AC fields")
+        for row in reader:
+            key = (str(row["experiment"]), str(row["protocol"]))
+            if key in references:
+                raise ValueError(f"duplicate protocol reference: {key}")
+            values = {}
+            for field in ("macro_ac", "worst_site_ac", "small_site_mean_ac"):
+                try:
+                    value = float(row[field])
+                except (TypeError, ValueError) as exc:
+                    raise ValueError(f"invalid protocol reference field: {field}") from exc
+                if not math.isfinite(value):
+                    raise ValueError(f"non-finite protocol reference field: {field}")
+                values[field] = value
+            references[key] = values
+    required_keys = {(experiment, protocol) for experiment in ("E0", "E2") for protocol in PROTOCOLS}
+    if not required_keys.issubset(references):
+        missing = sorted(required_keys - set(references))
+        raise ValueError(f"missing E0/E2 protocol references: {missing}")
+    return references
+
+
+def build_protocol_summary_rows(site_rows, references):
+    """Build LOO protocol rows with explicit experiment/protocol references."""
+    grouped = {}
+    for row in site_rows:
+        key = (str(row["config_id"]), str(row["protocol"]))
+        grouped.setdefault(key, []).append(row)
+    output = []
+    for config_id in CONFIGS:
+        for protocol in PROTOCOLS:
+            current = grouped.get((config_id, protocol))
+            if current is None:
+                continue
+            aggregate = _aggregate(current)
+            e2 = references[("E2", protocol)]
+            e0 = references[("E0", protocol)]
+            output.append({
+                "config_id": config_id,
+                "protocol": protocol,
+                **aggregate,
+                "delta_vs_E2_macro": aggregate["macro_ac"] - e2["macro_ac"],
+                "delta_vs_E0_macro": aggregate["macro_ac"] - e0["macro_ac"],
+                "delta_vs_E2_worst": aggregate["worst_site_ac"] - e2["worst_site_ac"],
+                "delta_vs_E0_worst": aggregate["worst_site_ac"] - e0["worst_site_ac"],
+            })
+    return output
+
+
+def run_analysis(*, metadata, reference_manifest: Path, private_root: Path, public_root: Path, manifest_path: Path, protocol_reference_path: Path | None = None, n_bootstrap: int = 2000, bootstrap_seed: int = 20261023):
     old_e0=_rows_by_key(reference_manifest,"E0"); old_e2=_rows_by_key(reference_manifest,"E2")
     public_root=Path(public_root); public_root.mkdir(parents=True,exist_ok=True)
+    reference_path = Path(protocol_reference_path) if protocol_reference_path is not None else public_root / "featurelab_v2_e0_e3_protocol_summary.csv"
+    protocol_references = load_protocol_references(reference_path)
     site_rows=[]; protocol_rows=[]; all_groups={}; baseline_groups={"E0":{},"E2":{}}
     for baseline_name, rows in (("E0",old_e0),("E2",old_e2)):
         for protocol in PROTOCOLS:
@@ -133,12 +192,9 @@ def run_analysis(*, metadata, reference_manifest: Path, private_root: Path, publ
                 groups[(protocol,holdout)]=(idx,fused)
         all_groups[config_id]=groups
         rows=_metric_rows(metadata,groups,config_id=config_id); site_rows.extend(rows)
-        for protocol in PROTOCOLS:
-            current=[r for r in rows if r["protocol"]==protocol]
-            agg=_aggregate(current)
-            base2=_aggregate([{"holdout_site":h,"ac_auroc":score_site(*load_eval_targets(metadata,baseline_groups["E2"][(protocol,h)][0]),baseline_groups["E2"][(protocol,h)][1],OFFICIAL)["ac_auroc"]} for h in HOLDOUTS])
-            base0=_aggregate([{"holdout_site":h,"ac_auroc":score_site(*load_eval_targets(metadata,baseline_groups["E0"][(protocol,h)][0]),baseline_groups["E0"][(protocol,h)][1],OFFICIAL)["ac_auroc"]} for h in HOLDOUTS])
-            protocol_rows.append({"config_id":config_id,"protocol":protocol,**agg,"delta_vs_E2_macro":agg["macro_ac"]-base2["macro_ac"],"delta_vs_E0_macro":agg["macro_ac"]-base0["macro_ac"],"delta_vs_E2_worst":agg["worst_site_ac"]-base2["worst_site_ac"],"delta_vs_E0_worst":agg["worst_site_ac"]-base0["worst_site_ac"]})
+    protocol_rows = build_protocol_summary_rows(site_rows, protocol_references)
+    if len(protocol_rows) != len(CONFIGS) * len(PROTOCOLS):
+        raise ValueError("LOO protocol summary coverage mismatch")
     # Seed stability and bootstrap use the same frozen row order, with aggregate rows only.
     stability=[]; bootstrap=[]
     baseline_seed_metrics={"E0":{},"E2":{}}

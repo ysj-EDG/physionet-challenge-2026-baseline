@@ -8,6 +8,50 @@ import numpy as np
 
 
 class V5FamilyLooContractTests(unittest.TestCase):
+    def test_protocol_reference_experiment_binding_is_explicit(self):
+        from extensions.v5_family_loo_analysis import build_protocol_summary_rows
+
+        site_rows = [
+            {"config_id": "LOO_NO_RESP", "protocol": "transductive", "holdout_site": "I0002", "ac_auroc": 0.61},
+            {"config_id": "LOO_NO_RESP", "protocol": "transductive", "holdout_site": "I0006", "ac_auroc": 0.70},
+            {"config_id": "LOO_NO_RESP", "protocol": "transductive", "holdout_site": "S0001", "ac_auroc": 0.79},
+        ]
+        references = {
+            ("E2", "transductive"): {"macro_ac": 0.68, "worst_site_ac": 0.60, "small_site_mean_ac": 0.65},
+            ("E0", "transductive"): {"macro_ac": 0.65, "worst_site_ac": 0.55, "small_site_mean_ac": 0.62},
+        }
+        row = build_protocol_summary_rows(site_rows, references)[0]
+        self.assertAlmostEqual(row["delta_vs_E2_macro"], 0.02)
+        self.assertAlmostEqual(row["delta_vs_E0_macro"], 0.05)
+        self.assertNotEqual(row["delta_vs_E2_macro"], row["delta_vs_E0_macro"])
+        self.assertAlmostEqual(row["delta_vs_E2_worst"], 0.01)
+        self.assertAlmostEqual(row["delta_vs_E0_worst"], 0.06)
+
+    def test_protocol_reference_is_separated_by_protocol(self):
+        from extensions.v5_family_loo_analysis import build_protocol_summary_rows
+
+        site_rows = [
+            {"config_id": "LOO_NO_RESP", "protocol": "transductive", "holdout_site": "I0002", "ac_auroc": 0.61},
+            {"config_id": "LOO_NO_RESP", "protocol": "transductive", "holdout_site": "I0006", "ac_auroc": 0.61},
+            {"config_id": "LOO_NO_RESP", "protocol": "transductive", "holdout_site": "S0001", "ac_auroc": 0.61},
+        ]
+        references = {
+            ("E2", "transductive"): {"macro_ac": 0.60, "worst_site_ac": 0.60, "small_site_mean_ac": 0.60},
+            ("E2", "inductive"): {"macro_ac": 0.80, "worst_site_ac": 0.80, "small_site_mean_ac": 0.80},
+            ("E0", "transductive"): {"macro_ac": 0.55, "worst_site_ac": 0.55, "small_site_mean_ac": 0.55},
+        }
+        row = build_protocol_summary_rows(site_rows, references)[0]
+        self.assertAlmostEqual(row["delta_vs_E2_macro"], 0.01)
+
+    def test_frozen_protocol_reference_loader_uses_ac_fields(self):
+        from extensions.v5_family_loo_analysis import load_protocol_references
+
+        path = Path(__file__).parents[3] / "audit" / "featurelab_v2_e0_e3_protocol_summary.csv"
+        references = load_protocol_references(path)
+        self.assertNotEqual(references[("E0", "transductive")]["macro_ac"], references[("E2", "transductive")]["macro_ac"])
+        self.assertNotEqual(references[("E0", "inductive")]["macro_ac"], references[("E2", "inductive")]["macro_ac"])
+        self.assertIn("worst_site_ac", references[("E2", "transductive")])
+
     def test_manifest_defines_four_widths_and_source_blocks(self):
         from extensions.v5_family_loo import CONFIGS, load_v5_manifest
         rows = load_v5_manifest(Path(__file__).parents[3] / "audit" / "featurelab_v2_view_manifest.csv")
