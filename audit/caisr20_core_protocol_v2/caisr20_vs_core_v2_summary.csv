@@ -1,0 +1,9 @@
+row_type,route,macro_ac,worst_site_ac,"small_site_mean_ac",scope,"core_minus_caisr"
+route_summary,CAISR20_HISTORICAL_SEMANTICS_CORE_PROTOCOL,0.6677156606662408,0.6116437229199803,0.6957516295393711,NA,NA
+route_summary,CORE_COH_EMG_INDUCTIVE,0.6819234107996947,0.6709153732243733,0.6874274295873555,NA,NA
+"delta_core_minus_caisr",NA,NA,NA,NA,I0002,-0.038176033934252396
+"delta_core_minus_caisr",NA,NA,NA,NA,I0006,0.0215276340302214
+"delta_core_minus_caisr",NA,NA,NA,NA,S0001,0.059271650304393075
+"delta_core_minus_caisr",NA,NA,NA,NA,Macro,0.014207750133453878
+"delta_core_minus_caisr",NA,NA,NA,NA,Worst-site,0.059271650304393075
+"delta_core_minus_caisr",NA,NA,NA,NA,"Small-site mean",-0.00832419995201561

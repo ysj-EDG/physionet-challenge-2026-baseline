@@ -11,6 +11,8 @@ from typing import Mapping, Sequence
 
 import numpy as np
 
+import feature_scaling as _feature_scaling
+
 
 ROUTE_ID = "CAISR20_CORE_PROTOCOL"
 CAISR20_FEATURE_IDS = (
@@ -97,6 +99,108 @@ def apply_selected_preprocessor(values: np.ndarray, state: SelectedPreprocessor)
     return ((np.where(np.isfinite(x), x, state.median) - state.center) / state.scale).astype(np.float64)
 
 
+@dataclass(frozen=True)
+class HistoricalTypedState:
+    """Selected-row typed_v1 parameters for the frozen CAISR20 columns."""
+    center: np.ndarray
+    scale: np.ndarray
+    scale_method: tuple[str, ...]
+    fit_valid_counts: np.ndarray
+    all_missing: np.ndarray
+
+    def __post_init__(self):
+        arrays = (self.center, self.scale, self.fit_valid_counts, self.all_missing)
+        if any(np.asarray(item).shape != (len(CAISR20_FEATURE_IDS),) for item in arrays):
+            raise ValueError("historical typed state must contain 20 values per field")
+        if not np.isfinite(self.center).all() or not np.isfinite(self.scale).all() or np.any(self.scale <= 0):
+            raise ValueError("historical typed state must be finite with positive scales")
+        if np.asarray(self.fit_valid_counts).dtype.kind not in "iu":
+            raise ValueError("fit_valid_counts must be integer")
+        if np.asarray(self.all_missing).dtype != np.dtype(bool):
+            raise ValueError("all_missing must be boolean")
+        if len(self.scale_method) != len(CAISR20_FEATURE_IDS):
+            raise ValueError("scale_method must contain 20 values")
+
+
+def _caisr_sentinel_mask(full_static: np.ndarray) -> np.ndarray:
+    static = np.asarray(full_static, dtype=np.float64)
+    if static.ndim != 2 or static.shape[1] != 196:
+        raise ValueError("historical CAISR typed input requires N x 196 x_static values")
+    return np.isfinite(static[:, 10:]).all(axis=1) & (static[:, 10] == 0.0) & np.all(static[:, 10:] == 0.0, axis=1)
+
+
+def fit_historical_typed_caisr20(full_static: np.ndarray,
+                                 rules: Sequence[Mapping[str, object]]) -> HistoricalTypedState:
+    """Fit typed_v1 parameters using only the supplied selected training rows."""
+    static = np.asarray(full_static, dtype=np.float64)
+    if static.ndim != 2 or static.shape[1] != 196 or len(rules) != len(CAISR20_FEATURE_IDS):
+        raise ValueError("historical typed fit requires N x 196 static values and 20 rules")
+    sentinel = _caisr_sentinel_mask(static)
+    center = np.zeros(20, dtype=np.float64)
+    scale = np.ones(20, dtype=np.float64)
+    counts = np.zeros(20, dtype=np.int64)
+    all_missing = np.zeros(20, dtype=bool)
+    methods = []
+    for j, (index, rule) in enumerate(zip(CAISR20_X_STATIC_INDICES, rules)):
+        prepared, valid, _ = _feature_scaling._prepare_values(static[:, index], rule)
+        if index >= 10:
+            valid &= ~sentinel
+        values = np.asarray(prepared[valid], dtype=np.float64)
+        counts[j] = int(values.size)
+        if rule.get("scaling") == "identity":
+            methods.append("identity")
+            continue
+        if values.size == 0:
+            center[j] = 0.0
+            scale[j] = 1.0
+            methods.append("all_missing_fallback")
+            all_missing[j] = True
+            continue
+        weights = np.ones(values.size, dtype=np.float64)
+        q05, q25, q50, q75, q95 = (
+            _feature_scaling._weighted_quantile(values, weights, q)
+            for q in (0.05, 0.25, 0.50, 0.75, 0.95)
+        )
+        center[j] = float(q50)
+        tolerance = 1e-6 * max(1.0, abs(center[j]))
+        mean = float(np.average(values, weights=weights))
+        candidates = (
+            ("iqr", q75 - q25),
+            ("p95_p05", q95 - q05),
+            ("std", float(np.sqrt(np.average((values - mean) ** 2, weights=weights)))),
+        )
+        method, chosen = "unit_fallback", 1.0
+        for candidate_method, candidate_scale in candidates:
+            if np.isfinite(candidate_scale) and candidate_scale > tolerance:
+                method, chosen = candidate_method, float(candidate_scale)
+                break
+        methods.append(method)
+        scale[j] = chosen
+    return HistoricalTypedState(center, scale, tuple(methods), counts, all_missing)
+
+
+def apply_historical_typed_caisr20(full_static: np.ndarray,
+                                   rules: Sequence[Mapping[str, object]],
+                                   state: HistoricalTypedState) -> np.ndarray:
+    """Apply typed_v1 rules, sentinel masking, and fitted selected-row parameters."""
+    static = np.asarray(full_static, dtype=np.float64)
+    if static.ndim != 2 or static.shape[1] != 196 or len(rules) != 20:
+        raise ValueError("historical typed transform requires N x 196 static values and 20 rules")
+    sentinel = _caisr_sentinel_mask(static)
+    out = np.empty((static.shape[0], 20), dtype=np.float64)
+    for j, (index, rule) in enumerate(zip(CAISR20_X_STATIC_INDICES, rules)):
+        prepared, valid, _ = _feature_scaling._prepare_values(static[:, index], rule)
+        if index >= 10:
+            valid &= ~sentinel
+        if rule.get("scaling") == "robust":
+            out[:, j] = (np.where(valid, prepared, state.center[j]) - state.center[j]) / state.scale[j]
+        else:
+            out[:, j] = np.where(valid, prepared, float(rule.get("identity_fill", 0.0)))
+    if not np.isfinite(out).all():
+        raise ValueError("historical typed transform produced nonfinite output")
+    return out
+
+
 def typed_caisr20(values: np.ndarray, rules: Sequence[Mapping[str, object]]) -> np.ndarray:
     """Apply the frozen typed_v1 transform to raw x_static CAISR columns.
 
@@ -180,6 +284,7 @@ def manifest_payload() -> dict[str, object]:
 __all__ = [
     "CAISR20_FEATURE_IDS", "CAISR20_X_STATIC_INDICES", "EXPECTED_SITE_COUNTS",
     "EXPECTED_SITE_POSITIVES", "HOLDOUT_TO_TRAIN", "ROUTE_ID", "SEEDS", "SITES",
+    "HistoricalTypedState", "apply_historical_typed_caisr20", "fit_historical_typed_caisr20",
     "SelectedPreprocessor", "apply_selected_preprocessor", "fit_selected_preprocessor",
     "interaction_delta", "manifest_payload", "mean_rank_fusion", "model_config",
     "route_delta", "typed_caisr20",

@@ -15,6 +15,7 @@ import shutil
 import tempfile
 import time
 import warnings
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping, Sequence
 
@@ -26,8 +27,9 @@ from sklearn.linear_model import LogisticRegression
 from .caisr20_core_protocol import (
     CAISR20_FEATURE_IDS, CAISR20_X_STATIC_INDICES, EXPECTED_SITE_COUNTS,
     EXPECTED_SITE_POSITIVES, HOLDOUT_TO_TRAIN, ROUTE_ID, SEEDS, SITES,
-    apply_selected_preprocessor, fit_selected_preprocessor, manifest_payload,
-    mean_rank_fusion, model_config, typed_caisr20,
+    apply_historical_typed_caisr20, apply_selected_preprocessor,
+    fit_historical_typed_caisr20, fit_selected_preprocessor, manifest_payload,
+    mean_rank_fusion, model_config,
 )
 
 
@@ -144,7 +146,7 @@ def load_data2_inputs(manifest_path: Path, summary_cache: Path) -> dict[str, obj
     if static.shape != (6600, 196) or not np.isfinite(static[:, 0]).all():
         raise RouteStop("DATA2 static source shape/age contract mismatch")
     raw = static[:, CAISR20_X_STATIC_INDICES]
-    return {"manifest": manifest, "raw_caisr": raw, "record_id": ids, "site": sites}
+    return {"manifest": manifest, "raw_caisr": raw, "static196": static, "record_id": ids, "site": sites}
 
 
 def load_typed_rules(rules_path: Path) -> list[dict]:
@@ -189,10 +191,15 @@ def source_value_bridge(*, pool_root: Path, raw_caisr: np.ndarray, manifest: pd.
         })
     value_ok = not bool(value_mismatch.any())
     validity_ok = not bool(validity_mismatch.any())
-    status = "EXACT" if value_ok and validity_ok else "DRIFT"
-    return {"status": status, "value_mismatch_total": int(value_mismatch.sum()),
-            "validity_mismatch_total": int(validity_mismatch.sum()),
-            "features": by_feature}
+    return {
+        "status": "PASS" if value_ok else "DRIFT",
+        "finite_overlap_status": "PASS" if value_ok else "DRIFT",
+        "validity_policy_status": "EXACT" if validity_ok else "DIAGNOSTIC",
+        "value_mismatch_total": int(value_mismatch.sum()),
+        "validity_mismatch_total": int(validity_mismatch.sum()),
+        "validity_policy_mismatch_blocking": False,
+        "features": by_feature,
+    }
 
 
 
@@ -234,6 +241,56 @@ def historical_bridge(*, root: Path, summary_cache: Path, manifest_path: Path,
             "warnings": int(warnings_found), "expected_ac": expected,
             "expected_macro_ac": 0.6801306349958572}
 
+
+def _state_from_historical_parameters(parameters: Mapping[str, Mapping[str, object]]) -> object:
+    center = np.empty(20, dtype=np.float64)
+    scale = np.empty(20, dtype=np.float64)
+    methods = []
+    counts = np.empty(20, dtype=np.int64)
+    all_missing = np.zeros(20, dtype=bool)
+    for j, index in enumerate(CAISR20_X_STATIC_INDICES):
+        entry = parameters.get(f"x_static:{index}")
+        if not isinstance(entry, Mapping):
+            raise RouteStop(f"historical typed parameter missing x_static:{index}")
+        center[j] = float(entry["center"])
+        scale[j] = float(entry["scale"])
+        methods.append(str(entry.get("scale_method", "unknown")))
+        counts[j] = int(entry.get("fit_valid_observations", 0))
+        all_missing[j] = methods[-1] == "all_missing_fallback"
+    from .caisr20_core_protocol import HistoricalTypedState
+    return HistoricalTypedState(center, scale, tuple(methods), counts, all_missing)
+
+
+def historical_typed_pipeline_bridge(*, root: Path, summary_cache: Path,
+                                      manifest_path: Path, rules_path: Path) -> dict[str, object]:
+    """Rebuild the archived typed_v1 CAISR20 matrices for all three folds."""
+    import joblib
+    root = Path(root)
+    manifest = pd.read_csv(Path(manifest_path), dtype={"record_id": str, "site": str})
+    with np.load(Path(summary_cache), allow_pickle=False) as archive:
+        static = np.asarray(archive["site_static196"], dtype=np.float64)
+        sites = np.asarray(archive["site"], dtype=str)
+        targets = {site: np.asarray(archive[f"p3_{site}_compact30"], dtype=np.float64)[:, 10:30] for site in SITES}
+    if static.shape != (6600, 196) or not np.array_equal(sites, manifest.site.to_numpy(str)):
+        raise RouteStop("historical typed bridge source identity mismatch")
+    rules = load_typed_rules(rules_path)
+    model_root = root / "feat_input2" / "output" / "data2_lowcost" / "loso_lr" / "compact30"
+    per_site = {}
+    for holdout in SITES:
+        model_path = model_root / f"holdout_{holdout}" / "model.joblib"
+        if not model_path.is_file():
+            raise RouteStop(f"historical typed bridge checkpoint unavailable: {model_path}")
+        archived = joblib.load(model_path)
+        state = _state_from_historical_parameters(archived.get("selected_input_parameters", {}))
+        rebuilt = apply_historical_typed_caisr20(static, rules, state)
+        target = targets[holdout]
+        if rebuilt.shape != (6600, 20) or target.shape != (6600, 20) or not np.isfinite(rebuilt).all() or not np.isfinite(target).all():
+            raise RouteStop(f"historical typed bridge shape/finite failure: {holdout}")
+        diff = np.abs(rebuilt - target)
+        per_site[holdout] = {"rows": int(rebuilt.shape[0]), "features": int(rebuilt.shape[1]), "max_abs_diff": float(diff.max())}
+    max_diff = max(item["max_abs_diff"] for item in per_site.values())
+    return {"status": "PASS" if max_diff <= 1e-12 else "FAIL", "groups": int(sum(item["max_abs_diff"] <= 1e-12 for item in per_site.values())), "rows": 6600, "features": 20, "max_abs_diff": max_diff, "per_site": per_site}
+
 def _sample_path(seed: int, train_site: str, sample_root: Path) -> Path:
     if int(seed) == 42:
         path = Path(sample_root).parent / "python-example-2026-siren-a-g4a-private" / "seed42_smoke_v1" / "samples" / f"{train_site}_seed42" / "selected_indices.npz"
@@ -271,18 +328,37 @@ def _model_from_payload(metadata: Mapping[str, object], payload: Mapping[str, np
     return model
 
 
-def _fit_or_load_model(*, root: Path, train_site: str, seed: int, x_typed: np.ndarray, labels: np.ndarray, sample: Mapping[str, object], manifest_sha: str) -> tuple[str, dict[str, object], object]:
+@dataclass(frozen=True)
+class _PreprocessingBundle:
+    typed: object
+    p3: object
+
+
+def _fit_or_load_model(*, root: Path, train_site: str, seed: int,
+                       static196: np.ndarray, rules: Sequence[Mapping[str, object]],
+                       labels: np.ndarray, sample: Mapping[str, object],
+                       manifest_sha: str) -> tuple[str, dict[str, object], object]:
     path = Path(root) / "models" / train_site / f"seed{int(seed)}"
     selected = np.asarray(sample["global_indices"], dtype=np.int64)
-    x_selected = x_typed[selected]
+    typed_state = fit_historical_typed_caisr20(np.asarray(static196)[selected], rules)
+    typed_selected = apply_historical_typed_caisr20(np.asarray(static196)[selected], rules, typed_state)
+    p3_state = fit_selected_preprocessor(typed_selected)
+    x_fit = apply_selected_preprocessor(typed_selected, p3_state)
     y_selected = np.asarray(labels[selected], dtype=np.int8)
-    state = fit_selected_preprocessor(x_selected)
-    x_fit = apply_selected_preprocessor(x_selected, state)
     cfg = model_config(seed)
+    typed_meta = {
+        "feature_ids": list(CAISR20_FEATURE_IDS),
+        "feature_indices": list(CAISR20_X_STATIC_INDICES),
+        "center_sha256": array_digest(typed_state.center),
+        "scale_sha256": array_digest(typed_state.scale),
+        "scale_method": list(typed_state.scale_method),
+        "fit_valid_counts": typed_state.fit_valid_counts.astype(int).tolist(),
+    }
+    p3_meta = {"median_sha256": array_digest(p3_state.median), "center_sha256": array_digest(p3_state.center), "scale_sha256": array_digest(p3_state.scale)}
     meta = {
         "route_id": ROUTE_ID, "train_site": train_site, "seed": int(seed),
         "feature_manifest_sha256": manifest_sha, "training_sample_sha256": str(sample["sample_sha256"]),
-        "preprocessing_identity": {"fit_scope": "selected_training_rows_only", "median_sha256": array_digest(state.median), "center_sha256": array_digest(state.center), "scale_sha256": array_digest(state.scale)},
+        "preprocessing_identity": {"fit_scope": "selected_training_rows_only", "typed": typed_meta, "p3": p3_meta},
         "model_parameters": cfg,
     }
     if path.exists():
@@ -293,8 +369,10 @@ def _fit_or_load_model(*, root: Path, train_site: str, seed: int, x_typed: np.nd
         with np.load(path / "payload.npz", allow_pickle=False) as archive:
             payload = {key: np.array(archive[key], copy=True) for key in archive.files}
         _validate_unit(path, payload, saved_meta)
-        loaded_state = type("State", (), {"median": payload["median"], "center": payload["center"], "scale": payload["scale"], "all_missing": payload["all_missing"]})()
-        return "SKIP_VERIFIED", saved_meta, (_model_from_payload(saved_meta, payload), loaded_state)
+        from .caisr20_core_protocol import HistoricalTypedState
+        loaded_typed = HistoricalTypedState(payload["typed_center"], payload["typed_scale"], tuple(saved_meta["preprocessing_identity"]["typed"]["scale_method"]), payload["typed_fit_valid_counts"], payload["typed_all_missing"])
+        loaded_p3 = type("State", (), {"median": payload["median"], "center": payload["center"], "scale": payload["scale"], "all_missing": payload["all_missing"]})()
+        return "SKIP_VERIFIED", saved_meta, (_model_from_payload(saved_meta, payload), _PreprocessingBundle(loaded_typed, loaded_p3))
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always", ConvergenceWarning)
         model = LogisticRegression(**cfg).fit(x_fit, y_selected)
@@ -303,17 +381,24 @@ def _fit_or_load_model(*, root: Path, train_site: str, seed: int, x_typed: np.nd
     if not converged:
         raise RouteStop(f"CAISR20 model did not converge: {train_site} seed {seed}")
     meta = dict(meta, n_iter=int(model.n_iter_[0]), converged=True, warnings=convergence_warnings)
-    payload = {"coef": np.asarray(model.coef_, dtype=np.float64), "intercept": np.asarray(model.intercept_, dtype=np.float64), "classes": np.asarray(model.classes_, dtype=np.int8), "n_iter": np.asarray(model.n_iter_, dtype=np.int32), "median": state.median, "center": state.center, "scale": state.scale, "all_missing": state.all_missing.astype(bool)}
+    payload = {
+        "coef": np.asarray(model.coef_, dtype=np.float64), "intercept": np.asarray(model.intercept_, dtype=np.float64),
+        "classes": np.asarray(model.classes_, dtype=np.int8), "n_iter": np.asarray(model.n_iter_, dtype=np.int32),
+        "typed_center": typed_state.center, "typed_scale": typed_state.scale,
+        "typed_fit_valid_counts": typed_state.fit_valid_counts, "typed_all_missing": typed_state.all_missing.astype(bool),
+        "median": p3_state.median, "center": p3_state.center, "scale": p3_state.scale, "all_missing": p3_state.all_missing.astype(bool),
+    }
     status = publish_unit(path, payload, meta)
-    return status, meta, (model, state)
-
+    return status, meta, (model, _PreprocessingBundle(typed_state, p3_state))
 
 def _load_model_unit(path: Path, metadata: Mapping[str, object]):
     with np.load(Path(path) / "payload.npz", allow_pickle=False) as archive:
         payload = {key: np.array(archive[key], copy=True) for key in archive.files}
     _validate_unit(Path(path), payload, metadata)
-    state = type("State", (), {"median": payload["median"], "center": payload["center"], "scale": payload["scale"], "all_missing": payload["all_missing"]})()
-    return _model_from_payload(metadata, payload), state
+    from .caisr20_core_protocol import HistoricalTypedState
+    typed = HistoricalTypedState(payload["typed_center"], payload["typed_scale"], tuple(metadata["preprocessing_identity"]["typed"]["scale_method"]), payload["typed_fit_valid_counts"], payload["typed_all_missing"])
+    p3 = type("State", (), {"median": payload["median"], "center": payload["center"], "scale": payload["scale"], "all_missing": payload["all_missing"]})()
+    return _model_from_payload(metadata, payload), _PreprocessingBundle(typed, p3)
 
 
 def _prediction_unit(root: Path, train_site: str, seed: int, holdout: str, model_path: Path, model_meta: Mapping[str, object], scores: np.ndarray, test_indices: np.ndarray) -> str:
@@ -327,12 +412,17 @@ def run_route(*, manifest_path: Path, summary_cache: Path, rules_path: Path, poo
     """Run gates, then (only if all gates pass) 30 models and 45 predictions."""
     started = time.time()
     data = load_data2_inputs(manifest_path, summary_cache)
-    manifest = data["manifest"]; raw = data["raw_caisr"]; sites = data["site"]
+    manifest = data["manifest"]; raw = data["raw_caisr"]; static196 = data["static196"]; sites = data["site"]
     rules = load_typed_rules(rules_path)
     bridge = source_value_bridge(pool_root=pool_root, raw_caisr=raw, manifest=manifest)
-    if strict_source_bridge and bridge["status"] == "DRIFT":
+    if strict_source_bridge and bridge["status"] != "PASS":
         raise RouteStop(f"CAISR20 source-value bridge failed: {bridge['value_mismatch_total']} value mismatches")
-    typed = typed_caisr20(raw, rules)
+    historical_root = Path(summary_cache).resolve().parents[4]
+    historical_typed = historical_typed_pipeline_bridge(
+        root=historical_root, summary_cache=summary_cache, manifest_path=manifest_path, rules_path=rules_path
+    )
+    if historical_typed["status"] != "PASS":
+        raise RouteStop(f"historical typed pipeline bridge failed: {historical_typed['max_abs_diff']}")
     manifest_sha = hashlib.sha256(_canonical(manifest_payload())).hexdigest()
     out = Path(output_root); out.mkdir(parents=True, exist_ok=True)
     (out / "manifest.json").write_bytes(_canonical(dict(manifest_payload(), manifest_sha256=manifest_sha)) + b"\n")
@@ -341,15 +431,16 @@ def run_route(*, manifest_path: Path, summary_cache: Path, rules_path: Path, poo
     labels = manifest.label.to_numpy(np.int8)
     for train_site in ("S0001", "I0006"):
         for seed in SEEDS:
-            status, meta, model_state = _fit_or_load_model(root=out, train_site=train_site, seed=seed, x_typed=typed, labels=labels, sample=samples[(train_site, seed)], manifest_sha=manifest_sha)
+            status, meta, model_state = _fit_or_load_model(root=out, train_site=train_site, seed=seed, static196=static196, rules=rules, labels=labels, sample=samples[(train_site, seed)], manifest_sha=manifest_sha)
             model_statuses.append(status); model_cache[(train_site, seed)] = (meta, model_state)
     # No evaluation targets are read until all model units have completed.
     for holdout in SITES:
         train_site = HOLDOUT_TO_TRAIN[holdout]
         test_indices = np.flatnonzero(sites == holdout).astype(np.int64)
         for seed in SEEDS:
-            meta, (model, state) = model_cache[(train_site, seed)]
-            scores = model.decision_function(apply_selected_preprocessor(typed[test_indices], state)).astype(np.float64)
+            meta, (model, bundle) = model_cache[(train_site, seed)]
+            typed_test = apply_historical_typed_caisr20(static196[test_indices], rules, bundle.typed)
+            scores = model.decision_function(apply_selected_preprocessor(typed_test, bundle.p3)).astype(np.float64)
             status = _prediction_unit(out, train_site, seed, holdout, out / "models" / train_site / f"seed{seed}", meta, scores, test_indices)
             prediction_statuses.append(status)
     fused = {}
@@ -367,4 +458,145 @@ def run_route(*, manifest_path: Path, summary_cache: Path, rules_path: Path, poo
     return {"bridge": bridge, "manifest_sha256": manifest_sha, "models_built": model_statuses.count("BUILD_NEW"), "models_skipped": model_statuses.count("SKIP_VERIFIED"), "predictions_built": prediction_statuses.count("BUILD_NEW"), "predictions_skipped": prediction_statuses.count("SKIP_VERIFIED"), "fused": fused, "elapsed_seconds": time.time() - started}
 
 
-__all__ = ["RouteStop", "array_digest", "historical_bridge", "load_data2_inputs", "load_frozen_sample", "load_typed_rules", "publish_unit", "run_route", "sha256_file", "source_value_bridge"]
+def _rank_vector(values: np.ndarray) -> np.ndarray:
+    x = np.asarray(values, dtype=np.float64)
+    if x.ndim != 1 or len(x) == 0 or not np.isfinite(x).all():
+        raise ValueError("rank input must be a finite non-empty vector")
+    _, inverse, counts = np.unique(x, return_inverse=True, return_counts=True)
+    less = np.concatenate((np.array([0], dtype=np.int64), np.cumsum(counts[:-1])))
+    return ((less[inverse] + 0.5 * counts[inverse]) / len(x)).astype(np.float64)
+
+
+def _scope_value(values: Mapping[str, float], scope: str) -> float:
+    if scope in SITES:
+        return float(values[scope])
+    ordered = np.asarray([values[site] for site in SITES], dtype=np.float64)
+    if scope == "Macro":
+        return float(ordered.mean())
+    if scope == "Worst-site":
+        return float(ordered.min())
+    if scope == "Small-site mean":
+        return float((values["I0002"] + values["I0006"]) / 2.0)
+    raise ValueError(f"unknown scope: {scope}")
+
+
+def finalize_route_comparison(*, route_root: Path, manifest_path: Path,
+                              core_root: Path, core_reference_manifest: Path,
+                              public_root: Path, private_root: Path,
+                              bootstrap_seed: int = 20261023,
+                              n_bootstrap: int = 2000) -> dict[str, object]:
+    """Score completed CAISR20 units against frozen CORE inductive predictions."""
+    from reproduction.siren_a.g5.core import load_eval_targets, score_site
+    from .v5_family_loo_analysis import OFFICIAL, _load_columns, _rows_by_key
+    from .e0e3_stability import bootstrap_multiplicity, pair_contributions, weighted_ac_batch
+    from reproduction.siren_a.pipeline.label_join import MetadataIndex, MetadataRecord
+
+    manifest = pd.read_csv(Path(manifest_path), dtype={"record_id": str, "site": str})
+    records = tuple(MetadataRecord(str(row.site), str(row.record_id), str(row.record_id), str(int(row.label)), str(float(row.age)), str(row.record_id), int(i)) for i, row in manifest.iterrows())
+    metadata = MetadataIndex(records=records, cache_names=tuple(f"cache_{i:06d}.npz" for i in range(len(records))), relative_paths=tuple(f"{row.site}/{row.record_id}.npz" for _, row in manifest.iterrows()), sites=manifest.site.to_numpy(str), demographics_sha256="private", join_fingerprint="private", audit={})
+    old_rows = _rows_by_key(Path(core_reference_manifest), "E0")
+    core_groups = {}
+    caisr_groups = {}
+    for holdout in SITES:
+        idx, core_fused, core_matrix, core_keys = _load_columns(old_rows, Path(core_root), "CORE_COH_EMG", holdout, "inductive")
+        columns = []
+        canonical = None
+        for seed in SEEDS:
+            path = Path(route_root) / "predictions" / f"seed{seed}" / f"holdout_{holdout}"
+            with np.load(path / "payload.npz", allow_pickle=False) as archive:
+                scores = np.asarray(archive["scores"], dtype=np.float64)
+                indices = np.asarray(archive["test_global_indices"], dtype=np.int64)
+            if canonical is None:
+                canonical = indices
+            elif not np.array_equal(canonical, indices):
+                raise RouteStop("CAISR final vector identity differs across seeds")
+            columns.append(scores)
+        caisr_matrix = np.column_stack(columns).astype(np.float64)
+        caisr_groups[holdout] = (canonical, mean_rank_fusion(caisr_matrix), caisr_matrix)
+        core_groups[holdout] = (idx, core_fused, core_matrix)
+    site_rows = []
+    for holdout in SITES:
+        idx, caisr, _ = caisr_groups[holdout]
+        labels, ages = load_eval_targets(metadata, idx)
+        site_rows.append({"route": "CAISR20_HISTORICAL_SEMANTICS_CORE_PROTOCOL", "holdout_site": holdout, **score_site(labels, caisr, ages, OFFICIAL)})
+        idx2, core, _ = core_groups[holdout]
+        labels2, ages2 = load_eval_targets(metadata, idx2)
+        if not np.array_equal(idx, idx2):
+            raise RouteStop("CAISR/CORE evaluation identity mismatch")
+        site_rows.append({"route": "CORE_COH_EMG_INDUCTIVE", "holdout_site": holdout, **score_site(labels2, core, ages2, OFFICIAL)})
+    by_route = {route: {row["holdout_site"]: float(row["ac_auroc"]) for row in site_rows if row["route"] == route} for route in ("CAISR20_HISTORICAL_SEMANTICS_CORE_PROTOCOL", "CORE_COH_EMG_INDUCTIVE")}
+    summary = []
+    for route, values in by_route.items():
+        summary.append({"route": route, "macro_ac": _scope_value(values, "Macro"), "worst_site_ac": _scope_value(values, "Worst-site"), "small_site_mean_ac": _scope_value(values, "Small-site mean")})
+    core_values = by_route["CORE_COH_EMG_INDUCTIVE"]
+    caisr_values = by_route["CAISR20_HISTORICAL_SEMANTICS_CORE_PROTOCOL"]
+    delta = [{"scope": scope, "core_minus_caisr": _scope_value(core_values, scope) - _scope_value(caisr_values, scope)} for scope in (*SITES, "Macro", "Worst-site", "Small-site mean")]
+
+    stability = []
+    for seed in SEEDS:
+        seed_delta = {}
+        for holdout in SITES:
+            idx, core_seed, _, _ = _load_columns(old_rows, Path(core_root), "CORE_COH_EMG", holdout, "inductive", seed=seed)
+            _, caisr_matrix = caisr_groups[holdout][0], caisr_groups[holdout][2]
+            pos = SEEDS.index(seed)
+            caisr_seed = _rank_vector(caisr_matrix[:, pos])
+            labels, ages = load_eval_targets(metadata, idx)
+            seed_delta[holdout] = float(score_site(labels, core_seed, ages, OFFICIAL)["ac_auroc"] - score_site(labels, caisr_seed, ages, OFFICIAL)["ac_auroc"])
+        stability.append({"seed": int(seed), **{scope: _scope_value(seed_delta, scope) for scope in (*SITES, "Macro", "Worst-site", "Small-site mean")}})
+    stability_summary = []
+    for scope in (*SITES, "Macro", "Worst-site", "Small-site mean"):
+        values = np.asarray([row[scope] for row in stability], dtype=np.float64)
+        stability_summary.append({"scope": scope, "n_seeds": 15, "n_positive": int((values > 0).sum()), "n_zero": int((values == 0).sum()), "n_negative": int((values < 0).sum()), "mean_delta": float(values.mean()), "median_delta": float(np.median(values)), "q25": float(np.quantile(values, .25)), "q75": float(np.quantile(values, .75)), "min": float(values.min()), "max": float(values.max())})
+
+    rng = np.random.default_rng(int(bootstrap_seed))
+    draws = {}
+    observed = {}
+    for holdout in SITES:
+        idx, caisr, _ = caisr_groups[holdout]
+        _, core, _ = core_groups[holdout]
+        labels, ages = load_eval_targets(metadata, idx)
+        mult = np.vstack([bootstrap_multiplicity(len(labels), rng) for _ in range(int(n_bootstrap))])
+        draws[holdout] = (weighted_ac_batch(pair_contributions(labels, ages, core), mult), weighted_ac_batch(pair_contributions(labels, ages, caisr), mult))
+        observed[holdout] = (float(score_site(labels, core, ages, OFFICIAL)["ac_auroc"]), float(score_site(labels, caisr, ages, OFFICIAL)["ac_auroc"]))
+    bootstrap = []
+    for scope in (*SITES, "Macro", "Worst-site", "Small-site mean"):
+        if scope in SITES:
+            series = draws[scope][0] - draws[scope][1]
+            observed_delta = observed[scope][0] - observed[scope][1]
+        else:
+            matrix = np.column_stack([draws[site][0] - draws[site][1] for site in SITES])
+            series = matrix.mean(axis=1) if scope == "Macro" else matrix.min(axis=1) if scope == "Worst-site" else matrix[:, :2].mean(axis=1)
+            observed_delta = _scope_value({site: observed[site][0] - observed[site][1] for site in SITES}, scope)
+        valid = np.isfinite(series)
+        vals = series[valid]
+        bootstrap.append({"scope": scope, "observed": float(observed_delta), "mean": float(np.mean(vals)), "median": float(np.median(vals)), "sd": float(np.std(vals, ddof=1)), "q025": float(np.quantile(vals, .025)), "q975": float(np.quantile(vals, .975)), "fraction_gt_0": float(np.mean(vals > 0)), "fraction_lt_0": float(np.mean(vals < 0)), "valid": int(valid.sum()), "invalid": int((~valid).sum()), "n_bootstrap": int(n_bootstrap), "bootstrap_seed": int(bootstrap_seed)})
+
+    correlations = []
+    for holdout in SITES:
+        core = core_groups[holdout][1]
+        caisr = caisr_groups[holdout][1]
+        core_rank = _rank_vector(core); caisr_rank = _rank_vector(caisr)
+        pearson = float(np.corrcoef(core, caisr)[0, 1])
+        spearman = float(np.corrcoef(core_rank, caisr_rank)[0, 1])
+        correlations.append({"holdout_site": holdout, "pearson": pearson, "spearman": spearman, "n_records": int(len(core))})
+
+    private_root = Path(private_root); private_root.mkdir(parents=True, exist_ok=True)
+    (private_root / "stability.json").write_text(json.dumps(stability, sort_keys=True), encoding="utf-8")
+    public_root = Path(public_root); public_root.mkdir(parents=True, exist_ok=True)
+    def write(name, rows):
+        if not rows: raise ValueError(f"empty public output: {name}")
+        fields = list(dict.fromkeys(key for row in rows for key in row))
+        with (public_root / name).open("w", newline="", encoding="utf-8") as handle:
+            writer = csv.DictWriter(handle, fieldnames=fields, extrasaction="ignore"); writer.writeheader(); writer.writerows(rows)
+    write("caisr20_vs_core_v2_site_scores.csv", site_rows)
+    summary_rows = [{"row_type": "route_summary", **row} for row in summary] + [{"row_type": "delta_core_minus_caisr", **row} for row in delta]
+    write("caisr20_vs_core_v2_summary.csv", summary_rows)
+    write("caisr20_vs_core_v2_seed_stability.csv", stability_summary)
+    write("caisr20_vs_core_v2_bootstrap.csv", bootstrap)
+    write("caisr20_vs_core_v2_score_correlation.csv", correlations)
+    manifest = {"schema": "featurelab_caisr20_vs_core_protocol_v2_manifest_v1", "route": "CAISR20_HISTORICAL_SEMANTICS_CORE_PROTOCOL", "comparator": "CORE_COH_EMG_INDUCTIVE", "site_scores": 6, "summary_rows": len(summary) + len(delta), "seed_stability_rows": len(stability_summary), "bootstrap_rows": len(bootstrap), "correlation_rows": len(correlations), "bootstrap_seed": int(bootstrap_seed), "bootstrap_replicates": int(n_bootstrap), "private_stability": True}
+    (public_root / "caisr20_vs_core_v2_manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return {"site_rows": len(site_rows), "summary_rows": len(summary) + len(delta), "stability_rows": len(stability_summary), "bootstrap_rows": len(bootstrap), "correlation_rows": len(correlations), "delta": delta, "caisr": caisr_values, "core": core_values}
+
+
+__all__ = ["RouteStop", "array_digest", "historical_bridge", "historical_typed_pipeline_bridge", "finalize_route_comparison", "load_data2_inputs", "load_frozen_sample", "load_typed_rules", "publish_unit", "run_route", "sha256_file", "source_value_bridge"]

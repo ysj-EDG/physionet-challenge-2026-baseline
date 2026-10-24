@@ -37,9 +37,43 @@ class Caisr20CoreProtocolRunnerTests(unittest.TestCase):
             raw = np.ones((2, 20), dtype=np.float64)
             manifest = pd.DataFrame({"site": ["I0002", "I0002"]})
             result = source_value_bridge(pool_root=root, raw_caisr=raw, manifest=manifest)
-            self.assertEqual(result["status"], "DRIFT")
+            self.assertEqual(result["status"], "PASS")
             self.assertEqual(result["value_mismatch_total"], 0)
             self.assertEqual(result["validity_mismatch_total"], 1)
+            self.assertEqual(result["finite_overlap_status"], "PASS")
+            self.assertEqual(result["validity_policy_status"], "DIAGNOSTIC")
+
+
+    def test_source_value_mismatch_remains_blocking(self):
+        from extensions.caisr20_core_protocol import CAISR20_FEATURE_IDS
+        from extensions.caisr20_core_protocol_runner import source_value_bridge
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ids = np.array(list(CAISR20_FEATURE_IDS) + [f"extra_{i}" for i in range(1444 - 20)], dtype="<U100")
+            np.save(root / "unique_feature_ids.npy", ids)
+            values = np.ones((2, 1444), dtype=np.float64)
+            values[0, 0] = 2.0
+            np.save(root / "X_raw.npy", values)
+            np.save(root / "valid_mask.npy", np.ones((2, 1444), dtype=bool))
+            np.save(root / "row_sites.npy", np.array(["I0002", "I0002"]))
+            manifest = pd.DataFrame({"site": ["I0002", "I0002"]})
+            result = source_value_bridge(pool_root=root, raw_caisr=np.ones((2, 20)), manifest=manifest)
+            self.assertEqual(result["status"], "DRIFT")
+            self.assertEqual(result["value_mismatch_total"], 1)
+
+    def test_source_identity_mismatch_is_blocking(self):
+        from extensions.caisr20_core_protocol import CAISR20_FEATURE_IDS
+        from extensions.caisr20_core_protocol_runner import RouteStop, source_value_bridge
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ids = np.array(list(CAISR20_FEATURE_IDS) + [f"extra_{i}" for i in range(1444 - 20)], dtype="<U100")
+            np.save(root / "unique_feature_ids.npy", ids)
+            np.save(root / "X_raw.npy", np.ones((2, 1444)))
+            np.save(root / "valid_mask.npy", np.ones((2, 1444), dtype=bool))
+            np.save(root / "row_sites.npy", np.array(["I0002", "I0006"]))
+            manifest = pd.DataFrame({"site": ["I0002", "S0001"]})
+            with self.assertRaises(RouteStop):
+                source_value_bridge(pool_root=root, raw_caisr=np.ones((2, 20)), manifest=manifest)
 
 
 if __name__ == "__main__":

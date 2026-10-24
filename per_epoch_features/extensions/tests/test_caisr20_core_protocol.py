@@ -44,6 +44,84 @@ class Caisr20CoreProtocolTests(unittest.TestCase):
         self.assertEqual(out[1, 3], 0.0)
         self.assertTrue(np.isnan(out[0, 3]))
 
+    def test_historical_typed_fit_uses_rules_and_sentinel(self):
+        import numpy as np
+        from extensions.caisr20_core_protocol import (
+            apply_historical_typed_caisr20,
+            fit_historical_typed_caisr20,
+        )
+        rules = []
+        for i in range(20):
+            rules.append({
+                "unit_scale": 1.0,
+                "nonlinear": "identity",
+                "scaling": "robust" if i == 0 else "identity",
+                "missing_rule": "nonfinite",
+                "expected_range": {"hard": False},
+                "identity_fill": 0.0,
+            })
+        full_static = np.ones((4, 196), dtype=np.float64)
+        full_static[:, 11:31] = np.array([
+            np.arange(20), np.arange(20) + 1, np.arange(20) + 2,
+            np.zeros(20),
+        ], dtype=np.float64)
+        full_static[3, 10:] = 0.0
+        state = fit_historical_typed_caisr20(full_static[:3], rules)
+        transformed = apply_historical_typed_caisr20(full_static, rules, state)
+        self.assertEqual(transformed.shape, (4, 20))
+        self.assertTrue(np.isfinite(transformed).all())
+        self.assertTrue(np.all(transformed[3, 1:] == 0.0))
+        self.assertEqual(state.fit_valid_counts[0], 3)
+
+    def test_historical_typed_scaler_uses_selected_rows_only(self):
+        import numpy as np
+        from extensions.caisr20_core_protocol import fit_historical_typed_caisr20
+        rules = [{
+            "unit_scale": 1.0, "nonlinear": "identity", "scaling": "robust",
+            "missing_rule": "nonfinite", "expected_range": {"hard": False},
+            "identity_fill": 0.0,
+        } for _ in range(20)]
+        static = np.ones((3, 196), dtype=np.float64)
+        static[:, 11] = [1.0, 2.0, 10000.0]
+        state = fit_historical_typed_caisr20(static[:2], rules)
+        self.assertLess(state.center[0], 10.0)
+        self.assertEqual(state.fit_valid_counts[0], 2)
+
+    def test_historical_typed_log1p_and_hard_range_are_exact(self):
+        import numpy as np
+        from extensions.caisr20_core_protocol import apply_historical_typed_caisr20, fit_historical_typed_caisr20
+        rules = [{
+            "unit_scale": 1.0, "nonlinear": "log1p", "scaling": "robust",
+            "missing_rule": "nonfinite", "expected_range": {"hard": True, "min": 0.0, "max": 10.0},
+            "range_tolerance": 1e-6, "identity_fill": 0.0,
+        }] + [{
+            "unit_scale": 1.0, "nonlinear": "identity", "scaling": "identity",
+            "missing_rule": "nonfinite", "expected_range": {"hard": False},
+            "identity_fill": 0.0,
+        } for _ in range(19)]
+        static = np.ones((3, 196), dtype=np.float64)
+        static[:, 11] = [0.0, 2.0, 2.0 + 5e-7]
+        state = fit_historical_typed_caisr20(static, rules)
+        out = apply_historical_typed_caisr20(static, rules, state)
+        self.assertTrue(np.isfinite(out).all())
+        self.assertAlmostEqual(float(out[1, 0]), 0.0)
+        self.assertEqual(state.scale_method[0], "iqr")
+
+    def test_historical_typed_all_missing_has_explicit_fallback(self):
+        import numpy as np
+        from extensions.caisr20_core_protocol import fit_historical_typed_caisr20
+        rules = [{
+            "unit_scale": 1.0, "nonlinear": "identity", "scaling": "robust",
+            "missing_rule": "nonfinite", "expected_range": {"hard": False},
+            "identity_fill": 0.0,
+        } for _ in range(20)]
+        static = np.ones((2, 196), dtype=np.float64)
+        static[:, 11] = np.nan
+        state = fit_historical_typed_caisr20(static, rules)
+        self.assertEqual(state.scale_method[0], "all_missing_fallback")
+        self.assertTrue(state.all_missing[0])
+        self.assertEqual(int(state.fit_valid_counts[0]), 0)
+
 
 if __name__ == "__main__":
     unittest.main()
