@@ -16,6 +16,7 @@ V1 remains unchanged. Its 8,059 old-V5 validity mismatch is not a numerical erro
 | Formal models | PASS 30/30 | all converged before `max_iter` |
 | Formal raw predictions | PASS 45/45 | finite decision scores, frozen row order |
 | Resume/no-refit | PASS | second run: 30 model skips and 45 prediction skips |
+| Checkpoint replay | PASS | all 45 prediction units replayed with max absolute difference `0.0` |
 
 ## Source policy diagnostics
 
