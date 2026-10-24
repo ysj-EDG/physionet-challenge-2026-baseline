@@ -4,10 +4,15 @@
   "bootstrap_seed": 20261023,
   "comparator": "CORE_COH_EMG_INDUCTIVE",
   "correlation_rows": 3,
+  "model_refit_count": 0,
+  "prediction_recompute_count": 0,
   "private_stability": true,
   "route": "CAISR20_HISTORICAL_SEMANTICS_CORE_PROTOCOL",
-  "schema": "featurelab_caisr20_vs_core_protocol_v2_manifest_v1",
+  "schema": "featurelab_caisr20_vs_core_protocol_v2_manifest_v2",
   "seed_stability_rows": 6,
   "site_scores": 6,
-  "summary_rows": 8
+  "summary_rows": 8,
+  "worst_site_bootstrap_fix": "PASS",
+  "worst_site_seed_fix": "PASS",
+  "worst_site_semantics": "difference_of_route_minima"
 }

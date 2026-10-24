@@ -2,7 +2,7 @@
 
 ## Status
 
-`ROUTE_LEVEL_COMPARISON_V2_STATUS = COMPLETE_WITH_FROZEN_AGGREGATES`
+`ROUTE_LEVEL_COMPARISON_V2_STATUS = COMPLETE_AFTER_WORST_SITE_DIAGNOSTIC_FIX`
 
 V1 remains unchanged. Its 8,059 old-V5 validity mismatch is not a numerical error: old-V5 records source-support validity, while this route uses historical typed-v1 validity/fill semantics. The finite-overlap numerical bridge has 0 mismatches.
 
@@ -36,6 +36,12 @@ The public site rows are in `audit/caisr20_core_protocol_v2/caisr20_vs_core_v2_s
 | Small-site mean | 0.6957516295 | 0.6874274296 | -0.0083242000 |
 
 The complete aggregate outputs include AUROC/AUPRC, pair counts, score-uniqueness counts, 15-seed paired stability, 2,000-record bootstrap, and site-level Pearson/Spearman correlations.
+
+## Targeted Worst-site diagnostic correction
+
+The original V2 route summary and site-level scores were correct. A diagnostic aggregation bug affected only the Worst-site rows in seed stability and paired bootstrap: the implementation used the minimum of site-level route differences instead of the difference between the two route-level minimum site scores. Macro, Small-site mean, individual-site diagnostics, models, predictions, and score correlations were unaffected.
+
+The corrected semantics are `min(CORE site scores) - min(CAISR site scores)`. The formal Worst-site delta is `+0.059271650304393075`; the corrected seed-stability summary is in the public seed-stability CSV, and the corrected 2,000-draw paired bootstrap is in the public bootstrap CSV. Both public mirrors (the directory and flat audit paths) are synchronized.
 
 ## Limitations and next step
 

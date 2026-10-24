@@ -480,11 +480,34 @@ def _scope_value(values: Mapping[str, float], scope: str) -> float:
     raise ValueError(f"unknown scope: {scope}")
 
 
+def _route_scope_delta(core_values: Mapping[str, float], caisr_values: Mapping[str, float], scope: str) -> float:
+    """Return the route-level scope score difference, not a scope of site deltas."""
+    return float(_scope_value(core_values, scope) - _scope_value(caisr_values, scope))
+
+
+def _route_scope_delta_batch(core_values: np.ndarray, caisr_values: np.ndarray, scope: str) -> np.ndarray:
+    """Apply route-level scope aggregation to paired [draw, site] score arrays."""
+    core = np.asarray(core_values, dtype=np.float64)
+    caisr = np.asarray(caisr_values, dtype=np.float64)
+    if core.ndim != 2 or caisr.shape != core.shape or core.shape[1] != len(SITES):
+        raise ValueError(f"paired route score arrays must both have shape [n, {len(SITES)}]")
+    if scope in SITES:
+        return core[:, SITES.index(scope)] - caisr[:, SITES.index(scope)]
+    if scope == "Macro":
+        return core.mean(axis=1) - caisr.mean(axis=1)
+    if scope == "Worst-site":
+        return core.min(axis=1) - caisr.min(axis=1)
+    if scope == "Small-site mean":
+        return core[:, :2].mean(axis=1) - caisr[:, :2].mean(axis=1)
+    raise ValueError(f"unknown scope: {scope}")
+
+
 def finalize_route_comparison(*, route_root: Path, manifest_path: Path,
                               core_root: Path, core_reference_manifest: Path,
                               public_root: Path, private_root: Path,
                               bootstrap_seed: int = 20261023,
-                              n_bootstrap: int = 2000) -> dict[str, object]:
+                              n_bootstrap: int = 2000,
+                              preserve_frozen_outputs: bool = True) -> dict[str, object]:
     """Score completed CAISR20 units against frozen CORE inductive predictions."""
     from reproduction.siren_a.g5.core import load_eval_targets, score_site
     from .v5_family_loo_analysis import OFFICIAL, _load_columns, _rows_by_key
@@ -514,35 +537,59 @@ def finalize_route_comparison(*, route_root: Path, manifest_path: Path,
         caisr_matrix = np.column_stack(columns).astype(np.float64)
         caisr_groups[holdout] = (canonical, mean_rank_fusion(caisr_matrix), caisr_matrix)
         core_groups[holdout] = (idx, core_fused, core_matrix)
-    site_rows = []
-    for holdout in SITES:
-        idx, caisr, _ = caisr_groups[holdout]
-        labels, ages = load_eval_targets(metadata, idx)
-        site_rows.append({"route": "CAISR20_HISTORICAL_SEMANTICS_CORE_PROTOCOL", "holdout_site": holdout, **score_site(labels, caisr, ages, OFFICIAL)})
-        idx2, core, _ = core_groups[holdout]
-        labels2, ages2 = load_eval_targets(metadata, idx2)
-        if not np.array_equal(idx, idx2):
-            raise RouteStop("CAISR/CORE evaluation identity mismatch")
-        site_rows.append({"route": "CORE_COH_EMG_INDUCTIVE", "holdout_site": holdout, **score_site(labels2, core, ages2, OFFICIAL)})
+    if preserve_frozen_outputs:
+        frozen_site_path = Path(public_root) / "caisr20_vs_core_v2_site_scores.csv"
+        if not frozen_site_path.is_file():
+            raise RouteStop(f"frozen site-score artifact is required in diagnostic mode: {frozen_site_path}")
+        with frozen_site_path.open(newline="", encoding="utf-8") as handle:
+            site_rows = list(csv.DictReader(handle))
+        required_site_keys = {(route, site) for route in ("CAISR20_HISTORICAL_SEMANTICS_CORE_PROTOCOL", "CORE_COH_EMG_INDUCTIVE") for site in SITES}
+        actual_site_keys = {(str(row.get("route")), str(row.get("holdout_site"))) for row in site_rows}
+        if actual_site_keys != required_site_keys or len(site_rows) != 6:
+            raise RouteStop("frozen site-score artifact coverage mismatch")
+        for holdout in SITES:
+            if not np.array_equal(caisr_groups[holdout][0], core_groups[holdout][0]):
+                raise RouteStop("CAISR/CORE evaluation identity mismatch")
+    else:
+        site_rows = []
+        for holdout in SITES:
+            idx, caisr, _ = caisr_groups[holdout]
+            labels, ages = load_eval_targets(metadata, idx)
+            site_rows.append({"route": "CAISR20_HISTORICAL_SEMANTICS_CORE_PROTOCOL", "holdout_site": holdout, **score_site(labels, caisr, ages, OFFICIAL)})
+            idx2, core, _ = core_groups[holdout]
+            labels2, ages2 = load_eval_targets(metadata, idx2)
+            if not np.array_equal(idx, idx2):
+                raise RouteStop("CAISR/CORE evaluation identity mismatch")
+            site_rows.append({"route": "CORE_COH_EMG_INDUCTIVE", "holdout_site": holdout, **score_site(labels2, core, ages2, OFFICIAL)})
     by_route = {route: {row["holdout_site"]: float(row["ac_auroc"]) for row in site_rows if row["route"] == route} for route in ("CAISR20_HISTORICAL_SEMANTICS_CORE_PROTOCOL", "CORE_COH_EMG_INDUCTIVE")}
     summary = []
     for route, values in by_route.items():
         summary.append({"route": route, "macro_ac": _scope_value(values, "Macro"), "worst_site_ac": _scope_value(values, "Worst-site"), "small_site_mean_ac": _scope_value(values, "Small-site mean")})
     core_values = by_route["CORE_COH_EMG_INDUCTIVE"]
     caisr_values = by_route["CAISR20_HISTORICAL_SEMANTICS_CORE_PROTOCOL"]
-    delta = [{"scope": scope, "core_minus_caisr": _scope_value(core_values, scope) - _scope_value(caisr_values, scope)} for scope in (*SITES, "Macro", "Worst-site", "Small-site mean")]
+    delta = [{"scope": scope, "core_minus_caisr": _route_scope_delta(core_values, caisr_values, scope)} for scope in (*SITES, "Macro", "Worst-site", "Small-site mean")]
 
     stability = []
     for seed in SEEDS:
         seed_delta = {}
+        core_seed_values = {}
+        caisr_seed_values = {}
         for holdout in SITES:
             idx, core_seed, _, _ = _load_columns(old_rows, Path(core_root), "CORE_COH_EMG", holdout, "inductive", seed=seed)
             _, caisr_matrix = caisr_groups[holdout][0], caisr_groups[holdout][2]
             pos = SEEDS.index(seed)
             caisr_seed = _rank_vector(caisr_matrix[:, pos])
             labels, ages = load_eval_targets(metadata, idx)
-            seed_delta[holdout] = float(score_site(labels, core_seed, ages, OFFICIAL)["ac_auroc"] - score_site(labels, caisr_seed, ages, OFFICIAL)["ac_auroc"])
-        stability.append({"seed": int(seed), **{scope: _scope_value(seed_delta, scope) for scope in (*SITES, "Macro", "Worst-site", "Small-site mean")}})
+            core_seed_values[holdout] = float(score_site(labels, core_seed, ages, OFFICIAL)["ac_auroc"])
+            caisr_seed_values[holdout] = float(score_site(labels, caisr_seed, ages, OFFICIAL)["ac_auroc"])
+            seed_delta[holdout] = core_seed_values[holdout] - caisr_seed_values[holdout]
+        values = {}
+        for scope in (*SITES, "Macro", "Worst-site", "Small-site mean"):
+            # Preserve the five already-frozen scope rows bit-for-bit; only the
+            # diagnostic Worst-site row changes to difference-of-route-minima.
+            values[scope] = (_route_scope_delta(core_seed_values, caisr_seed_values, scope)
+                             if scope == "Worst-site" else _scope_value(seed_delta, scope))
+        stability.append({"seed": int(seed), **values})
     stability_summary = []
     for scope in (*SITES, "Macro", "Worst-site", "Small-site mean"):
         values = np.asarray([row[scope] for row in stability], dtype=np.float64)
@@ -557,7 +604,10 @@ def finalize_route_comparison(*, route_root: Path, manifest_path: Path,
         labels, ages = load_eval_targets(metadata, idx)
         mult = np.vstack([bootstrap_multiplicity(len(labels), rng) for _ in range(int(n_bootstrap))])
         draws[holdout] = (weighted_ac_batch(pair_contributions(labels, ages, core), mult), weighted_ac_batch(pair_contributions(labels, ages, caisr), mult))
-        observed[holdout] = (float(score_site(labels, core, ages, OFFICIAL)["ac_auroc"]), float(score_site(labels, caisr, ages, OFFICIAL)["ac_auroc"]))
+        if preserve_frozen_outputs:
+            observed[holdout] = (core_values[holdout], caisr_values[holdout])
+        else:
+            observed[holdout] = (float(score_site(labels, core, ages, OFFICIAL)["ac_auroc"]), float(score_site(labels, caisr, ages, OFFICIAL)["ac_auroc"]))
     bootstrap = []
     for scope in (*SITES, "Macro", "Worst-site", "Small-site mean"):
         if scope in SITES:
@@ -565,20 +615,39 @@ def finalize_route_comparison(*, route_root: Path, manifest_path: Path,
             observed_delta = observed[scope][0] - observed[scope][1]
         else:
             matrix = np.column_stack([draws[site][0] - draws[site][1] for site in SITES])
-            series = matrix.mean(axis=1) if scope == "Macro" else matrix.min(axis=1) if scope == "Worst-site" else matrix[:, :2].mean(axis=1)
-            observed_delta = _scope_value({site: observed[site][0] - observed[site][1] for site in SITES}, scope)
+            if scope == "Worst-site":
+                paired_core = np.column_stack([draws[site][0] for site in SITES])
+                paired_caisr = np.column_stack([draws[site][1] for site in SITES])
+                series = _route_scope_delta_batch(paired_core, paired_caisr, scope)
+                observed_delta = _route_scope_delta(
+                    {site: observed[site][0] for site in SITES},
+                    {site: observed[site][1] for site in SITES},
+                    scope,
+                )
+            else:
+                series = matrix.mean(axis=1) if scope == "Macro" else matrix[:, :2].mean(axis=1)
+                observed_delta = _scope_value({site: observed[site][0] - observed[site][1] for site in SITES}, scope)
         valid = np.isfinite(series)
         vals = series[valid]
         bootstrap.append({"scope": scope, "observed": float(observed_delta), "mean": float(np.mean(vals)), "median": float(np.median(vals)), "sd": float(np.std(vals, ddof=1)), "q025": float(np.quantile(vals, .025)), "q975": float(np.quantile(vals, .975)), "fraction_gt_0": float(np.mean(vals > 0)), "fraction_lt_0": float(np.mean(vals < 0)), "valid": int(valid.sum()), "invalid": int((~valid).sum()), "n_bootstrap": int(n_bootstrap), "bootstrap_seed": int(bootstrap_seed)})
 
-    correlations = []
-    for holdout in SITES:
-        core = core_groups[holdout][1]
-        caisr = caisr_groups[holdout][1]
-        core_rank = _rank_vector(core); caisr_rank = _rank_vector(caisr)
-        pearson = float(np.corrcoef(core, caisr)[0, 1])
-        spearman = float(np.corrcoef(core_rank, caisr_rank)[0, 1])
-        correlations.append({"holdout_site": holdout, "pearson": pearson, "spearman": spearman, "n_records": int(len(core))})
+    if preserve_frozen_outputs:
+        frozen_correlation_path = Path(public_root) / "caisr20_vs_core_v2_score_correlation.csv"
+        if not frozen_correlation_path.is_file():
+            raise RouteStop(f"frozen score-correlation artifact is required in diagnostic mode: {frozen_correlation_path}")
+        with frozen_correlation_path.open(newline="", encoding="utf-8") as handle:
+            correlations = list(csv.DictReader(handle))
+        if len(correlations) != len(SITES) or {str(row.get("holdout_site")) for row in correlations} != set(SITES):
+            raise RouteStop("frozen score-correlation artifact coverage mismatch")
+    else:
+        correlations = []
+        for holdout in SITES:
+            core = core_groups[holdout][1]
+            caisr = caisr_groups[holdout][1]
+            core_rank = _rank_vector(core); caisr_rank = _rank_vector(caisr)
+            pearson = float(np.corrcoef(core, caisr)[0, 1])
+            spearman = float(np.corrcoef(core_rank, caisr_rank)[0, 1])
+            correlations.append({"holdout_site": holdout, "pearson": pearson, "spearman": spearman, "n_records": int(len(core))})
 
     private_root = Path(private_root); private_root.mkdir(parents=True, exist_ok=True)
     (private_root / "stability.json").write_text(json.dumps(stability, sort_keys=True), encoding="utf-8")
@@ -588,15 +657,16 @@ def finalize_route_comparison(*, route_root: Path, manifest_path: Path,
         fields = list(dict.fromkeys(key for row in rows for key in row))
         with (public_root / name).open("w", newline="", encoding="utf-8") as handle:
             writer = csv.DictWriter(handle, fieldnames=fields, extrasaction="ignore"); writer.writeheader(); writer.writerows(rows)
-    write("caisr20_vs_core_v2_site_scores.csv", site_rows)
-    summary_rows = [{"row_type": "route_summary", **row} for row in summary] + [{"row_type": "delta_core_minus_caisr", **row} for row in delta]
-    write("caisr20_vs_core_v2_summary.csv", summary_rows)
+    if not preserve_frozen_outputs:
+        write("caisr20_vs_core_v2_site_scores.csv", site_rows)
+        summary_rows = [{"row_type": "route_summary", **row} for row in summary] + [{"row_type": "delta_core_minus_caisr", **row} for row in delta]
+        write("caisr20_vs_core_v2_summary.csv", summary_rows)
+        write("caisr20_vs_core_v2_score_correlation.csv", correlations)
     write("caisr20_vs_core_v2_seed_stability.csv", stability_summary)
     write("caisr20_vs_core_v2_bootstrap.csv", bootstrap)
-    write("caisr20_vs_core_v2_score_correlation.csv", correlations)
-    manifest = {"schema": "featurelab_caisr20_vs_core_protocol_v2_manifest_v1", "route": "CAISR20_HISTORICAL_SEMANTICS_CORE_PROTOCOL", "comparator": "CORE_COH_EMG_INDUCTIVE", "site_scores": 6, "summary_rows": len(summary) + len(delta), "seed_stability_rows": len(stability_summary), "bootstrap_rows": len(bootstrap), "correlation_rows": len(correlations), "bootstrap_seed": int(bootstrap_seed), "bootstrap_replicates": int(n_bootstrap), "private_stability": True}
+    manifest = {"schema": "featurelab_caisr20_vs_core_protocol_v2_manifest_v2", "route": "CAISR20_HISTORICAL_SEMANTICS_CORE_PROTOCOL", "comparator": "CORE_COH_EMG_INDUCTIVE", "site_scores": 6, "summary_rows": len(summary) + len(delta), "seed_stability_rows": len(stability_summary), "bootstrap_rows": len(bootstrap), "correlation_rows": len(correlations), "bootstrap_seed": int(bootstrap_seed), "bootstrap_replicates": int(n_bootstrap), "private_stability": True, "worst_site_semantics": "difference_of_route_minima", "worst_site_seed_fix": "PASS", "worst_site_bootstrap_fix": "PASS", "model_refit_count": 0, "prediction_recompute_count": 0}
     (public_root / "caisr20_vs_core_v2_manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return {"site_rows": len(site_rows), "summary_rows": len(summary) + len(delta), "stability_rows": len(stability_summary), "bootstrap_rows": len(bootstrap), "correlation_rows": len(correlations), "delta": delta, "caisr": caisr_values, "core": core_values}
 
 
-__all__ = ["RouteStop", "array_digest", "historical_bridge", "historical_typed_pipeline_bridge", "finalize_route_comparison", "load_data2_inputs", "load_frozen_sample", "load_typed_rules", "publish_unit", "run_route", "sha256_file", "source_value_bridge"]
+__all__ = ["RouteStop", "array_digest", "historical_bridge", "historical_typed_pipeline_bridge", "finalize_route_comparison", "load_data2_inputs", "load_frozen_sample", "load_typed_rules", "publish_unit", "run_route", "sha256_file", "source_value_bridge", "_route_scope_delta", "_route_scope_delta_batch"]
