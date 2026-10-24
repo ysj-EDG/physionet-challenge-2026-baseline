@@ -1,0 +1,10 @@
+gate,status,detail
+historical_bridge,PASS,max_abs_decision_diff=4.440892098500626e-16
+data2_inventory,PASS,records=6600;positives=498;I0002=319;I0006=1142;S0001=5139
+caisr20_manifest,PASS,dimension=20;demographic_count=0
+sample_identity,PASS,matched=30/30
+source_finite_values,PASS,mismatches=0
+source_validity_positions,DRIFT,mismatches=8059
+new_models,NOT_STARTED,blocked_before_fit
+new_predictions,NOT_STARTED,blocked_before_prediction
+formal_site_scores,NOT_STARTED,blocked_before_scoring
