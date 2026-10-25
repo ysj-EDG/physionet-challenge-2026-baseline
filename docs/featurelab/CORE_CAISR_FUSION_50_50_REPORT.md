@@ -6,6 +6,8 @@
 
 The authorized fixed route was evaluated once from frozen parent prediction payloads. No model was refit, no prediction was recomputed, no feature was re-extracted, and no parent artifact was modified. The first publish created the three private final units; the strict repeat verified all three as `SKIP_VERIFIED`.
 
+Verification status: the 11 focused fusion tests passed; the frozen G1B contract suite passed (13/13). The bounded full extensions suite was started once with a 120-second limit and did not complete before the limit (`EXTENSIONS_TEST = NOT_COMPLETED`); completed tests in its log showed no failure.
+
 ## Parent replay and identity
 
 | Gate | Result |
