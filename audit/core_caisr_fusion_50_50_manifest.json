@@ -1,0 +1,48 @@
+{
+  "bootstrap_replicates": 2000,
+  "bootstrap_rows": 12,
+  "bootstrap_seed": 20261023,
+  "caisr_weight": 0.5,
+  "core_weight": 0.5,
+  "feature_extraction_count": 0,
+  "holdout_sites": [
+    "I0002",
+    "I0006",
+    "S0001"
+  ],
+  "model_refit_count": 0,
+  "no_candidate_selection": true,
+  "parent_final_identity_count": 3,
+  "parent_replay_max_abs_diff": 0.0,
+  "parent_seed_identity_count": 45,
+  "post_fusion_rerank": false,
+  "prediction_recompute_count": 0,
+  "private_publish_status": [
+    "SKIP_VERIFIED",
+    "SKIP_VERIFIED",
+    "SKIP_VERIFIED"
+  ],
+  "route": "CORE_CAISR_FUSION_50_50",
+  "route_search": "CLOSED_FIXED_50_50",
+  "schema": "featurelab_core_caisr_fusion_50_50_v1",
+  "seed_rows": 12,
+  "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54,
+    55,
+    56
+  ],
+  "site_score_rows": 9,
+  "summary_rows": 30
+}
