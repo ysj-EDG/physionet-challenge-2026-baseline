@@ -13,6 +13,7 @@ sample identities, model metadata and bootstrap arrays remain private under
 - 135 new V5 predictions were produced for the three holdouts using the
   inductive protocol.
 - Final CORE_NO_CAISR20 width was 225 (180 frozen V1–V4 + 45 new V5).
+- The structural feature-position accounting is 969 positions (113/129/349/113 frozen V1–V4 plus 265 retained V5) and 949 unique Feature IDs.
 - Rank256 rebuilds, raw EDF reads, candidate-pool rebuilds and transductive
   predictions: 0.
 - `DEDUP_FUSION_50_50` was computed as the exact 0.5/0.5 prediction-level
