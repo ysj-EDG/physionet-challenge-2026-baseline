@@ -1,0 +1,4 @@
+site,legal_pair_count,both_correct,a_only_correct,b_only_correct,both_wrong,tie_involved,a_wrong_b_correct_fraction,b_wrong_a_correct_fraction,net_complementary_pair_advantage,ab60_a_wrong_to_correct,ab60_a_correct_to_wrong,ab60_b_wrong_to_correct,ab60_b_correct_to_wrong,ab50_a_wrong_to_correct,ab50_a_correct_to_wrong,ab50_b_wrong_to_correct,ab50_b_correct_to_wrong
+I0002,1886,1197,203,214,272,0,0.11346765641569459,0.10763520678685047,11,103,71,132,111,126,95,108,88
+I0006,14493,8738,1473,1977,2305,0,0.13641068101842269,0.10163527220037259,504,979,453,1020,998,1199,599,874,778
+S0001,182330,94343,26332,27461,34194,0,0.1506115285471398,0.14441945922228924,1129,12432,8592,17740,15029,15409,11352,14980,12052

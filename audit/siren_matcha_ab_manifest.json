@@ -1,0 +1,87 @@
+{
+  "base_ref": "626ec1e9f178ae5922db09fab79955a6182e0f67",
+  "branch": "research/siren-matcha-ab-fusion-v1",
+  "counts": {
+    "sites": {
+      "I0002": 319,
+      "I0006": 1142,
+      "S0001": 5139
+    },
+    "total": 6600
+  },
+  "gate_status": {
+    "A_B_RECORD_ORDER_CANONICALIZED": "PASS",
+    "A_B_RECORD_SET_IDENTITY": "PASS",
+    "A_PARENT_REPLAY": "PASS",
+    "A_RANK_METRIC_INVARIANCE": "PASS",
+    "B_PARENT_REPLAY": "PASS",
+    "B_RANK_METRIC_INVARIANCE": "PASS",
+    "NO_PARENT_MUTATION": "PASS"
+  },
+  "git": {
+    "branch": "research/siren-matcha-ab-fusion-v1",
+    "head": "626ec1e9f178ae5922db09fab79955a6182e0f67"
+  },
+  "private_payload_sha256": {
+    "I0002": "d70c057883d74be2c26f164cb4076fe7c376d5b854b3dcc3a62741bc96046ea3",
+    "I0006": "8ca2cd0fca59c82b530ea1ebf93d61cc088d0805cadf60e6674ad68ff57a1466",
+    "S0001": "2cad4eb8a1ac54c68566ed062b1801a987640f89688dddd208cadd67ae585c2c"
+  },
+  "public_row_counts": {
+    "bootstrap": 24,
+    "correlation": 3,
+    "pair_complementarity": 3,
+    "site_scores": 12,
+    "summary": 24
+  },
+  "schema": "siren_matcha_ab_fusion_public_manifest_v1",
+  "source_a": {
+    "branch": "research/featurelab-extractors-v2",
+    "git_ref": "626ec1e9f178ae5922db09fab79955a6182e0f67",
+    "route": "DEDUP_FUSION"
+  },
+  "source_b": {
+    "e1_sha256": "e9f135c973c0540970f34acbde89096c028eb3a95a0a601d85f21e8f83d36ac0",
+    "raw_logit_source": "native",
+    "route": "MATCHA_M2_HISTORICAL_INNER1TO4",
+    "seeds": [
+      20260806,
+      20260807,
+      20260808
+    ]
+  },
+  "source_input_hashes": {
+    "a": [
+      {
+        "bytes": 13932,
+        "sha256": "1f46358ba617cc382dc6d368602bd07f3a9a2a863f86730473841d7278c5004e"
+      },
+      {
+        "bytes": 45328,
+        "sha256": "fe4947dd420f1e4d00cab86abffa81e297d7b9e4e98a972a29434848d23cde1a"
+      },
+      {
+        "bytes": 200894,
+        "sha256": "996d3592dc093e0864cf50774435142fe326ccf7634e910965cb3c5bc29dd740"
+      }
+    ],
+    "b": {
+      "bytes": 391919,
+      "sha256": "42c3cf83aac87070f3abb506a52c0aadcc75c05be80215829694cada72545f74"
+    },
+    "b_report": {
+      "bytes": 3579,
+      "sha256": "2d43354e8d01ab86882aac00a01b6ed4691206d3db33ce4f36763b09912653e6"
+    }
+  },
+  "weights": {
+    "AB_EQUAL_50_50": [
+      0.5,
+      0.5
+    ],
+    "AB_SIREN_60_40": [
+      0.6,
+      0.4
+    ]
+  }
+}
