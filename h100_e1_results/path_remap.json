@@ -1,0 +1,5 @@
+{
+  "records": 6600,
+  "remote_prepared_root": "/mnt/data5t-in-container/workspace/.medex_run_39eab99925274e3f982ebd166a1ca5ba/psg4ci/prepared",
+  "source_manifest": "/mnt/data5t-in-container/workspace/.medex_run_39eab99925274e3f982ebd166a1ca5ba/psg4ci/prepared/training_manifest.parquet"
+}

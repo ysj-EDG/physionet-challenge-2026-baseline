@@ -1,0 +1,112 @@
+[
+  {
+    "loss": 1.4015119061152512,
+    "bce": 1.3526765496652817,
+    "pairwise": 0.32556903725228853,
+    "valid_pair_count": 615,
+    "batch_pair_coverage": 0.5210280373831776,
+    "valid_pairs_site_I0002": 92,
+    "valid_pairs_site_S0001": 523,
+    "valid_pairs_cross_site": 248,
+    "elapsed_sec": 22.83013677597046
+  },
+  {
+    "loss": 1.3989661451881734,
+    "bce": 1.354554374676163,
+    "pairwise": 0.2960784596861035,
+    "valid_pair_count": 634,
+    "batch_pair_coverage": 0.4929906542056075,
+    "valid_pairs_site_I0002": 91,
+    "valid_pairs_site_S0001": 543,
+    "valid_pairs_cross_site": 269,
+    "elapsed_sec": 22.47609806060791
+  },
+  {
+    "loss": 1.338085228089835,
+    "bce": 1.2938433083592453,
+    "pairwise": 0.294946092992551,
+    "valid_pair_count": 657,
+    "batch_pair_coverage": 0.5257009345794392,
+    "valid_pairs_site_S0001": 561,
+    "valid_pairs_cross_site": 269,
+    "valid_pairs_site_I0002": 96,
+    "elapsed_sec": 22.672441005706787
+  },
+  {
+    "loss": 1.331265854936476,
+    "bce": 1.2865579998486232,
+    "pairwise": 0.298052352579489,
+    "valid_pair_count": 648,
+    "batch_pair_coverage": 0.530373831775701,
+    "valid_pairs_site_S0001": 566,
+    "valid_pairs_cross_site": 255,
+    "valid_pairs_site_I0002": 82,
+    "elapsed_sec": 22.64029622077942
+  },
+  {
+    "loss": 1.3357672835482615,
+    "bce": 1.2957376737634991,
+    "pairwise": 0.26686404620963106,
+    "valid_pair_count": 652,
+    "batch_pair_coverage": 0.530373831775701,
+    "valid_pairs_site_I0002": 102,
+    "valid_pairs_site_S0001": 550,
+    "valid_pairs_cross_site": 292,
+    "elapsed_sec": 22.540323734283447
+  },
+  {
+    "loss": 1.3187459285988985,
+    "bce": 1.2743746037551453,
+    "pairwise": 0.29580882191794017,
+    "valid_pair_count": 627,
+    "batch_pair_coverage": 0.5327102803738317,
+    "valid_pairs_site_I0002": 98,
+    "valid_pairs_site_S0001": 529,
+    "valid_pairs_cross_site": 247,
+    "elapsed_sec": 22.58428144454956
+  },
+  {
+    "loss": 1.4253552483621044,
+    "bce": 1.3844018404450371,
+    "pairwise": 0.2730226973150574,
+    "valid_pair_count": 592,
+    "batch_pair_coverage": 0.530373831775701,
+    "valid_pairs_site_I0002": 85,
+    "valid_pairs_site_S0001": 507,
+    "valid_pairs_cross_site": 280,
+    "elapsed_sec": 22.621816873550415
+  },
+  {
+    "loss": 1.3707764264474684,
+    "bce": 1.3314876208064435,
+    "pairwise": 0.2619253474877381,
+    "valid_pair_count": 637,
+    "batch_pair_coverage": 0.5397196261682243,
+    "valid_pairs_site_I0002": 106,
+    "valid_pairs_site_S0001": 531,
+    "valid_pairs_cross_site": 250,
+    "elapsed_sec": 22.532123565673828
+  },
+  {
+    "loss": 1.30185943052486,
+    "bce": 1.2687952883071572,
+    "pairwise": 0.2204275911273522,
+    "valid_pair_count": 590,
+    "batch_pair_coverage": 0.5327102803738317,
+    "valid_pairs_site_S0001": 499,
+    "valid_pairs_cross_site": 230,
+    "valid_pairs_site_I0002": 91,
+    "elapsed_sec": 22.567533016204834
+  },
+  {
+    "loss": 1.3445816522063774,
+    "bce": 1.306583867625934,
+    "pairwise": 0.253318569079549,
+    "valid_pair_count": 617,
+    "batch_pair_coverage": 0.5350467289719626,
+    "valid_pairs_site_I0002": 90,
+    "valid_pairs_site_S0001": 527,
+    "valid_pairs_cross_site": 258,
+    "elapsed_sec": 22.5846586227417
+  }
+]

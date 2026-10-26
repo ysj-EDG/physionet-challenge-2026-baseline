@@ -1,0 +1,168 @@
+{
+  "assembly_mode": "assembled from completed H100 artifacts; no model logic changed",
+  "caisr_residual": {
+    "features": 90,
+    "file": "caisr_residual.json",
+    "missing_behavior": "zero adjustment",
+    "record_wise": true
+  },
+  "creation_time_residual": {
+    "file": "date_residual.json",
+    "missing_behavior": "current-record EDF start time, then zero adjustment",
+    "record_wise": true
+  },
+  "domain_adversary": {
+    "gradient_reversal_strength": 0.05,
+    "inference_requires_site": false,
+    "training_only": true
+  },
+  "encoder": {
+    "checkpoint_sha256": "74261ac7451ef3f8710820e157733c72e97f4b112675ed520a1a9d161f1e47e8",
+    "deployed_state": "EMA teacher",
+    "epochs": 15,
+    "precision": "FP32",
+    "seed": 20260804,
+    "source_epoch": 15,
+    "variant": "e1",
+    "windows_per_record_per_epoch": 128
+  },
+  "ensemble": "equal-weight mean of logits",
+  "files": {
+    "caisr_residual.json": {
+      "bytes": 15850,
+      "sha256": "39ccd09099c16a83e4818faecbdf288d37e4c2456b0b328d2dcf00d9e40896e0"
+    },
+    "date_residual.json": {
+      "bytes": 338,
+      "sha256": "a911e6f4635b8874354fea16f41f200f159a62d9c0ba266b003a43750fd0b746"
+    },
+    "e1_encoder.pt": {
+      "bytes": 2790012,
+      "sha256": "1191f6ea77f9f075937e5bdc8319c2fa710bb4b85c2f02e648da5b13a1b6af46"
+    },
+    "followup_residual.json": {
+      "bytes": 543,
+      "sha256": "59dea7d56df84c607c8ccdc9d912ad530020446260742d7064df4fbaeadb5c05"
+    },
+    "raw_sequence_seed_20260806.pt": {
+      "bytes": 11108630,
+      "epochs": 2,
+      "seed": 20260806,
+      "sha256": "4f1f2d59c8efc1c48858f6eb2cabefd0c13c2dee8cf4ad574f865ea3f884f01b"
+    },
+    "raw_sequence_seed_20260807.pt": {
+      "bytes": 11109206,
+      "epochs": 4,
+      "seed": 20260807,
+      "sha256": "5b0d0fcb7a0299ee6f347c4447fc2152b2dcba5b8e97ff1b528b0c1ff2f534b9"
+    },
+    "raw_sequence_seed_20260808.pt": {
+      "bytes": 11108374,
+      "epochs": 1,
+      "seed": 20260808,
+      "sha256": "e9877195ecf21eaf08141e8e5943f2e7a9039526fad100b92b58c9e34286806e"
+    }
+  },
+  "final_sequence_outputs": "/database/home/gaohaojie/workspace/repd/Matcha/psg4ci/h100_final_results",
+  "followup_residual": {
+    "file": "followup_residual.json",
+    "hidden_cohort_statistics": false,
+    "record_wise": true,
+    "residual_blend_weight": 0.375
+  },
+  "loso_outputs": "/database/home/gaohaojie/workspace/repd/Matcha/psg4ci/h100_loso_results",
+  "model": "officially retrained E1 + three-member weak domain-adversarial Raw ensemble + 0.375 record-wise date, CAISR, and follow-up residual",
+  "pair_scope": "same_site",
+  "pairwise_weight": 0.15,
+  "preprocessing": {
+    "cache_policy": "formal prepared HDF5 remains under database2; final runtime stores only frozen encoder and sequence models",
+    "failed_records": 0,
+    "formal_prepared_cache": "/database2/physionet2026_kaggle/matcha_cache/v18_large6600/prepared",
+    "frozen_embedding_export": {
+      "checkpoint_sha256": "74261ac7451ef3f8710820e157733c72e97f4b112675ed520a1a9d161f1e47e8",
+      "dimension": 192,
+      "dtype": "float16",
+      "embedding_windows": 5895221,
+      "path": "/database/home/gaohaojie/workspace/repd/Matcha/psg4ci/artifacts/v18_large6600/frozen/e1_seed20260804_epoch15",
+      "records": 6600,
+      "shards": 66
+    },
+    "positives": 498,
+    "records": 6600,
+    "sites": {
+      "I0002": 319,
+      "I0006": 1142,
+      "S0001": 5139
+    },
+    "source_data_root": "/database2/physionet2026_kaggle/data2",
+    "usable_records": 6600
+  },
+  "protocol": "v18_official_full_training_reproduction_v1",
+  "residual_fit": {
+    "caisr": {
+      "features": 90,
+      "l2": 0.1,
+      "pair_counts": {
+        "I0002": 1886,
+        "I0006": 14493,
+        "S0001": 182330
+      }
+    },
+    "date": {
+      "age_gap_years": 2.0,
+      "creation_day_mean": 15867.10959758172,
+      "creation_day_std": 1057.5529791044469,
+      "date_coefficient": 1.0676897799525664,
+      "source": "official_training_labels",
+      "training_pair_counts": {
+        "I0002": 1886,
+        "I0006": 14493,
+        "S0001": 182330
+      },
+      "version": "creation_time_site_macro_pairwise_v1"
+    },
+    "followup": {
+      "cutoff_aggregation": "equal_mean_of_site_specific_risks",
+      "cutoff_quantile": 0.99,
+      "days_per_year": 365.25,
+      "follow_up_horizon_days": 2192.0,
+      "record_wise_inference": true,
+      "risk_coefficient": 5.274442325259245,
+      "source": "official_training_labels_and_last_visit_dates",
+      "training_pair_counts": {
+        "I0002": 1886,
+        "I0006": 14493,
+        "S0001": 182330
+      },
+      "training_site_cutoffs": {
+        "I0002": 20223.82,
+        "I0006": 19599.0,
+        "S0001": 19991.0
+      },
+      "version": "recordwise_training_cutoff_marginalized_6y_v1"
+    }
+  },
+  "sequence_files": [
+    "raw_sequence_seed_20260806.pt",
+    "raw_sequence_seed_20260807.pt",
+    "raw_sequence_seed_20260808.pt"
+  ],
+  "source_commit": "7f2eae2fe4f170c87a21943b24ea4e217eabf67f",
+  "source_tag": "v18-final",
+  "stage_elapsed_sec": {
+    "e1_training": 77692.28237342834,
+    "embedding_export": null,
+    "residual_fitting": null,
+    "sequence_seed_20260806": 59.0,
+    "sequence_seed_20260807": 118.0,
+    "sequence_seed_20260808": 30.0
+  },
+  "status": "complete",
+  "training_positives": 498,
+  "training_records": 6600,
+  "training_sites": {
+    "I0002": 319,
+    "I0006": 1142,
+    "S0001": 5139
+  }
+}

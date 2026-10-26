@@ -1,0 +1,79 @@
+[
+  {
+    "loss": 1.213820882335953,
+    "bce": 1.1519603613926017,
+    "pairwise": 0.41240346677925277,
+    "valid_pair_count": 208,
+    "batch_pair_coverage": 0.6434782608695652,
+    "valid_pairs_site_I0002": 42,
+    "valid_pairs_site_I0006": 166,
+    "valid_pairs_cross_site": 163,
+    "elapsed_sec": 6.413918495178223
+  },
+  {
+    "loss": 1.1665859945442365,
+    "bce": 1.1091558966947639,
+    "pairwise": 0.38286732827191766,
+    "valid_pair_count": 201,
+    "batch_pair_coverage": 0.6608695652173913,
+    "valid_pairs_site_I0002": 53,
+    "valid_pairs_site_I0006": 148,
+    "valid_pairs_cross_site": 147,
+    "elapsed_sec": 6.145796775817871
+  },
+  {
+    "loss": 1.1173765198044154,
+    "bce": 1.0698528077291405,
+    "pairwise": 0.31682469823762127,
+    "valid_pair_count": 188,
+    "batch_pair_coverage": 0.591304347826087,
+    "valid_pairs_site_I0002": 29,
+    "valid_pairs_site_I0006": 159,
+    "valid_pairs_cross_site": 147,
+    "elapsed_sec": 6.158050298690796
+  },
+  {
+    "loss": 1.0698679321486018,
+    "bce": 1.0287573055080745,
+    "pairwise": 0.27407086876261494,
+    "valid_pair_count": 179,
+    "batch_pair_coverage": 0.6086956521739131,
+    "valid_pairs_site_I0002": 37,
+    "valid_pairs_site_I0006": 142,
+    "valid_pairs_cross_site": 174,
+    "elapsed_sec": 5.9655375480651855
+  },
+  {
+    "loss": 1.0790398411128832,
+    "bce": 1.0283959987370863,
+    "pairwise": 0.3376255985511386,
+    "valid_pair_count": 223,
+    "batch_pair_coverage": 0.7391304347826086,
+    "valid_pairs_site_I0002": 55,
+    "valid_pairs_site_I0006": 168,
+    "valid_pairs_cross_site": 161,
+    "elapsed_sec": 6.2904815673828125
+  },
+  {
+    "loss": 1.0523192697245143,
+    "bce": 1.0099764470172965,
+    "pairwise": 0.2822854863317764,
+    "valid_pair_count": 257,
+    "batch_pair_coverage": 0.7043478260869566,
+    "valid_pairs_site_I0002": 58,
+    "valid_pairs_site_I0006": 199,
+    "valid_pairs_cross_site": 152,
+    "elapsed_sec": 6.2906622886657715
+  },
+  {
+    "loss": 0.967720295553622,
+    "bce": 0.934832749289015,
+    "pairwise": 0.21925031243337562,
+    "valid_pair_count": 211,
+    "batch_pair_coverage": 0.6347826086956522,
+    "valid_pairs_site_I0002": 44,
+    "valid_pairs_site_I0006": 167,
+    "valid_pairs_cross_site": 160,
+    "elapsed_sec": 6.273099899291992
+  }
+]

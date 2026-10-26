@@ -207,3 +207,24 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Matcha Large6600 reproduction: never commit raw/preprocessed caches or
+# generated 30-second frozen representations.
+artifacts/v18_large6600/frozen/
+h100_export_results/frozen/
+h100_e1_results/candidate_index.pkl.gz
+h100_export_results/candidate_index.pkl.gz
+h100_e1_results/training_manifest.parquet
+h100_e1_results/eval_embeddings.npz
+h100_e1_results/**/eval_embeddings.npz
+h100_export_results/training_manifest.parquet
+
+# The export directory is representation output; retain its small audit log
+# and summary explicitly below if needed, but exclude all generated payloads.
+h100_export_results/**
+!h100_export_results/
+!h100_export_results/formal_export.log
+!h100_export_results/frozen/
+!h100_export_results/frozen/e1_seed20260804_epoch15/
+!h100_export_results/frozen/e1_seed20260804_epoch15/_SUCCESS
+!h100_export_results/frozen/e1_seed20260804_epoch15/export_summary.json

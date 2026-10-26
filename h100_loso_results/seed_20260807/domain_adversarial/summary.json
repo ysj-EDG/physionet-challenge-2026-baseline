@@ -1,0 +1,130 @@
+{
+  "baseline": {
+    "macro_site_age_conditioned_auroc": 0.6742673225337655,
+    "sites": {
+      "I0002": {
+        "age_conditioned_auroc": 0.7009544008483564,
+        "age_pair_count": 1886,
+        "auroc": 0.7363872082973207,
+        "held_out_site": "I0002",
+        "model": "raw_sequence",
+        "positives": 52,
+        "records": 319,
+        "selected_epoch": 8
+      },
+      "I0006": {
+        "age_conditioned_auroc": 0.6881943006968881,
+        "age_pair_count": 14493,
+        "auroc": 0.7459518030513176,
+        "held_out_site": "I0006",
+        "model": "raw_sequence",
+        "positives": 112,
+        "records": 1142,
+        "selected_epoch": 1
+      },
+      "S0001": {
+        "age_conditioned_auroc": 0.6336532660560522,
+        "age_pair_count": 182330,
+        "auroc": 0.6893966489497592,
+        "held_out_site": "S0001",
+        "model": "raw_sequence",
+        "positives": 334,
+        "records": 5139,
+        "selected_epoch": 1
+      }
+    },
+    "worst_site_age_conditioned_auroc": 0.6336532660560522
+  },
+  "candidate": {
+    "macro_site_age_conditioned_auroc": 0.6724843466085441,
+    "sites": {
+      "I0002": {
+        "age_conditioned_auroc": 0.693001060445387,
+        "age_pair_count": 1886,
+        "auroc": 0.7389801210025928,
+        "positives": 52,
+        "records": 319
+      },
+      "I0006": {
+        "age_conditioned_auroc": 0.6947146898502725,
+        "age_pair_count": 14493,
+        "auroc": 0.7481492718446602,
+        "positives": 112,
+        "records": 1142
+      },
+      "S0001": {
+        "age_conditioned_auroc": 0.6297372895299731,
+        "age_pair_count": 182330,
+        "auroc": 0.684232679282434,
+        "positives": 334,
+        "records": 5139
+      }
+    },
+    "worst_site_age_conditioned_auroc": 0.6297372895299731
+  },
+  "fold_audits": {
+    "I0002": {
+      "epoch_source": "candidate_inner_selection",
+      "held_out_records": 319,
+      "inner_training_records": 5339,
+      "inner_validation_records": 942,
+      "outer_training_records": 6281,
+      "selected_epoch": 4,
+      "training_sites": [
+        "I0006",
+        "S0001"
+      ]
+    },
+    "I0006": {
+      "epoch_source": "candidate_inner_selection",
+      "held_out_records": 1142,
+      "inner_training_records": 4639,
+      "inner_validation_records": 819,
+      "outer_training_records": 5458,
+      "selected_epoch": 1,
+      "training_sites": [
+        "I0002",
+        "S0001"
+      ]
+    },
+    "S0001": {
+      "epoch_source": "candidate_inner_selection",
+      "held_out_records": 5139,
+      "inner_training_records": 1242,
+      "inner_validation_records": 219,
+      "outer_training_records": 1461,
+      "selected_epoch": 1,
+      "training_sites": [
+        "I0002",
+        "I0006"
+      ]
+    }
+  },
+  "gate": {
+    "criteria": {
+      "at_least_two_sites_improve": false,
+      "macro_gain_at_least_0.010": false,
+      "no_site_drop_beyond_0.010": true,
+      "worst_site_not_lower": false
+    },
+    "passed": false
+  },
+  "macro_change": -0.001782975925221475,
+  "protocol": {
+    "backbone_site_gradient_scale": -0.05,
+    "candidate": "v3 plus training-only class-balanced site adversary",
+    "epoch_protocol": "candidate inner-validation selection",
+    "held_out_used_for_training_or_selection": false,
+    "inference_requires_site": false,
+    "main_loss": "weighted BCE + 0.15 same-site age pairwise",
+    "reversal_strength": 0.05,
+    "selection_metric": "age_conditioned_auroc",
+    "site_head_gradient_scale": 1.0
+  },
+  "site_changes": {
+    "I0002": -0.007953340402969356,
+    "I0006": 0.006520389153384376,
+    "S0001": -0.003915976526079112
+  },
+  "worst_change": -0.003915976526079112
+}

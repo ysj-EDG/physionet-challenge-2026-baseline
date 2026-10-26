@@ -1,0 +1,48 @@
+{
+  "held_out_site": "I0006",
+  "outer_train_records": 5458,
+  "outer_train_sites": [
+    "I0002",
+    "S0001"
+  ],
+  "residual_fit": {
+    "caisr": {
+      "features": 90,
+      "l2": 0.1,
+      "pair_counts": {
+        "I0002": 1886,
+        "S0001": 182330
+      }
+    },
+    "date": {
+      "age_gap_years": 2.0,
+      "creation_day_mean": 15757.778736540738,
+      "creation_day_std": 1101.6693346066056,
+      "date_coefficient": 0.9959219993782699,
+      "source": "official_training_labels",
+      "training_pair_counts": {
+        "I0002": 1886,
+        "S0001": 182330
+      },
+      "version": "creation_time_site_macro_pairwise_v1"
+    },
+    "followup": {
+      "cutoff_aggregation": "equal_mean_of_site_specific_risks",
+      "cutoff_quantile": 0.99,
+      "days_per_year": 365.25,
+      "follow_up_horizon_days": 2192.0,
+      "record_wise_inference": true,
+      "risk_coefficient": 10.0,
+      "source": "official_training_labels_and_last_visit_dates",
+      "training_pair_counts": {
+        "I0002": 1886,
+        "S0001": 182330
+      },
+      "training_site_cutoffs": {
+        "I0002": 20223.82,
+        "S0001": 19991.0
+      },
+      "version": "recordwise_training_cutoff_marginalized_6y_v1"
+    }
+  }
+}

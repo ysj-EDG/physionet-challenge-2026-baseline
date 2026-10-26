@@ -1,0 +1,10 @@
+{
+  "age_conditioned_auroc": 0.7009544008483564,
+  "age_pair_count": 1886,
+  "auroc": 0.7363872082973207,
+  "held_out_site": "I0002",
+  "model": "raw_sequence",
+  "positives": 52,
+  "records": 319,
+  "selected_epoch": 8
+}

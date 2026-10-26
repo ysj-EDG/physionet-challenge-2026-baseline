@@ -1,0 +1,39 @@
+=== git ===
+9d9485a67cb8e7ffa02262e4c0462743260d665e
+?? artifacts/
+?? docs/superpowers/plans/2026-10-25-h100-checkpoint-backup.md
+?? docs/superpowers/specs/2026-10-25-h100-checkpoint-backup-design.md
+?? h100_e1_results/
+?? h100_export_results/
+?? h100_final_results/
+?? h100_loso_results/
+?? medex-run-h100-e1.yaml
+?? medex-run-h100-export.yaml
+?? medex-run-h100-final.yaml
+?? medex-run-h100-loso.yaml
+?? run_h100_e1.py
+?? run_h100_export.py
+?? run_h100_final.py
+?? run_h100_loso.py
+=== python ===
+Python 3.10.20
+=== packages ===
+torch 2.5.1+cu121
+numpy 2.2.6
+pandas 2.2.3
+scipy 1.15.3
+sklearn 1.7.2
+h5py 3.11.0
+pyedflib 0.1.42
+pyarrow 23.0.1
+=== gpu ===
+0, Quadro P6000, 24576 MiB, 550.135
+1, Quadro P6000, 24576 MiB, 550.135
+=== sizes ===
+2.3G	artifacts/v18_large6600/frozen/e1_seed20260804_epoch15
+35M	artifacts/v18_large6600/final_model/raw_sequence_v18_full_training
+273M	h100_e1_results
+385M	h100_loso_results
+256M	h100_final_results
+=== tmux ===
+no server running on /tmp/tmux-1014/default

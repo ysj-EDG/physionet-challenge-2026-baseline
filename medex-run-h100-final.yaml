@@ -1,0 +1,36 @@
+version: 1
+
+workspace: .
+
+exclude:
+  - .git/
+  - __pycache__/
+  - artifacts/
+  - h100_e1_results/
+  - h100_export_results/
+  - h100_loso_results/
+  - h100_final_results/
+  - frozen_input/
+  - final_input/
+  - medex-run-h100-e1.yaml
+  - medex-run-h100-export.yaml
+  - medex-run-h100-loso.yaml
+  - medex-run-h100-final.yaml
+
+include:
+  - src: /database/home/gaohaojie/workspace/repd/Matcha/psg4ci/artifacts/v18_large6600/frozen/e1_seed20260804_epoch15
+    dst: frozen_input/
+  - src: /database/home/gaohaojie/workspace/repd/Matcha/psg4ci/h100_e1_results/training_manifest.parquet
+    dst: final_input/
+
+env: eeg_env
+device: auto
+
+run:
+  script: run_h100_final.py
+  wait: true
+
+rsync_back:
+  - h100_final_results
+
+notify: []

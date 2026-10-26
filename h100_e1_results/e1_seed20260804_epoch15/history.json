@@ -1,0 +1,422 @@
+[
+  {
+    "epoch": 1,
+    "train_windows": 844544,
+    "train": {
+      "loss": 1.9230651060980581,
+      "human_stage": 0.9044972336587106,
+      "caisr_stage": 1.4605557512978635,
+      "human_events": 0.09759776547772624,
+      "caisr_events": 0.18313060148988086,
+      "latent_global": 0.15113375438690618,
+      "latent_modality": 0.24634633029413175,
+      "variance": 0.09456392235078988,
+      "latent_tokens": 0.0,
+      "covariance": 22.34567142534128
+    },
+    "eval": {
+      "human_stage_macro_recall": 0.6672143924910083,
+      "caisr_stage_macro_recall": 0.7060161404776121,
+      "human_stage_balanced_accuracy": 0.6672143924910083,
+      "human_arousal_auroc": 0.8256318357899421,
+      "caisr_arousal_auroc": 0.8833568272689613,
+      "human_respiratory_auroc": 0.9053275299032604,
+      "caisr_respiratory_auroc": 0.81517563068786,
+      "human_limb_auroc": 0.7270283593342226,
+      "caisr_limb_auroc": 0.7389997996096284
+    },
+    "elapsed_sec": 5221.4171667099
+  },
+  {
+    "epoch": 2,
+    "train_windows": 844544,
+    "train": {
+      "loss": 1.8540254301055883,
+      "human_stage": 0.8621528628503858,
+      "caisr_stage": 1.4429953147756869,
+      "human_events": 0.0934525574784209,
+      "caisr_events": 0.17726999924910358,
+      "latent_global": 0.11814475750816558,
+      "latent_modality": 0.25031579510348606,
+      "variance": 0.08892218483287362,
+      "latent_tokens": 0.0,
+      "covariance": 21.894047560199713
+    },
+    "eval": {
+      "human_stage_macro_recall": 0.7267198780144253,
+      "caisr_stage_macro_recall": 0.7569491586433639,
+      "human_stage_balanced_accuracy": 0.7267198780144253,
+      "human_arousal_auroc": 0.8393389765873589,
+      "caisr_arousal_auroc": 0.892326211265467,
+      "human_respiratory_auroc": 0.9075562738954343,
+      "caisr_respiratory_auroc": 0.8259317112757335,
+      "human_limb_auroc": 0.687694845573405,
+      "caisr_limb_auroc": 0.7475849532074457
+    },
+    "elapsed_sec": 10447.621205806732
+  },
+  {
+    "epoch": 3,
+    "train_windows": 844544,
+    "train": {
+      "loss": 1.8373830490281213,
+      "human_stage": 0.8521431849165062,
+      "caisr_stage": 1.441390005374233,
+      "human_events": 0.09307440440425423,
+      "caisr_events": 0.17366455329002525,
+      "latent_global": 0.1079532309291615,
+      "latent_modality": 0.2511228503825645,
+      "variance": 0.08721838612860176,
+      "latent_tokens": 0.0,
+      "covariance": 23.276513194631534
+    },
+    "eval": {
+      "human_stage_macro_recall": 0.7139577007220126,
+      "caisr_stage_macro_recall": 0.7166514725175626,
+      "human_stage_balanced_accuracy": 0.7139577007220126,
+      "human_arousal_auroc": 0.8432714324378624,
+      "caisr_arousal_auroc": 0.8917402492356659,
+      "human_respiratory_auroc": 0.9155118880524009,
+      "caisr_respiratory_auroc": 0.8461528093745367,
+      "human_limb_auroc": 0.7541011811556381,
+      "caisr_limb_auroc": 0.7791743293389268
+    },
+    "elapsed_sec": 15549.817930459976
+  },
+  {
+    "epoch": 4,
+    "train_windows": 844544,
+    "train": {
+      "loss": 1.8237534193148446,
+      "human_stage": 0.846521081422518,
+      "caisr_stage": 1.4356024345045977,
+      "human_events": 0.09291514311612326,
+      "caisr_events": 0.17119388623858384,
+      "latent_global": 0.09991964578592405,
+      "latent_modality": 0.2504077706722134,
+      "variance": 0.08605765850595258,
+      "latent_tokens": 0.0,
+      "covariance": 25.268658303423926
+    },
+    "eval": {
+      "human_stage_macro_recall": 0.7545733466247424,
+      "caisr_stage_macro_recall": 0.7831230662113109,
+      "human_stage_balanced_accuracy": 0.7545733466247424,
+      "human_arousal_auroc": 0.8508818829738776,
+      "caisr_arousal_auroc": 0.896814681585316,
+      "human_respiratory_auroc": 0.9193171990415834,
+      "caisr_respiratory_auroc": 0.8463368922692986,
+      "human_limb_auroc": 0.724324202413862,
+      "caisr_limb_auroc": 0.8212245191799763
+    },
+    "elapsed_sec": 20521.39166855812
+  },
+  {
+    "epoch": 5,
+    "train_windows": 844544,
+    "train": {
+      "loss": 1.8083723789641635,
+      "human_stage": 0.8368020856450361,
+      "caisr_stage": 1.4347387400963074,
+      "human_events": 0.09160424556279283,
+      "caisr_events": 0.16890106105151112,
+      "latent_global": 0.09678444169206524,
+      "latent_modality": 0.2457772233168007,
+      "variance": 0.08106251884540207,
+      "latent_tokens": 0.0,
+      "covariance": 27.353287992014835
+    },
+    "eval": {
+      "human_stage_macro_recall": 0.7365764469696738,
+      "caisr_stage_macro_recall": 0.7629759947260941,
+      "human_stage_balanced_accuracy": 0.7365764469696738,
+      "human_arousal_auroc": 0.8571902782828257,
+      "caisr_arousal_auroc": 0.8948607328233399,
+      "human_respiratory_auroc": 0.9136848472818869,
+      "caisr_respiratory_auroc": 0.8390835296529523,
+      "human_limb_auroc": 0.7959909657381096,
+      "caisr_limb_auroc": 0.8036047360690515
+    },
+    "elapsed_sec": 25748.817651987076
+  },
+  {
+    "epoch": 6,
+    "train_windows": 844544,
+    "train": {
+      "loss": 1.810010480145673,
+      "human_stage": 0.8394491496985983,
+      "caisr_stage": 1.4321460555521837,
+      "human_events": 0.09249176447191955,
+      "caisr_events": 0.1700300206241289,
+      "latent_global": 0.0984711930512587,
+      "latent_modality": 0.24322772848217433,
+      "variance": 0.08269260757797965,
+      "latent_tokens": 0.0,
+      "covariance": 27.953420266902764
+    },
+    "eval": {
+      "human_stage_macro_recall": 0.568803217750282,
+      "caisr_stage_macro_recall": 0.6012362239487102,
+      "human_stage_balanced_accuracy": 0.568803217750282,
+      "human_arousal_auroc": 0.8526827595711438,
+      "caisr_arousal_auroc": 0.8960842060768066,
+      "human_respiratory_auroc": 0.8980193668212042,
+      "caisr_respiratory_auroc": 0.8562670826443526,
+      "human_limb_auroc": 0.6742620193701792,
+      "caisr_limb_auroc": 0.8055954726111862
+    },
+    "elapsed_sec": 30958.357221841812
+  },
+  {
+    "epoch": 7,
+    "train_windows": 844544,
+    "train": {
+      "loss": 1.8038703136218903,
+      "human_stage": 0.8322668319437331,
+      "caisr_stage": 1.4377091523766896,
+      "human_events": 0.09242668308707559,
+      "caisr_events": 0.17066059020991123,
+      "latent_global": 0.09749674131271152,
+      "latent_modality": 0.24075681688255543,
+      "variance": 0.07972607768500883,
+      "latent_tokens": 0.0,
+      "covariance": 29.607001860961432
+    },
+    "eval": {
+      "human_stage_macro_recall": 0.719782221645594,
+      "caisr_stage_macro_recall": 0.7379039576972998,
+      "human_stage_balanced_accuracy": 0.719782221645594,
+      "human_arousal_auroc": 0.847011001467268,
+      "caisr_arousal_auroc": 0.9024326064584578,
+      "human_respiratory_auroc": 0.9153209608741062,
+      "caisr_respiratory_auroc": 0.8577674114398119,
+      "human_limb_auroc": 0.737764761223556,
+      "caisr_limb_auroc": 0.824678759898365
+    },
+    "elapsed_sec": 36188.41162967682
+  },
+  {
+    "epoch": 8,
+    "train_windows": 844544,
+    "train": {
+      "loss": 1.8008076694166437,
+      "human_stage": 0.8317379907128424,
+      "caisr_stage": 1.4368575727711053,
+      "human_events": 0.09203989698314582,
+      "caisr_events": 0.17035008638170338,
+      "latent_global": 0.09559742038124942,
+      "latent_modality": 0.2392365382102079,
+      "variance": 0.07640862637713079,
+      "latent_tokens": 0.0,
+      "covariance": 31.5163774637774
+    },
+    "eval": {
+      "human_stage_macro_recall": 0.7425419051231171,
+      "caisr_stage_macro_recall": 0.7633555226782633,
+      "human_stage_balanced_accuracy": 0.7425419051231171,
+      "human_arousal_auroc": 0.8525426606426203,
+      "caisr_arousal_auroc": 0.895464502756476,
+      "human_respiratory_auroc": 0.9262340559265403,
+      "caisr_respiratory_auroc": 0.8573524268793659,
+      "human_limb_auroc": 0.7036278812013893,
+      "caisr_limb_auroc": 0.8194317577289757
+    },
+    "elapsed_sec": 41399.424854278564
+  },
+  {
+    "epoch": 9,
+    "train_windows": 844544,
+    "train": {
+      "loss": 1.7954115703034041,
+      "human_stage": 0.8297897908022437,
+      "caisr_stage": 1.4338542466402215,
+      "human_events": 0.09232397301409712,
+      "caisr_events": 0.1693843660470995,
+      "latent_global": 0.09391620713188707,
+      "latent_modality": 0.2372633210948247,
+      "variance": 0.07658420464381292,
+      "latent_tokens": 0.0,
+      "covariance": 32.742472872918064
+    },
+    "eval": {
+      "human_stage_macro_recall": 0.7645260693972692,
+      "caisr_stage_macro_recall": 0.7770619207106964,
+      "human_stage_balanced_accuracy": 0.7645260693972692,
+      "human_arousal_auroc": 0.853509654580384,
+      "caisr_arousal_auroc": 0.9005633623945818,
+      "human_respiratory_auroc": 0.9117954243640094,
+      "caisr_respiratory_auroc": 0.856221327936406,
+      "human_limb_auroc": 0.7005013306526964,
+      "caisr_limb_auroc": 0.836171054218529
+    },
+    "elapsed_sec": 46630.58793926239
+  },
+  {
+    "epoch": 10,
+    "train_windows": 844544,
+    "train": {
+      "loss": 1.794584588146147,
+      "human_stage": 0.8311593697693456,
+      "caisr_stage": 1.433366188195103,
+      "human_events": 0.09177393148482398,
+      "caisr_events": 0.16991446313015302,
+      "latent_global": 0.09059026540364595,
+      "latent_modality": 0.2369789896653155,
+      "variance": 0.07538615370931293,
+      "latent_tokens": 0.0,
+      "covariance": 34.240567455452336
+    },
+    "eval": {
+      "human_stage_macro_recall": 0.7309273785027773,
+      "caisr_stage_macro_recall": 0.7563313063419235,
+      "human_stage_balanced_accuracy": 0.7309273785027773,
+      "human_arousal_auroc": 0.8498679126546484,
+      "caisr_arousal_auroc": 0.8961989030331545,
+      "human_respiratory_auroc": 0.9272368962046134,
+      "caisr_respiratory_auroc": 0.8662348699112075,
+      "human_limb_auroc": 0.6969443316772667,
+      "caisr_limb_auroc": 0.8359324089197713
+    },
+    "elapsed_sec": 51743.91162896156
+  },
+  {
+    "epoch": 11,
+    "train_windows": 844544,
+    "train": {
+      "loss": 1.7897075067339767,
+      "human_stage": 0.8284409126787972,
+      "caisr_stage": 1.4320112781683292,
+      "human_events": 0.09119257336330597,
+      "caisr_events": 0.16801834913269834,
+      "latent_global": 0.09109654155607547,
+      "latent_modality": 0.2350593702948084,
+      "variance": 0.07402762991924809,
+      "latent_tokens": 0.0,
+      "covariance": 35.55010845669655
+    },
+    "eval": {
+      "human_stage_macro_recall": 0.750151318012819,
+      "caisr_stage_macro_recall": 0.7674703125709135,
+      "human_stage_balanced_accuracy": 0.750151318012819,
+      "human_arousal_auroc": 0.8533903110486789,
+      "caisr_arousal_auroc": 0.8942524523357408,
+      "human_respiratory_auroc": 0.9412001001895094,
+      "caisr_respiratory_auroc": 0.8578961630598478,
+      "human_limb_auroc": 0.7808972401038747,
+      "caisr_limb_auroc": 0.8291431332639603
+    },
+    "elapsed_sec": 56762.81915831566
+  },
+  {
+    "epoch": 12,
+    "train_windows": 844544,
+    "train": {
+      "loss": 1.7888179037160437,
+      "human_stage": 0.8285903704295369,
+      "caisr_stage": 1.4332730802621272,
+      "human_events": 0.09177099643504691,
+      "caisr_events": 0.16964605909770242,
+      "latent_global": 0.08948906568658464,
+      "latent_modality": 0.2321780415368443,
+      "variance": 0.07275049960389796,
+      "latent_tokens": 0.0,
+      "covariance": 37.13286593023022
+    },
+    "eval": {
+      "human_stage_macro_recall": 0.7532402260257894,
+      "caisr_stage_macro_recall": 0.775495254948958,
+      "human_stage_balanced_accuracy": 0.7532402260257894,
+      "human_arousal_auroc": 0.8539462097601284,
+      "caisr_arousal_auroc": 0.8986328450843626,
+      "human_respiratory_auroc": 0.9133029929252974,
+      "caisr_respiratory_auroc": 0.8661344933038517,
+      "human_limb_auroc": 0.744997970190802,
+      "caisr_limb_auroc": 0.8202278653563692
+    },
+    "elapsed_sec": 61998.06773471832
+  },
+  {
+    "epoch": 13,
+    "train_windows": 844544,
+    "train": {
+      "loss": 1.7848255168983929,
+      "human_stage": 0.8240977744511169,
+      "caisr_stage": 1.4388591638453154,
+      "human_events": 0.09183914089474944,
+      "caisr_events": 0.1682483337653643,
+      "latent_global": 0.08876280898070761,
+      "latent_modality": 0.22913821494471023,
+      "variance": 0.07099815967610569,
+      "latent_tokens": 0.0,
+      "covariance": 38.73392370960645
+    },
+    "eval": {
+      "human_stage_macro_recall": 0.7468862986543064,
+      "caisr_stage_macro_recall": 0.7630484171053327,
+      "human_stage_balanced_accuracy": 0.7468862986543064,
+      "human_arousal_auroc": 0.8602115722130068,
+      "caisr_arousal_auroc": 0.9037240895006476,
+      "human_respiratory_auroc": 0.924758623622985,
+      "caisr_respiratory_auroc": 0.8695682245258004,
+      "human_limb_auroc": 0.732272677479428,
+      "caisr_limb_auroc": 0.8303489815463219
+    },
+    "elapsed_sec": 67208.94725966454
+  },
+  {
+    "epoch": 14,
+    "train_windows": 844544,
+    "train": {
+      "loss": 1.7845826048732016,
+      "human_stage": 0.8283536387975863,
+      "caisr_stage": 1.4313972433247,
+      "human_events": 0.09189404279098007,
+      "caisr_events": 0.1695757383762461,
+      "latent_global": 0.08779954140377463,
+      "latent_modality": 0.2277778150480174,
+      "variance": 0.0718022663411606,
+      "latent_tokens": 0.0,
+      "covariance": 39.23247649287244
+    },
+    "eval": {
+      "human_stage_macro_recall": 0.7446924702174214,
+      "caisr_stage_macro_recall": 0.7580094733313076,
+      "human_stage_balanced_accuracy": 0.7446924702174214,
+      "human_arousal_auroc": 0.8558816505134331,
+      "caisr_arousal_auroc": 0.8865602581958533,
+      "human_respiratory_auroc": 0.9054277194126625,
+      "caisr_respiratory_auroc": 0.8673287266500247,
+      "human_limb_auroc": 0.7581363129643591,
+      "caisr_limb_auroc": 0.8208488261892453
+    },
+    "elapsed_sec": 72427.93930864334
+  },
+  {
+    "epoch": 15,
+    "train_windows": 844544,
+    "train": {
+      "loss": 1.7793983095314236,
+      "human_stage": 0.8230691960838881,
+      "caisr_stage": 1.4334610585630319,
+      "human_events": 0.09101771518052253,
+      "caisr_events": 0.16920642269358943,
+      "latent_global": 0.08764312134913944,
+      "latent_modality": 0.22696345909965845,
+      "variance": 0.0717320226633175,
+      "latent_tokens": 0.0,
+      "covariance": 40.06221809065145
+    },
+    "eval": {
+      "human_stage_macro_recall": 0.7522545524305537,
+      "caisr_stage_macro_recall": 0.7697437393924528,
+      "human_stage_balanced_accuracy": 0.7522545524305537,
+      "human_arousal_auroc": 0.8481311010488948,
+      "caisr_arousal_auroc": 0.8923629400660953,
+      "human_respiratory_auroc": 0.8691071318862565,
+      "caisr_respiratory_auroc": 0.8725199352198459,
+      "human_limb_auroc": 0.771310096850896,
+      "caisr_limb_auroc": 0.8315993177377891
+    },
+    "elapsed_sec": 77670.65242171288
+  }
+]

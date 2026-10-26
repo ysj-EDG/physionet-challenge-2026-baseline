@@ -1,0 +1,13 @@
+[
+  {
+    "loss": 1.2197254441354586,
+    "bce": 1.1645686498154764,
+    "pairwise": 0.3677119335240644,
+    "valid_pair_count": 207,
+    "batch_pair_coverage": 0.6086956521739131,
+    "valid_pairs_site_I0002": 45,
+    "valid_pairs_site_I0006": 162,
+    "valid_pairs_cross_site": 151,
+    "elapsed_sec": 6.498857259750366
+  }
+]

@@ -1,0 +1,11 @@
+{
+  "caisr_arousal_auroc": 0.8923629400660953,
+  "caisr_limb_auroc": 0.8315993177377891,
+  "caisr_respiratory_auroc": 0.8725199352198459,
+  "caisr_stage_macro_recall": 0.7697437393924528,
+  "human_arousal_auroc": 0.8481311010488948,
+  "human_limb_auroc": 0.771310096850896,
+  "human_respiratory_auroc": 0.8691071318862565,
+  "human_stage_balanced_accuracy": 0.7522545524305537,
+  "human_stage_macro_recall": 0.7522545524305537
+}

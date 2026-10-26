@@ -1,0 +1,23 @@
+[
+  {
+    "batch_pair_coverage": 0.4634146341463415,
+    "batches": 492,
+    "bce": 1.3537949511433036,
+    "elapsed_seconds": 27.74581265449524,
+    "epoch": 1,
+    "last_base_gradient_norm": 6.080137729644775,
+    "last_site_gradient_norm": 1.0945478677749634,
+    "loss": 2.0515524398505205,
+    "main_loss": 1.3966384405891101,
+    "pair_counts": {
+      "cross_site": 363,
+      "site_I0006": 77,
+      "site_S0001": 502
+    },
+    "pairwise": 0.28562327911623003,
+    "records": 7872,
+    "site_accuracy": 0.631859756097561,
+    "site_loss": 0.6549139959298498,
+    "valid_pairs": 579
+  }
+]

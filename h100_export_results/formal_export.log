@@ -1,0 +1,137 @@
+COMMAND /mnt/data5t-in-container/env/eeg_env/bin/python3 /mnt/data5t-in-container/workspace/.medex_run_b9569b66735c41b19d06201c3abae5df/psg4ci/export_full_embeddings.py --manifest /mnt/data5t-in-container/workspace/.medex_run_b9569b66735c41b19d06201c3abae5df/psg4ci/h100_export_results/training_manifest.parquet --annotation-cache-dir /mnt/data5t-in-container/workspace/.medex_run_b9569b66735c41b19d06201c3abae5df/psg4ci/prepared/annotations --candidate-index /mnt/data5t-in-container/workspace/.medex_run_b9569b66735c41b19d06201c3abae5df/psg4ci/h100_export_results/candidate_index.pkl.gz --checkpoint /mnt/data5t-in-container/workspace/.medex_run_b9569b66735c41b19d06201c3abae5df/psg4ci/export_input/checkpoint_epoch_15.pt --state teacher --output-dir /mnt/data5t-in-container/workspace/.medex_run_b9569b66735c41b19d06201c3abae5df/psg4ci/h100_export_results/frozen/e1_seed20260804_epoch15 --records-per-shard 100 --batch-size 64 --device cuda
+Indexed 1/6600 records
+Indexed 100/6600 records
+Indexed 200/6600 records
+Indexed 300/6600 records
+Indexed 400/6600 records
+Indexed 500/6600 records
+Indexed 600/6600 records
+Indexed 700/6600 records
+Indexed 800/6600 records
+Indexed 900/6600 records
+Indexed 1000/6600 records
+Indexed 1100/6600 records
+Indexed 1200/6600 records
+Indexed 1300/6600 records
+Indexed 1400/6600 records
+Indexed 1500/6600 records
+Indexed 1600/6600 records
+Indexed 1700/6600 records
+Indexed 1800/6600 records
+Indexed 1900/6600 records
+Indexed 2000/6600 records
+Indexed 2100/6600 records
+Indexed 2200/6600 records
+Indexed 2300/6600 records
+Indexed 2400/6600 records
+Indexed 2500/6600 records
+Indexed 2600/6600 records
+Indexed 2700/6600 records
+Indexed 2800/6600 records
+Indexed 2900/6600 records
+Indexed 3000/6600 records
+Indexed 3100/6600 records
+Indexed 3200/6600 records
+Indexed 3300/6600 records
+Indexed 3400/6600 records
+Indexed 3500/6600 records
+Indexed 3600/6600 records
+Indexed 3700/6600 records
+Indexed 3800/6600 records
+Indexed 3900/6600 records
+Indexed 4000/6600 records
+Indexed 4100/6600 records
+Indexed 4200/6600 records
+Indexed 4300/6600 records
+Indexed 4400/6600 records
+Indexed 4500/6600 records
+Indexed 4600/6600 records
+Indexed 4700/6600 records
+Indexed 4800/6600 records
+Indexed 4900/6600 records
+Indexed 5000/6600 records
+Indexed 5100/6600 records
+Indexed 5200/6600 records
+Indexed 5300/6600 records
+Indexed 5400/6600 records
+Indexed 5500/6600 records
+Indexed 5600/6600 records
+Indexed 5700/6600 records
+Indexed 5800/6600 records
+Indexed 5900/6600 records
+Indexed 6000/6600 records
+Indexed 6100/6600 records
+Indexed 6200/6600 records
+Indexed 6300/6600 records
+Indexed 6400/6600 records
+Indexed 6500/6600 records
+Indexed 6600/6600 records
+/mnt/data5t-in-container/env/eeg_env/lib/python3.10/site-packages/torch/nn/modules/transformer.py:379: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  warnings.warn(
+{"elapsed_sec": 76.69257688522339, "records": 100, "shard": 1, "shards": 66}
+{"elapsed_sec": 153.86973547935486, "records": 200, "shard": 2, "shards": 66}
+{"elapsed_sec": 226.1012864112854, "records": 300, "shard": 3, "shards": 66}
+{"elapsed_sec": 289.74380803108215, "records": 400, "shard": 4, "shards": 66}
+{"elapsed_sec": 354.9090189933777, "records": 500, "shard": 5, "shards": 66}
+{"elapsed_sec": 420.0803453922272, "records": 600, "shard": 6, "shards": 66}
+{"elapsed_sec": 485.973552942276, "records": 700, "shard": 7, "shards": 66}
+{"elapsed_sec": 554.1689105033875, "records": 800, "shard": 8, "shards": 66}
+{"elapsed_sec": 622.0638966560364, "records": 900, "shard": 9, "shards": 66}
+{"elapsed_sec": 690.7553312778473, "records": 1000, "shard": 10, "shards": 66}
+{"elapsed_sec": 757.7522745132446, "records": 1100, "shard": 11, "shards": 66}
+{"elapsed_sec": 826.2707712650299, "records": 1200, "shard": 12, "shards": 66}
+{"elapsed_sec": 890.5722501277924, "records": 1300, "shard": 13, "shards": 66}
+{"elapsed_sec": 956.3840584754944, "records": 1400, "shard": 14, "shards": 66}
+{"elapsed_sec": 1033.1121835708618, "records": 1500, "shard": 15, "shards": 66}
+{"elapsed_sec": 1116.1802699565887, "records": 1600, "shard": 16, "shards": 66}
+{"elapsed_sec": 1189.643499135971, "records": 1700, "shard": 17, "shards": 66}
+{"elapsed_sec": 1264.1502401828766, "records": 1800, "shard": 18, "shards": 66}
+{"elapsed_sec": 1336.0739340782166, "records": 1900, "shard": 19, "shards": 66}
+{"elapsed_sec": 1410.840414762497, "records": 2000, "shard": 20, "shards": 66}
+{"elapsed_sec": 1484.6620655059814, "records": 2100, "shard": 21, "shards": 66}
+{"elapsed_sec": 1561.669934272766, "records": 2200, "shard": 22, "shards": 66}
+{"elapsed_sec": 1635.6809389591217, "records": 2300, "shard": 23, "shards": 66}
+{"elapsed_sec": 1710.1224086284637, "records": 2400, "shard": 24, "shards": 66}
+{"elapsed_sec": 1787.7432701587677, "records": 2500, "shard": 25, "shards": 66}
+{"elapsed_sec": 1862.8351802825928, "records": 2600, "shard": 26, "shards": 66}
+{"elapsed_sec": 1938.3174681663513, "records": 2700, "shard": 27, "shards": 66}
+{"elapsed_sec": 2012.490178346634, "records": 2800, "shard": 28, "shards": 66}
+{"elapsed_sec": 2084.759341239929, "records": 2900, "shard": 29, "shards": 66}
+{"elapsed_sec": 2159.164947986603, "records": 3000, "shard": 30, "shards": 66}
+{"elapsed_sec": 2232.0126173496246, "records": 3100, "shard": 31, "shards": 66}
+{"elapsed_sec": 2305.478823184967, "records": 3200, "shard": 32, "shards": 66}
+{"elapsed_sec": 2380.7052352428436, "records": 3300, "shard": 33, "shards": 66}
+{"elapsed_sec": 2457.0032992362976, "records": 3400, "shard": 34, "shards": 66}
+{"elapsed_sec": 2531.24747467041, "records": 3500, "shard": 35, "shards": 66}
+{"elapsed_sec": 2606.1796860694885, "records": 3600, "shard": 36, "shards": 66}
+{"elapsed_sec": 2682.2914757728577, "records": 3700, "shard": 37, "shards": 66}
+{"elapsed_sec": 2756.34814953804, "records": 3800, "shard": 38, "shards": 66}
+{"elapsed_sec": 2829.5858891010284, "records": 3900, "shard": 39, "shards": 66}
+{"elapsed_sec": 2903.9331617355347, "records": 4000, "shard": 40, "shards": 66}
+{"elapsed_sec": 2978.367999792099, "records": 4100, "shard": 41, "shards": 66}
+{"elapsed_sec": 3051.0894689559937, "records": 4200, "shard": 42, "shards": 66}
+{"elapsed_sec": 3127.5533843040466, "records": 4300, "shard": 43, "shards": 66}
+{"elapsed_sec": 3202.9625248908997, "records": 4400, "shard": 44, "shards": 66}
+{"elapsed_sec": 3277.4908854961395, "records": 4500, "shard": 45, "shards": 66}
+{"elapsed_sec": 3350.823577642441, "records": 4600, "shard": 46, "shards": 66}
+{"elapsed_sec": 3424.361108779907, "records": 4700, "shard": 47, "shards": 66}
+{"elapsed_sec": 3498.812832593918, "records": 4800, "shard": 48, "shards": 66}
+{"elapsed_sec": 3570.491089820862, "records": 4900, "shard": 49, "shards": 66}
+{"elapsed_sec": 3644.076155900955, "records": 5000, "shard": 50, "shards": 66}
+{"elapsed_sec": 3716.4388415813446, "records": 5100, "shard": 51, "shards": 66}
+{"elapsed_sec": 3791.62225484848, "records": 5200, "shard": 52, "shards": 66}
+{"elapsed_sec": 3863.7129878997803, "records": 5300, "shard": 53, "shards": 66}
+{"elapsed_sec": 3936.998078107834, "records": 5400, "shard": 54, "shards": 66}
+{"elapsed_sec": 4011.5072679519653, "records": 5500, "shard": 55, "shards": 66}
+{"elapsed_sec": 4086.2283732891083, "records": 5600, "shard": 56, "shards": 66}
+{"elapsed_sec": 4159.428738594055, "records": 5700, "shard": 57, "shards": 66}
+{"elapsed_sec": 4232.328286647797, "records": 5800, "shard": 58, "shards": 66}
+{"elapsed_sec": 4307.801636219025, "records": 5900, "shard": 59, "shards": 66}
+{"elapsed_sec": 4382.321223258972, "records": 6000, "shard": 60, "shards": 66}
+{"elapsed_sec": 4458.934351205826, "records": 6100, "shard": 61, "shards": 66}
+{"elapsed_sec": 4534.6098511219025, "records": 6200, "shard": 62, "shards": 66}
+{"elapsed_sec": 4607.533874750137, "records": 6300, "shard": 63, "shards": 66}
+{"elapsed_sec": 4682.645644903183, "records": 6400, "shard": 64, "shards": 66}
+{"elapsed_sec": 4755.142396688461, "records": 6500, "shard": 65, "shards": 66}
+{"elapsed_sec": 4828.934233665466, "records": 6600, "shard": 66, "shards": 66}
+{"checkpoint_sha256": "74261ac7451ef3f8710820e157733c72e97f4b112675ed520a1a9d161f1e47e8", "embedding_windows": 5895221, "records": 6600, "shards": 66, "site_records": {"I0002": 319, "I0006": 1142, "S0001": 5139}, "site_windows": {"I0002": 290094, "I0006": 949127, "S0001": 4656000}, "status": "complete", "version": "domain_robust_encoder_full_embeddings_v1"}

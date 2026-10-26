@@ -1,0 +1,34 @@
+version: 1
+
+workspace: .
+
+exclude:
+  - .git/
+  - __pycache__/
+  - artifacts/
+  - h100_e1_results/
+  - h100_export_results/
+  - h100_loso_results/
+  - frozen_input/
+  - medex-run-h100-e1.yaml
+  - medex-run-h100-export.yaml
+  - medex-run-h100-loso.yaml
+
+include:
+  - src: /database2/physionet2026_kaggle/matcha_cache/v18_large6600/prepared
+    dst: .
+    keep: true
+  - src: /database/home/gaohaojie/workspace/repd/Matcha/psg4ci/artifacts/v18_large6600/frozen/e1_seed20260804_epoch15
+    dst: frozen_input/
+
+env: eeg_env
+device: auto
+
+run:
+  script: run_h100_loso.py
+  wait: true
+
+rsync_back:
+  - h100_loso_results
+
+notify: []

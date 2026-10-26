@@ -1,0 +1,65 @@
+[
+  {
+    "batch_pair_coverage": 0.5397196261682243,
+    "batches": 428,
+    "bce": 1.4197407507067807,
+    "elapsed_seconds": 24.169483423233032,
+    "epoch": 1,
+    "last_base_gradient_norm": 11.317134857177734,
+    "last_site_gradient_norm": 2.9829463958740234,
+    "loss": 2.1375614709664728,
+    "main_loss": 1.4698874620529256,
+    "pair_counts": {
+      "cross_site": 230,
+      "site_I0002": 110,
+      "site_S0001": 537
+    },
+    "pairwise": 0.33431137620175483,
+    "records": 6848,
+    "site_accuracy": 0.7933703271028038,
+    "site_loss": 0.6676740070857178,
+    "valid_pairs": 647
+  },
+  {
+    "batch_pair_coverage": 0.5280373831775701,
+    "batches": 428,
+    "bce": 1.2963161096324987,
+    "elapsed_seconds": 24.31871509552002,
+    "epoch": 2,
+    "last_base_gradient_norm": 4.151170253753662,
+    "last_site_gradient_norm": 1.697718858718872,
+    "loss": 1.992280477675322,
+    "main_loss": 1.3416441630258737,
+    "pair_counts": {
+      "cross_site": 251,
+      "site_I0002": 80,
+      "site_S0001": 535
+    },
+    "pairwise": 0.3021870032322776,
+    "records": 6848,
+    "site_accuracy": 0.7156834112149533,
+    "site_loss": 0.6506363131523689,
+    "valid_pairs": 615
+  },
+  {
+    "batch_pair_coverage": 0.5537383177570093,
+    "batches": 428,
+    "bce": 1.2981850024939419,
+    "elapsed_seconds": 24.488892316818237,
+    "epoch": 3,
+    "last_base_gradient_norm": 6.849993705749512,
+    "last_site_gradient_norm": 4.397916793823242,
+    "loss": 1.9946885259351999,
+    "main_loss": 1.3463578769223434,
+    "pair_counts": {
+      "cross_site": 244,
+      "site_I0002": 107,
+      "site_S0001": 553
+    },
+    "pairwise": 0.3211524855567438,
+    "records": 6848,
+    "site_accuracy": 0.7070677570093458,
+    "site_loss": 0.6483306493436065,
+    "valid_pairs": 660
+  }
+]

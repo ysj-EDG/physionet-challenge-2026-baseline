@@ -1,0 +1,27 @@
+version: 1
+
+workspace: .
+
+exclude:
+  - .git/
+  - __pycache__/
+  - artifacts/
+  - h100_e1_results/
+  - medex-run-h100-e1.yaml
+
+include:
+  - src: /database2/physionet2026_kaggle/matcha_cache/v18_large6600/prepared
+    dst: .
+    keep: true
+
+env: eeg_env
+device: auto
+
+run:
+  script: run_h100_e1.py
+  wait: true
+
+rsync_back:
+  - h100_e1_results
+
+notify: []

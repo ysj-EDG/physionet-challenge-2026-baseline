@@ -1,0 +1,90 @@
+[
+  {
+    "loss": 1.3806521131437484,
+    "bce": 1.3355893254340665,
+    "pairwise": 0.300418581809788,
+    "valid_pair_count": 575,
+    "batch_pair_coverage": 0.47764227642276424,
+    "valid_pairs_site_I0006": 90,
+    "valid_pairs_site_S0001": 485,
+    "valid_pairs_cross_site": 340,
+    "elapsed_sec": 25.723725080490112
+  },
+  {
+    "loss": 1.3505033770258106,
+    "bce": 1.304600824079499,
+    "pairwise": 0.3060170003720294,
+    "valid_pair_count": 608,
+    "batch_pair_coverage": 0.5101626016260162,
+    "valid_pairs_site_I0006": 95,
+    "valid_pairs_site_S0001": 513,
+    "valid_pairs_cross_site": 331,
+    "elapsed_sec": 25.507832050323486
+  },
+  {
+    "loss": 1.3691760541159448,
+    "bce": 1.328777202836624,
+    "pairwise": 0.26932565081813487,
+    "valid_pair_count": 539,
+    "batch_pair_coverage": 0.49390243902439024,
+    "valid_pairs_site_I0006": 93,
+    "valid_pairs_site_S0001": 446,
+    "valid_pairs_cross_site": 365,
+    "elapsed_sec": 25.292701959609985
+  },
+  {
+    "loss": 1.3058581816683696,
+    "bce": 1.2638455938729571,
+    "pairwise": 0.28008391267839605,
+    "valid_pair_count": 578,
+    "batch_pair_coverage": 0.4613821138211382,
+    "valid_pairs_site_I0006": 104,
+    "valid_pairs_site_S0001": 474,
+    "valid_pairs_cross_site": 370,
+    "elapsed_sec": 25.535889387130737
+  },
+  {
+    "loss": 1.3708049233972541,
+    "bce": 1.3280585769836495,
+    "pairwise": 0.28497562371241686,
+    "valid_pair_count": 560,
+    "batch_pair_coverage": 0.47764227642276424,
+    "valid_pairs_site_I0006": 101,
+    "valid_pairs_site_S0001": 459,
+    "valid_pairs_cross_site": 387,
+    "elapsed_sec": 25.37732481956482
+  },
+  {
+    "loss": 1.3265111647788588,
+    "bce": 1.2862876414404651,
+    "pairwise": 0.26815680268351216,
+    "valid_pair_count": 560,
+    "batch_pair_coverage": 0.4959349593495935,
+    "valid_pairs_site_I0006": 99,
+    "valid_pairs_site_S0001": 461,
+    "valid_pairs_cross_site": 374,
+    "elapsed_sec": 25.533861875534058
+  },
+  {
+    "loss": 1.3561153460324296,
+    "bce": 1.3159382000595816,
+    "pairwise": 0.2678476196216378,
+    "valid_pair_count": 584,
+    "batch_pair_coverage": 0.4796747967479675,
+    "valid_pairs_site_I0006": 94,
+    "valid_pairs_site_S0001": 490,
+    "valid_pairs_cross_site": 387,
+    "elapsed_sec": 25.366568565368652
+  },
+  {
+    "loss": 1.4170708400235186,
+    "bce": 1.3788021564695652,
+    "pairwise": 0.25512452989133316,
+    "valid_pair_count": 552,
+    "batch_pair_coverage": 0.4715447154471545,
+    "valid_pairs_site_I0006": 104,
+    "valid_pairs_site_S0001": 448,
+    "valid_pairs_cross_site": 395,
+    "elapsed_sec": 25.468058109283447
+  }
+]

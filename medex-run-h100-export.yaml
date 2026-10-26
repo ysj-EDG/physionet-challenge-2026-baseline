@@ -1,0 +1,32 @@
+version: 1
+
+workspace: .
+
+exclude:
+  - .git/
+  - __pycache__/
+  - artifacts/
+  - h100_e1_results/
+  - h100_export_results/
+  - medex-run-h100-e1.yaml
+  - medex-run-h100-export.yaml
+  - export_input/
+
+include:
+  - src: /database2/physionet2026_kaggle/matcha_cache/v18_large6600/prepared
+    dst: .
+    keep: true
+  - src: /database/home/gaohaojie/workspace/repd/Matcha/psg4ci/h100_e1_results/e1_seed20260804_epoch15/checkpoint_epoch_15.pt
+    dst: export_input/
+
+env: eeg_env
+device: auto
+
+run:
+  script: run_h100_export.py
+  wait: true
+
+rsync_back:
+  - h100_export_results
+
+notify: []

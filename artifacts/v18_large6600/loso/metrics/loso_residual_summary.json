@@ -1,0 +1,280 @@
+{
+  "per_seed": {
+    "20260806": {
+      "site_metrics": [
+        {
+          "held_out_site": "I0002",
+          "no_residual": {
+            "age_conditioned_auroc": 0.6855779427359491,
+            "age_pair_count": 1886,
+            "auprc": 0.49493811556980594,
+            "auroc": 0.7298329011812158,
+            "positives": 52,
+            "records": 319
+          },
+          "residual": {
+            "age_conditioned_auroc": 0.8881230116648993,
+            "age_pair_count": 1886,
+            "auprc": 0.781216567673916,
+            "auroc": 0.8915298184961107,
+            "positives": 52,
+            "records": 319
+          }
+        },
+        {
+          "held_out_site": "I0006",
+          "no_residual": {
+            "age_conditioned_auroc": 0.6558338508245359,
+            "age_pair_count": 14493,
+            "auprc": 0.22541269215655652,
+            "auroc": 0.7111477115117891,
+            "positives": 112,
+            "records": 1142
+          },
+          "residual": {
+            "age_conditioned_auroc": 0.6971641482094805,
+            "age_pair_count": 14493,
+            "auprc": 0.33740664983440877,
+            "auroc": 0.7504334257975034,
+            "positives": 112,
+            "records": 1142
+          }
+        },
+        {
+          "held_out_site": "S0001",
+          "no_residual": {
+            "age_conditioned_auroc": 0.6027642187242911,
+            "age_pair_count": 182330,
+            "auprc": 0.17525728534789398,
+            "auroc": 0.6769900365761713,
+            "positives": 334,
+            "records": 5139
+          },
+          "residual": {
+            "age_conditioned_auroc": 0.6891131464926232,
+            "age_pair_count": 182330,
+            "auprc": 0.3009068959378115,
+            "auroc": 0.7511567915158237,
+            "positives": 334,
+            "records": 5139
+          }
+        }
+      ]
+    },
+    "20260807": {
+      "site_metrics": [
+        {
+          "held_out_site": "I0002",
+          "no_residual": {
+            "age_conditioned_auroc": 0.693001060445387,
+            "age_pair_count": 1886,
+            "auprc": 0.4244743253787951,
+            "auroc": 0.7389801210025928,
+            "positives": 52,
+            "records": 319
+          },
+          "residual": {
+            "age_conditioned_auroc": 0.9061505832449629,
+            "age_pair_count": 1886,
+            "auprc": 0.7772252957012705,
+            "auroc": 0.9003889369057908,
+            "positives": 52,
+            "records": 319
+          }
+        },
+        {
+          "held_out_site": "I0006",
+          "no_residual": {
+            "age_conditioned_auroc": 0.6947146898502725,
+            "age_pair_count": 14493,
+            "auprc": 0.3080897888379742,
+            "auroc": 0.7481492718446602,
+            "positives": 112,
+            "records": 1142
+          },
+          "residual": {
+            "age_conditioned_auroc": 0.7512592285931139,
+            "age_pair_count": 14493,
+            "auprc": 0.43383339716671077,
+            "auroc": 0.7939753814147018,
+            "positives": 112,
+            "records": 1142
+          }
+        },
+        {
+          "held_out_site": "S0001",
+          "no_residual": {
+            "age_conditioned_auroc": 0.6297372895299731,
+            "age_pair_count": 182330,
+            "auprc": 0.18640328589118704,
+            "auroc": 0.684232679282434,
+            "positives": 334,
+            "records": 5139
+          },
+          "residual": {
+            "age_conditioned_auroc": 0.6995063895135194,
+            "age_pair_count": 182330,
+            "auprc": 0.3027024607274202,
+            "auroc": 0.7527550518110501,
+            "positives": 334,
+            "records": 5139
+          }
+        }
+      ]
+    },
+    "20260808": {
+      "site_metrics": [
+        {
+          "held_out_site": "I0002",
+          "no_residual": {
+            "age_conditioned_auroc": 0.7216330858960763,
+            "age_pair_count": 1886,
+            "auprc": 0.42311772349990073,
+            "auroc": 0.7403486027081533,
+            "positives": 52,
+            "records": 319
+          },
+          "residual": {
+            "age_conditioned_auroc": 0.8966065747613998,
+            "age_pair_count": 1886,
+            "auprc": 0.7802850704464385,
+            "auroc": 0.8943388072601556,
+            "positives": 52,
+            "records": 319
+          }
+        },
+        {
+          "held_out_site": "I0006",
+          "no_residual": {
+            "age_conditioned_auroc": 0.6827433933623128,
+            "age_pair_count": 14493,
+            "auprc": 0.27064971421198336,
+            "auroc": 0.7384361997226074,
+            "positives": 112,
+            "records": 1142
+          },
+          "residual": {
+            "age_conditioned_auroc": 0.7194507693369213,
+            "age_pair_count": 14493,
+            "auprc": 0.41277664725118174,
+            "auroc": 0.7748352981969486,
+            "positives": 112,
+            "records": 1142
+          }
+        },
+        {
+          "held_out_site": "S0001",
+          "no_residual": {
+            "age_conditioned_auroc": 0.6263642845390226,
+            "age_pair_count": 182330,
+            "auprc": 0.18044663695324314,
+            "auroc": 0.6944845999987538,
+            "positives": 334,
+            "records": 5139
+          },
+          "residual": {
+            "age_conditioned_auroc": 0.6942192727472166,
+            "age_pair_count": 182330,
+            "auprc": 0.3121998708539579,
+            "auroc": 0.7575760030407449,
+            "positives": 334,
+            "records": 5139
+          }
+        }
+      ]
+    }
+  },
+  "protocol": "existing V18 LOSO outputs; logits are deterministic inverse-sigmoid of saved probabilities; residuals fitted outer-train only",
+  "seeds": [
+    20260806,
+    20260807,
+    20260808
+  ],
+  "sites": [
+    "I0002",
+    "I0006",
+    "S0001"
+  ],
+  "status": "complete",
+  "three_seed_ensemble": {
+    "macro_site_age_conditioned_auroc_no_residual": 0.6782356216759845,
+    "macro_site_age_conditioned_auroc_residual": 0.7758766576872912,
+    "pooled_oof_no_residual": {
+      "age_conditioned_auroc": 0.6665164501201263,
+      "age_pair_count": 355043,
+      "auprc": 0.24050961250853375,
+      "auroc": 0.7258739974647854,
+      "positives": 498,
+      "records": 6600
+    },
+    "pooled_oof_residual": {
+      "age_conditioned_auroc": 0.7213605112620162,
+      "age_pair_count": 355043,
+      "auprc": 0.37921177455505967,
+      "auroc": 0.7699296036983069,
+      "positives": 498,
+      "records": 6600
+    },
+    "sites": [
+      {
+        "held_out_site": "I0002",
+        "no_residual": {
+          "age_conditioned_auroc": 0.7073170731707317,
+          "age_pair_count": 1886,
+          "auprc": 0.46639406938698746,
+          "auroc": 0.7497839239412273,
+          "positives": 52,
+          "records": 319
+        },
+        "residual": {
+          "age_conditioned_auroc": 0.9008483563096501,
+          "age_pair_count": 1886,
+          "auprc": 0.7934986174768157,
+          "auroc": 0.8994526073177758,
+          "positives": 52,
+          "records": 319
+        }
+      },
+      {
+        "held_out_site": "I0006",
+        "no_residual": {
+          "age_conditioned_auroc": 0.6899192713723866,
+          "age_pair_count": 14493,
+          "auprc": 0.28636453312849985,
+          "auroc": 0.7457784327323161,
+          "positives": 112,
+          "records": 1142
+        },
+        "residual": {
+          "age_conditioned_auroc": 0.7285586145035534,
+          "age_pair_count": 14493,
+          "auprc": 0.410430575569531,
+          "auroc": 0.7800624133148405,
+          "positives": 112,
+          "records": 1142
+        }
+      },
+      {
+        "held_out_site": "S0001",
+        "no_residual": {
+          "age_conditioned_auroc": 0.6374705204848352,
+          "age_pair_count": 182330,
+          "auprc": 0.19521467012179186,
+          "auroc": 0.7058123087851352,
+          "positives": 334,
+          "records": 5139
+        },
+        "residual": {
+          "age_conditioned_auroc": 0.69822300224867,
+          "age_pair_count": 182330,
+          "auprc": 0.31446698513323446,
+          "auroc": 0.7584184388766692,
+          "positives": 334,
+          "records": 5139
+        }
+      }
+    ],
+    "worst_site_age_conditioned_auroc_no_residual": 0.6374705204848352,
+    "worst_site_age_conditioned_auroc_residual": 0.69822300224867
+  }
+}

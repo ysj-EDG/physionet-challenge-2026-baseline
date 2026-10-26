@@ -1,0 +1,86 @@
+[
+  {
+    "batch_pair_coverage": 0.47764227642276424,
+    "batches": 492,
+    "bce": 1.335625045576958,
+    "elapsed_seconds": 27.449084997177124,
+    "epoch": 1,
+    "last_base_gradient_norm": 5.395936965942383,
+    "last_site_gradient_norm": 0.7182884812355042,
+    "loss": 2.060176224606793,
+    "main_loss": 1.3807549959699796,
+    "pair_counts": {
+      "cross_site": 340,
+      "site_I0006": 90,
+      "site_S0001": 485
+    },
+    "pairwise": 0.30086632689642834,
+    "records": 7872,
+    "site_accuracy": 0.5783790650406504,
+    "site_loss": 0.6794212263652949,
+    "valid_pairs": 575
+  },
+  {
+    "batch_pair_coverage": 0.5101626016260162,
+    "batches": 492,
+    "bce": 1.29658332571569,
+    "elapsed_seconds": 27.0787832736969,
+    "epoch": 2,
+    "last_base_gradient_norm": 2.8505046367645264,
+    "last_site_gradient_norm": 1.0679429769515991,
+    "loss": 2.0320085820143783,
+    "main_loss": 1.3426114635587465,
+    "pair_counts": {
+      "cross_site": 331,
+      "site_I0006": 95,
+      "site_S0001": 513
+    },
+    "pairwise": 0.3068542266283487,
+    "records": 7872,
+    "site_accuracy": 0.48653455284552843,
+    "site_loss": 0.6893971213480321,
+    "valid_pairs": 608
+  },
+  {
+    "batch_pair_coverage": 0.49390243902439024,
+    "batches": 492,
+    "bce": 1.3297804215453504,
+    "elapsed_seconds": 27.392469882965088,
+    "epoch": 3,
+    "last_base_gradient_norm": 7.207207679748535,
+    "last_site_gradient_norm": 1.7188951969146729,
+    "loss": 2.042387163251396,
+    "main_loss": 1.3700185184919738,
+    "pair_counts": {
+      "cross_site": 365,
+      "site_I0006": 93,
+      "site_S0001": 446
+    },
+    "pairwise": 0.2682539687716266,
+    "records": 7872,
+    "site_accuracy": 0.5003810975609756,
+    "site_loss": 0.6723686423970432,
+    "valid_pairs": 539
+  },
+  {
+    "batch_pair_coverage": 0.4613821138211382,
+    "batches": 492,
+    "bce": 1.267295194941202,
+    "elapsed_seconds": 27.460944652557373,
+    "epoch": 4,
+    "last_base_gradient_norm": 5.9038777351379395,
+    "last_site_gradient_norm": 3.123788356781006,
+    "loss": 1.9971863005946322,
+    "main_loss": 1.3090661532904317,
+    "pair_counts": {
+      "cross_site": 370,
+      "site_I0006": 104,
+      "site_S0001": 474
+    },
+    "pairwise": 0.2784730476441763,
+    "records": 7872,
+    "site_accuracy": 0.38173272357723576,
+    "site_loss": 0.6881201485308205,
+    "valid_pairs": 578
+  }
+]

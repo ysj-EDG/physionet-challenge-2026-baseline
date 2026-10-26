@@ -1,0 +1,4 @@
+SiteID,BDSPPatientID,CreationTime,BidsFolder,SessionID,Age,Sex,Race,Ethnicity,BMI,Time_to_Event,Cognitive_Impairment,Last_Known_Visit_Date,Time_to_Last_Visit
+I0002,150000076,2018-09-16 21:30:55,sub-I0002150000076,1,66,Male,Black,Not Hispanic,,,False,2024-12-20 00:00:00,2286
+I0006,179000001,2015-05-28 00:00:00,sub-I0006179000001,1,52,Male,White,Not Hispanic,27.66,,False,2023-02-07 00:00:00,2812
+S0001,111189359,2013-04-02 02:21:57,sub-S0001111189359,1,62,Male,White,Not Hispanic,,,False,2024-07-24 00:00:00,4130

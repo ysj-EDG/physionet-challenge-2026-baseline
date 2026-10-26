@@ -1,0 +1,35 @@
+[
+  {
+    "loss": 1.4714096407362511,
+    "bce": 1.4215480498795476,
+    "pairwise": 0.332410584014588,
+    "valid_pair_count": 647,
+    "batch_pair_coverage": 0.5397196261682243,
+    "valid_pairs_site_I0002": 110,
+    "valid_pairs_site_S0001": 537,
+    "valid_pairs_cross_site": 230,
+    "elapsed_sec": 22.217886209487915
+  },
+  {
+    "loss": 1.3247267446854962,
+    "bce": 1.279114605180014,
+    "pairwise": 0.3040809177915418,
+    "valid_pair_count": 615,
+    "batch_pair_coverage": 0.5280373831775701,
+    "valid_pairs_site_I0002": 80,
+    "valid_pairs_site_S0001": 535,
+    "valid_pairs_cross_site": 251,
+    "elapsed_sec": 22.584908962249756
+  },
+  {
+    "loss": 1.3440637248350638,
+    "bce": 1.2951131802853022,
+    "pairwise": 0.32633695958800196,
+    "valid_pair_count": 660,
+    "batch_pair_coverage": 0.5537383177570093,
+    "valid_pairs_site_I0002": 107,
+    "valid_pairs_site_S0001": 553,
+    "valid_pairs_cross_site": 244,
+    "elapsed_sec": 22.76664447784424
+  }
+]

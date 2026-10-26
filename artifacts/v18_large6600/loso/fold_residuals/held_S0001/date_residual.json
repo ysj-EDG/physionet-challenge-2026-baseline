@@ -1,0 +1,12 @@
+{
+  "age_gap_years": 2.0,
+  "creation_day_mean": 16638.83490361276,
+  "creation_day_std": 715.3332849250137,
+  "date_coefficient": 1.318968966700158,
+  "source": "official_training_labels",
+  "training_pair_counts": {
+    "I0002": 1886,
+    "I0006": 14493
+  },
+  "version": "creation_time_site_macro_pairwise_v1"
+}

@@ -1,0 +1,18 @@
+{
+  "checkpoint_sha256": "74261ac7451ef3f8710820e157733c72e97f4b112675ed520a1a9d161f1e47e8",
+  "embedding_windows": 5895221,
+  "records": 6600,
+  "shards": 66,
+  "site_records": {
+    "I0002": 319,
+    "I0006": 1142,
+    "S0001": 5139
+  },
+  "site_windows": {
+    "I0002": 290094,
+    "I0006": 949127,
+    "S0001": 4656000
+  },
+  "status": "complete",
+  "version": "domain_robust_encoder_full_embeddings_v1"
+}

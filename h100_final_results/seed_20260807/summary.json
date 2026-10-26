@@ -1,0 +1,112 @@
+{
+  "checkpoint": "/mnt/data5t-in-container/workspace/.medex_run_a930b488a39149fd99165e85c9d31187/psg4ci/h100_final_results/seed_20260807/final_model.pt",
+  "checkpoint_sha256": "5b0d0fcb7a0299ee6f347c4447fc2152b2dcba5b8e97ff1b528b0c1ff2f534b9",
+  "epochs": 4,
+  "history": [
+    {
+      "batch_pair_coverage": 0.4874274661508704,
+      "batches": 517,
+      "bce": 1.3201662398860348,
+      "elapsed_seconds": 29.791598558425903,
+      "epoch": 1,
+      "last_base_gradient_norm": 10.261604309082031,
+      "last_site_gradient_norm": 2.6767163276672363,
+      "loss": 2.4337433327558653,
+      "main_loss": 1.3642684715859434,
+      "pair_counts": {
+        "cross_site": 609,
+        "site_I0002": 72,
+        "site_I0006": 73,
+        "site_S0001": 443
+      },
+      "pairwise": 0.29401486787433434,
+      "records": 8272,
+      "site_accuracy": 0.589095744680851,
+      "site_loss": 1.0694748577112385,
+      "valid_pairs": 588
+    },
+    {
+      "batch_pair_coverage": 0.4738878143133462,
+      "batches": 517,
+      "bce": 1.2507116382714627,
+      "elapsed_seconds": 29.07662796974182,
+      "epoch": 2,
+      "last_base_gradient_norm": 5.559319972991943,
+      "last_site_gradient_norm": 3.3123934268951416,
+      "loss": 2.349478095596948,
+      "main_loss": 1.2924060730742764,
+      "pair_counts": {
+        "cross_site": 563,
+        "site_I0002": 72,
+        "site_I0006": 45,
+        "site_S0001": 416
+      },
+      "pairwise": 0.2779628918037842,
+      "records": 8272,
+      "site_accuracy": 0.4632495164410058,
+      "site_loss": 1.0570720275089405,
+      "valid_pairs": 533
+    },
+    {
+      "batch_pair_coverage": 0.4874274661508704,
+      "batches": 517,
+      "bce": 1.230452191192707,
+      "elapsed_seconds": 29.08933424949646,
+      "epoch": 3,
+      "last_base_gradient_norm": 5.936383247375488,
+      "last_site_gradient_norm": 1.4013025760650635,
+      "loss": 2.323624514749479,
+      "main_loss": 1.273066315547756,
+      "pair_counts": {
+        "cross_site": 580,
+        "site_I0002": 58,
+        "site_I0006": 61,
+        "site_S0001": 448
+      },
+      "pairwise": 0.28409415617588785,
+      "records": 8272,
+      "site_accuracy": 0.4489845261121857,
+      "site_loss": 1.0505582011184103,
+      "valid_pairs": 567
+    },
+    {
+      "batch_pair_coverage": 0.4661508704061896,
+      "batches": 517,
+      "bce": 1.303519127706725,
+      "elapsed_seconds": 28.866961002349854,
+      "epoch": 4,
+      "last_base_gradient_norm": 13.816473007202148,
+      "last_site_gradient_norm": 4.979976654052734,
+      "loss": 2.4050784757796753,
+      "main_loss": 1.3441739930866765,
+      "pair_counts": {
+        "cross_site": 554,
+        "site_I0002": 60,
+        "site_I0006": 45,
+        "site_S0001": 424
+      },
+      "pairwise": 0.27103241555333296,
+      "records": 8272,
+      "site_accuracy": 0.4758220502901354,
+      "site_loss": 1.0609044779661314,
+      "valid_pairs": 529
+    }
+  ],
+  "integrity_only_in_sample_metrics": {
+    "age_conditioned_auroc": 0.733361874477176,
+    "age_pair_count": 355043,
+    "auroc": 0.793531056378908,
+    "positives": 498,
+    "records": 6600
+  },
+  "positives": 498,
+  "protocol": "dynamic_full_training_m2_weak_domain_adversarial_v18",
+  "records": 6600,
+  "seed": 20260807,
+  "sites": {
+    "I0002": 319,
+    "I0006": 1142,
+    "S0001": 5139
+  },
+  "status": "complete"
+}

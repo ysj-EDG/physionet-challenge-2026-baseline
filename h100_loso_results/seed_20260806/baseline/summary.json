@@ -1,0 +1,32 @@
+{
+  "models": {
+    "raw_sequence": {
+      "held_out_sites": {
+        "I0002": 0.6823966065747614,
+        "I0006": 0.6200234596011868,
+        "S0001": 0.6058629956671968
+      },
+      "macro_site_age_conditioned_auroc": 0.636094353947715,
+      "pooled_oof": {
+        "age_conditioned_auroc": 0.613849590049656,
+        "age_pair_count": 355043,
+        "auroc": 0.6786870523720578,
+        "positives": 498,
+        "records": 6600
+      },
+      "selected_epochs": {
+        "I0002": 12,
+        "I0006": 10,
+        "S0001": 5
+      },
+      "worst_site_age_conditioned_auroc": 0.6058629956671968
+    }
+  },
+  "protocol": {
+    "initialization_root": null,
+    "pair_scope": "same_site",
+    "pairwise_weight": 0.15,
+    "seed": 20260806,
+    "selection_metric": "age_conditioned_auroc"
+  }
+}

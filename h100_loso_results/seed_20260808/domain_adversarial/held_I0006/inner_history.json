@@ -1,0 +1,226 @@
+[
+  {
+    "epoch": 1,
+    "selection": 0.7007774075836903,
+    "training": {
+      "batch_pair_coverage": 0.5234159779614325,
+      "batches": 363,
+      "bce": 1.3464751735165428,
+      "elapsed_seconds": 20.62058448791504,
+      "epoch": 1,
+      "last_base_gradient_norm": 1.2458232641220093,
+      "last_site_gradient_norm": 2.685490369796753,
+      "loss": 2.0323824160847783,
+      "main_loss": 1.3939128931683613,
+      "pair_counts": {
+        "cross_site": 186,
+        "site_I0002": 56,
+        "site_S0001": 474
+      },
+      "pairwise": 0.3162514626974697,
+      "records": 5808,
+      "site_accuracy": 0.7291666666666666,
+      "site_loss": 0.6384695261798943,
+      "valid_pairs": 530
+    },
+    "validation": {
+      "age_conditioned_auroc": 0.7007774075836903,
+      "age_pair_count": 6303,
+      "auroc": 0.7312066699895782,
+      "positives": 58,
+      "records": 819
+    }
+  },
+  {
+    "epoch": 2,
+    "selection": 0.6569887355227669,
+    "training": {
+      "batch_pair_coverage": 0.5179063360881543,
+      "batches": 363,
+      "bce": 1.31833156619026,
+      "elapsed_seconds": 20.724895238876343,
+      "epoch": 2,
+      "last_base_gradient_norm": 4.282390594482422,
+      "last_site_gradient_norm": 1.0059834718704224,
+      "loss": 2.015077751940604,
+      "main_loss": 1.3645916263016131,
+      "pair_counts": {
+        "cross_site": 206,
+        "site_I0002": 63,
+        "site_S0001": 448
+      },
+      "pairwise": 0.30840035451745446,
+      "records": 5808,
+      "site_accuracy": 0.5769628099173554,
+      "site_loss": 0.6504861241201395,
+      "valid_pairs": 511
+    },
+    "validation": {
+      "age_conditioned_auroc": 0.6569887355227669,
+      "age_pair_count": 6303,
+      "auroc": 0.6979700031718702,
+      "positives": 58,
+      "records": 819
+    }
+  },
+  {
+    "epoch": 3,
+    "selection": 0.7060130096779311,
+    "training": {
+      "batch_pair_coverage": 0.4765840220385675,
+      "batches": 363,
+      "bce": 1.3266562955151249,
+      "elapsed_seconds": 20.470898866653442,
+      "epoch": 3,
+      "last_base_gradient_norm": 5.63560676574707,
+      "last_site_gradient_norm": 3.8709261417388916,
+      "loss": 2.066137905537918,
+      "main_loss": 1.3670185227408882,
+      "pair_counts": {
+        "cross_site": 212,
+        "site_I0002": 58,
+        "site_S0001": 424
+      },
+      "pairwise": 0.2690814838208484,
+      "records": 5808,
+      "site_accuracy": 0.6635674931129476,
+      "site_loss": 0.6991193792872521,
+      "valid_pairs": 482
+    },
+    "validation": {
+      "age_conditioned_auroc": 0.7060130096779311,
+      "age_pair_count": 6303,
+      "auroc": 0.7440753998821876,
+      "positives": 58,
+      "records": 819
+    }
+  },
+  {
+    "epoch": 4,
+    "selection": 0.6860225289544661,
+    "training": {
+      "batch_pair_coverage": 0.5234159779614325,
+      "batches": 363,
+      "bce": 1.2603975559069105,
+      "elapsed_seconds": 20.468727588653564,
+      "epoch": 4,
+      "last_base_gradient_norm": 1.6649171113967896,
+      "last_site_gradient_norm": 3.488767623901367,
+      "loss": 1.9483379939206704,
+      "main_loss": 1.3086108913434766,
+      "pair_counts": {
+        "cross_site": 203,
+        "site_I0002": 74,
+        "site_S0001": 449
+      },
+      "pairwise": 0.3214222079042869,
+      "records": 5808,
+      "site_accuracy": 0.7203856749311295,
+      "site_loss": 0.6397271056969961,
+      "valid_pairs": 523
+    },
+    "validation": {
+      "age_conditioned_auroc": 0.6860225289544661,
+      "age_pair_count": 6303,
+      "auroc": 0.7203769994109385,
+      "positives": 58,
+      "records": 819
+    }
+  },
+  {
+    "epoch": 5,
+    "selection": 0.6834840552118039,
+    "training": {
+      "batch_pair_coverage": 0.5041322314049587,
+      "batches": 363,
+      "bce": 1.3191287076465026,
+      "elapsed_seconds": 20.566150188446045,
+      "epoch": 5,
+      "last_base_gradient_norm": 5.137546539306641,
+      "last_site_gradient_norm": 1.3957680463790894,
+      "loss": 2.0400266988054123,
+      "main_loss": 1.3663396039161801,
+      "pair_counts": {
+        "cross_site": 206,
+        "site_I0002": 77,
+        "site_S0001": 431
+      },
+      "pairwise": 0.31473930539517114,
+      "records": 5808,
+      "site_accuracy": 0.8088842975206612,
+      "site_loss": 0.6736870942529568,
+      "valid_pairs": 508
+    },
+    "validation": {
+      "age_conditioned_auroc": 0.6834840552118039,
+      "age_pair_count": 6303,
+      "auroc": 0.7164121618559971,
+      "positives": 58,
+      "records": 819
+    }
+  },
+  {
+    "epoch": 6,
+    "selection": 0.6914167856576233,
+    "training": {
+      "batch_pair_coverage": 0.5206611570247934,
+      "batches": 363,
+      "bce": 1.3359906974328122,
+      "elapsed_seconds": 20.38424587249756,
+      "epoch": 6,
+      "last_base_gradient_norm": 9.812071800231934,
+      "last_site_gradient_norm": 1.4789937734603882,
+      "loss": 2.039692919116375,
+      "main_loss": 1.3897045566687571,
+      "pair_counts": {
+        "cross_site": 201,
+        "site_I0002": 69,
+        "site_S0001": 465
+      },
+      "pairwise": 0.358092389300404,
+      "records": 5808,
+      "site_accuracy": 0.4621212121212121,
+      "site_loss": 0.6499883603130162,
+      "valid_pairs": 534
+    },
+    "validation": {
+      "age_conditioned_auroc": 0.6914167856576233,
+      "age_pair_count": 6303,
+      "auroc": 0.7252480855498663,
+      "positives": 58,
+      "records": 819
+    }
+  },
+  {
+    "epoch": 7,
+    "selection": 0.6898302395684595,
+    "training": {
+      "batch_pair_coverage": 0.512396694214876,
+      "batches": 363,
+      "bce": 1.307719024785951,
+      "elapsed_seconds": 20.614602088928223,
+      "epoch": 7,
+      "last_base_gradient_norm": 1.3813682794570923,
+      "last_site_gradient_norm": 2.7403016090393066,
+      "loss": 2.0029729282067827,
+      "main_loss": 1.3474613004479528,
+      "pair_counts": {
+        "cross_site": 215,
+        "site_I0002": 77,
+        "site_S0001": 392
+      },
+      "pairwise": 0.2649484845943051,
+      "records": 5808,
+      "site_accuracy": 0.5669765840220385,
+      "site_loss": 0.6555116252958282,
+      "valid_pairs": 469
+    },
+    "validation": {
+      "age_conditioned_auroc": 0.6898302395684595,
+      "age_pair_count": 6303,
+      "auroc": 0.7188137206035615,
+      "positives": 58,
+      "records": 819
+    }
+  }
+]
