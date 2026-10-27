@@ -1,0 +1,44 @@
+{
+  "bootstrap_replicates": 2000,
+  "bootstrap_seed": 20261023,
+  "bootstrap_valid_invalid": {
+    "fixed": {
+      "invalid": 0,
+      "valid": 48000
+    },
+    "nested": {
+      "invalid": 0,
+      "valid": 48000
+    }
+  },
+  "candidate_weights": [
+    0.2,
+    0.3,
+    0.4,
+    0.5,
+    0.6,
+    0.7
+  ],
+  "counts": {
+    "I0002": 319,
+    "I0006": 1142,
+    "S0001": 5139
+  },
+  "parent_branch": "research/siren-matcha-ab-fusion-v1",
+  "parent_commit": "2e151f9ec89e596469ba315eebcc312e44d20044",
+  "parent_payload_sha256": {
+    "I0002": "d70c057883d74be2c26f164cb4076fe7c376d5b854b3dcc3a62741bc96046ea3",
+    "I0006": "8ca2cd0fca59c82b530ea1ebf93d61cc088d0805cadf60e6674ad68ff57a1466",
+    "S0001": "2cad4eb8a1ac54c68566ed062b1801a987640f89688dddd208cadd67ae585c2c"
+  },
+  "public_contains_patient_level_fields": false,
+  "schema": "siren_matcha_ab_crossfold_public_manifest_v1",
+  "selected_wB": {
+    "I0002": 0.6,
+    "I0006": 0.6,
+    "S0001": 0.7
+  },
+  "selection_metric": "mean age-conditioned AUROC on the other two LOSO sites",
+  "target_fold_used_for_weight_selection": false,
+  "tie_break": "closest_to_0.4_then_lower_weight"
+}
